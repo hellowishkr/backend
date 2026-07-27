@@ -8,7 +8,7 @@ The workflow:
 
 1. Triggers on push to `main` and `workflow_dispatch`.
 2. Runs backend tests before any deploy step.
-3. Rsyncs `wishkr-backend/` to `/opt/wishkr/` on the web server and worker server separately.
+3. Rsyncs the standalone backend repository root to `/opt/wishkr/` on the web server and worker server separately.
 4. Leaves `.env` in place on each server and never syncs it.
 5. Deploys the web server first with `docker compose -f docker-compose.prod-web.yml up -d --build backend`.
 6. Verifies `http://127.0.0.1:8000/health` on the web host and `https://api.wishkr.com/health` externally.

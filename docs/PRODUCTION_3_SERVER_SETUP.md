@@ -380,20 +380,18 @@ The DB server is not deployed from GitHub Actions.
 ### Trigger and order
 
 - Trigger on push to `main` and `workflow_dispatch`.
-- Because the repo root contains `wishkr-backend/`, the push trigger keeps path filters so backend-only changes start this workflow:
+- The backend now lives in its own repository, so every push to `main` starts this workflow:
 
 ```yaml
 on:
   push:
     branches: [main]
-    paths:
-      - 'wishkr-backend/**'
-      - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
 ```
 - Run backend tests before deploy.
 - Validate that `HETZNER_SSH_KEY`, `HETZNER_WEB_HOST`, `HETZNER_WORKER_HOST`, and `HETZNER_DEPLOY_USER` are all populated before any deploy step starts.
-- Sync `wishkr-backend/` to `/opt/wishkr/` on the web host and worker host separately using SSH hardening and explicit `known_hosts` setup.
+- Run tests and resolve dependency-cache paths from the standalone repository root.
+- Sync the standalone repository root to `/opt/wishkr/` on the web host and worker host separately using SSH hardening and explicit `known_hosts` setup.
 - Exclude `.env`, `.git`, caches, `backups/`, `.venv/`, `venv/`, `.coverage`, `htmlcov/`, `*.log`, and `.DS_Store` from rsync so each server keeps its own local environment file and server-only artifacts.
 - Use `--delete` for code drift cleanup, but protect server-only `.env` and `backups/` content.
 - Preflight each server before deploy by confirming `/opt/wishkr`, `.env`, Docker, Docker Compose, and the expected compose file exist.

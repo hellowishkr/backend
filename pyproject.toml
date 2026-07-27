@@ -1,0 +1,36 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+# F401 = imported but unused
+# F811 = redefinition of unused name
+# F821 = undefined name
+select = ["F401", "F811", "F821"]
+
+# __init__.py files often re-export names — don't flag those
+per-file-ignores = { "__init__.py" = ["F401"] }
+
+[tool.mypy]
+python_version = "3.11"
+# Ignore missing stubs for third-party libraries (razorpay, apscheduler, etc.)
+ignore_missing_imports = true
+# Only check our own app code
+files = ["app"]
+# Start permissive — tighten these over time
+disallow_untyped_defs = false
+check_untyped_defs = true
+
+# Tighten "no Any" gradually, module-by-module.
+[[tool.mypy.overrides]]
+module = ["app.services.reminder"]
+disallow_any_explicit = true
+disallow_any_generics = true
+warn_return_any = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    "asyncio: mark test as async",
+    "postgres: requires a live Postgres (skipped if DATABASE_URL is unreachable)",
+]

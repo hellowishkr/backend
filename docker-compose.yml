@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wishkr
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: wishkr
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # DB only accessible within Docker network — not exposed to host/internet
+    # For local dev, use: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wishkr"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      args:
+        # Deploy script passes ``GIT_SHA=$(git rev-parse --short HEAD)`` via
+        # the env; docker compose substitutes it here. Leaves the tag empty
+        # when unset so local `docker compose build` still works.
+        GIT_SHA: ${GIT_SHA:-}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://wishkr:${POSTGRES_PASSWORD}@db:5432/wishkr
+      DB_POOL_SIZE: 10
+      DB_MAX_OVERFLOW: 10
+      APP_ENV: ${APP_ENV:-staging}
+      PYTHONDONTWRITEBYTECODE: "1"
+      # Propagate build-time GIT_SHA into the runtime env so Sentry can
+      # tag every event with the release it came from. Without this,
+      # regressions show up as "anonymous new issue" instead of
+      # "new since abc1234".
+      GIT_SHA: ${GIT_SHA:-}
+    ports:
+      - "127.0.0.1:8000:8000"
+    command: >
+      sh -c "
+      alembic upgrade head || exit 1;
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips='*'
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    read_only: true
+    tmpfs:
+      - /tmp
+
+volumes:
+  pgdata:

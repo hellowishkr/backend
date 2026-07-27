@@ -1,0 +1,14 @@
+# Development overrides — exposes DB port and uses default password
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+services:
+  db:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: wishkr_dev
+
+  backend:
+    read_only: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://wishkr:wishkr_dev@db:5432/wishkr
+      APP_ENV: development

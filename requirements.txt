@@ -1,0 +1,47 @@
+# Web framework
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+
+# Database
+sqlalchemy==2.0.40
+greenlet==3.0.3
+alembic==1.15.2
+psycopg2-binary==2.9.10
+asyncpg==0.31.0
+
+# Shared state across web workers (rate limits, outbound dedup)
+redis==5.2.1
+
+# HTTP client (async)
+httpx==0.28.1
+
+# JWT signing for Hubble SDK SSO
+PyJWT[crypto]==2.10.1
+
+# Razorpay
+razorpay==1.4.2
+
+# Scheduler
+apscheduler==3.11.0
+
+# Settings
+pydantic-settings==2.9.1
+email-validator==2.2.0
+python-dotenv==1.1.0
+
+# AI — Gemini via ADK
+google-genai>=1.17.0,<2.0.0
+google-adk==1.2.1
+
+# Utilities
+python-dateutil==2.9.0
+python-multipart==0.0.20
+boto3==1.35.99
+
+# Error tracking — FastAPI, SQLAlchemy, HTTPX, asyncpg, APScheduler, and
+# logging integrations activate automatically once the SDK is installed.
+sentry-sdk[fastapi]==2.20.0
+
+# Linting / type checking
+ruff==0.9.10
+mypy==1.15.0

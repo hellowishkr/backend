@@ -1,0 +1,661 @@
+name: Deploy Backend to Hetzner
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'wishkr-backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-backend-production
+  cancel-in-progress: false
+
+jobs:
+  # Safety net for mixed commits: the push-level `paths:` filter above starts
+  # this workflow whenever ANY backend file changed, but a commit that also
+  # touches wishkr-web/ would otherwise run the full test+deploy for what is
+  # really a frontend change. This job re-checks whether backend files actually
+  # changed and gates test/deploy on it. Manual runs (workflow_dispatch) always
+  # proceed.
+  changes:
+    name: Detect backend changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'wishkr-backend/**'
+              - '.github/workflows/deploy-backend.yml'
+
+  test:
+    name: Test backend
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: wishkr
+          POSTGRES_PASSWORD: wishkr
+          POSTGRES_DB: wishkr_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U wishkr -d wishkr_test"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgresql+asyncpg://wishkr:wishkr@localhost:5432/wishkr_test
+      SYNC_DATABASE_URL: postgresql://wishkr:wishkr@localhost:5432/wishkr_test
+
+      ENABLE_SHARED_WISHLIST: "false"
+      PREFERENCE_OUTBOUND_ENABLED: "false"
+      PREFERENCE_INTERCEPTOR_ENABLED: "false"
+
+      LLM_DAILY_BUDGET_USD: "5"
+      LLM_MONTHLY_BUDGET_USD: "100"
+      LLM_PER_USER_DAILY_BUDGET_USD: "1"
+
+      HUBBLE_ENABLED: "false"
+      HUBBLE_FAIL_STARTUP_ON_AUTH_ERROR: "false"
+
+    defaults:
+      run:
+        working-directory: wishkr-backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: |
+            wishkr-backend/requirements.txt
+            wishkr-backend/requirements-dev.txt
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          if [ -f requirements-dev.txt ]; then
+            pip install -r requirements-dev.txt
+          fi
+          pip install "psycopg[binary]"
+
+      - name: Run migrations
+        run: |
+          alembic upgrade head
+
+      - name: Run tests
+        run: |
+          python -m pytest tests/ -q
+
+  deploy:
+    name: Deploy production
+    runs-on: ubuntu-latest
+    needs: [changes, test]
+    if: ${{ needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' }}
+    timeout-minutes: 20
+    environment: production
+
+    env:
+      SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      WEB_HOST: ${{ secrets.HETZNER_WEB_HOST }}
+      WORKER_HOST: ${{ secrets.HETZNER_WORKER_HOST }}
+      DEPLOY_USER: ${{ secrets.HETZNER_DEPLOY_USER }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate deployment inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          missing=()
+          if [ -z "${SSH_KEY:-}" ]; then
+            missing+=("HETZNER_SSH_KEY")
+          fi
+          if [ -z "${WEB_HOST}" ]; then
+            missing+=("HETZNER_WEB_HOST")
+          fi
+          if [ -z "${WORKER_HOST}" ]; then
+            missing+=("HETZNER_WORKER_HOST")
+          fi
+          if [ -z "${DEPLOY_USER}" ]; then
+            missing+=("HETZNER_DEPLOY_USER")
+          fi
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "ERROR: required deployment inputs are missing: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Setup SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+
+          printf '%s\n' "$SSH_KEY" > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+
+          ssh-keygen -y -f "$HOME/.ssh/deploy_key" > "$HOME/.ssh/deploy_key.pub"
+          ssh-keygen -lf "$HOME/.ssh/deploy_key.pub"
+
+          : > "$HOME/.ssh/known_hosts"
+          ssh-keyscan -T 5 -H "$WEB_HOST" "$WORKER_HOST" >> "$HOME/.ssh/known_hosts"
+          sort -u "$HOME/.ssh/known_hosts" -o "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Sync code to web server
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3)
+          RSYNC_SSH="ssh ${SSH_OPTS[*]}"
+
+          rsync -az --delete \
+            --filter='protect .env' \
+            --filter='protect backups/***' \
+            --exclude '.env' \
+            --exclude '.git' \
+            --exclude 'backups/' \
+            --exclude '__pycache__' \
+            --exclude '.pytest_cache' \
+            --exclude '.mypy_cache' \
+            --exclude '.ruff_cache' \
+            --exclude 'graphify-out' \
+            --exclude '.DS_Store' \
+            --exclude '*.log' \
+            --exclude '.venv/' \
+            --exclude 'venv/' \
+            --exclude '.coverage' \
+            --exclude 'htmlcov/' \
+            -e "$RSYNC_SSH" \
+            ./wishkr-backend/ "$DEPLOY_USER@$WEB_HOST:/opt/wishkr/"
+
+      - name: Preflight web server
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3)
+
+          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$WEB_HOST" "GIT_SHA='$GITHUB_SHA' bash -se" <<'REMOTE'
+          set -euo pipefail
+
+          mkdir -p /opt/wishkr
+          cd /opt/wishkr
+
+          if [ ! -f .env ]; then
+            echo 'ERROR: /opt/wishkr/.env not found on web server'
+            exit 1
+          fi
+
+          if ! command -v docker >/dev/null 2>&1; then
+            echo 'ERROR: docker is not available on the web server'
+            exit 1
+          fi
+
+          if ! docker compose version >/dev/null 2>&1; then
+            echo 'ERROR: docker compose is not available on the web server'
+            exit 1
+          fi
+
+          if [ ! -f docker-compose.prod-web.yml ]; then
+            echo 'ERROR: docker-compose.prod-web.yml missing after sync on web server'
+            exit 1
+          fi
+
+          if ! grep -Eq '^APP_ROLE=web$' .env; then
+            echo 'ERROR: web server .env must contain APP_ROLE=web'
+            exit 1
+          fi
+
+          if ! grep -Eq '^RUN_SCHEDULER=false$' .env; then
+            echo 'ERROR: web server .env must contain RUN_SCHEDULER=false'
+            exit 1
+          fi
+
+          echo 'Web preflight confirmed: APP_ROLE=web, RUN_SCHEDULER=false'
+          REMOTE
+
+      - name: Deploy web first
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3)
+
+          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$WEB_HOST" "GIT_SHA='$GITHUB_SHA' bash -se" <<'REMOTE'
+          set -euo pipefail
+
+          cd /opt/wishkr
+
+          docker compose -f docker-compose.prod-web.yml build backend
+          docker compose -f docker-compose.prod-web.yml up -d backend
+          docker compose -f docker-compose.prod-web.yml ps
+          REMOTE
+
+      - name: Verify web local health
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3)
+
+          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$WEB_HOST" "bash -se" <<'REMOTE'
+          set -euo pipefail
+
+          cd /opt/wishkr
+
+          docker compose -f docker-compose.prod-web.yml ps
+
+          backend_logs="$(docker compose -f docker-compose.prod-web.yml logs --tail=150 backend || true)"
+
+          if ! grep -Eq '^RUN_SCHEDULER=false$' .env; then
+            echo 'ERROR: web server .env does not confirm RUN_SCHEDULER=false'
+            exit 1
+          fi
+
+          if printf '%s\n' "$backend_logs" | grep -Eqi 'Scheduler started:|Scheduler advisory lock acquired|Standalone scheduler worker started|RUN_SCHEDULER=true'; then
+            echo 'ERROR: web backend logs indicate scheduler activity'
+            printf '%s\n' "$backend_logs"
+            exit 1
+          fi
+
+          for attempt in $(seq 1 12); do
+            if curl -fsS http://127.0.0.1:8000/health; then
+              echo 'Web local health check passed'
+              exit 0
+            fi
+            echo "Local health attempt $attempt failed; retrying..."
+            sleep 5
+          done
+
+          echo 'Local health check failed'
+          docker compose -f docker-compose.prod-web.yml logs --tail=150 backend || true
+          exit 1
+          REMOTE
+
+      - name: Verify public health
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 12); do
+            if curl -fsS https://api.wishkr.com/health; then
+              echo 'Public health check passed'
+              exit 0
+            fi
+            echo "Public health attempt $attempt failed; retrying..."
+            sleep 5
+          done
+
+          echo 'Public health check failed'
+          SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3)
+          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$WEB_HOST" "bash -se" <<'REMOTE'
+          set -euo pipefail
+
+          cd /opt/wishkr
+
+          docker compose -f docker-compose.prod-web.yml ps || true
+          docker compose -f docker-compose.prod-web.yml logs --tail=150 backend || true
+
+          if command -v nginx >/dev/null 2>&1; then
+            (sudo -n nginx -t || nginx -t) || true
+          else
+            echo 'nginx not available'
+          fi
+          REMOTE
+          exit 1
+
+      - name: Sync code to worker server
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3)
+          RSYNC_SSH="ssh ${SSH_OPTS[*]}"
+
+          rsync -az --delete \
+            --filter='protect .env' \
+            --filter='protect backups/***' \
+            --exclude '.env' \
+            --exclude '.git' \
+            --exclude 'backups/' \
+            --exclude '__pycache__' \
+            --exclude '.pytest_cache' \
+            --exclude '.mypy_cache' \
+            --exclude '.ruff_cache' \
+            --exclude 'graphify-out' \
+            --exclude '.DS_Store' \
+            --exclude '*.log' \
+            --exclude '.venv/' \
+            --exclude 'venv/' \
+            --exclude '.coverage' \
+            --exclude 'htmlcov/' \
+            -e "$RSYNC_SSH" \
+            ./wishkr-backend/ "$DEPLOY_USER@$WORKER_HOST:/opt/wishkr/"
+
+      - name: Preflight worker server
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3)
+
+          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$WORKER_HOST" "GIT_SHA='$GITHUB_SHA' bash -se" <<'REMOTE'
+          set -euo pipefail
+
+          mkdir -p /opt/wishkr
+          cd /opt/wishkr
+
+          if [ ! -f .env ]; then
+            echo 'ERROR: /opt/wishkr/.env not found on worker server'
+            exit 1
+          fi
+
+          if ! command -v docker >/dev/null 2>&1; then
+            echo 'ERROR: docker is not available on the worker server'
+            exit 1
+          fi
+
+          if ! docker compose version >/dev/null 2>&1; then
+            echo 'ERROR: docker compose is not available on the worker server'
+            exit 1
+          fi
+
+          if [ ! -f docker-compose.prod-worker.yml ]; then
+            echo 'ERROR: docker-compose.prod-worker.yml missing after sync on worker server'
+            exit 1
+          fi
+
+          if ! grep -Eq '^APP_ROLE=scheduler$' .env; then
+            echo 'ERROR: worker server .env must contain APP_ROLE=scheduler'
+            exit 1
+          fi
+
+          if ! grep -Eq '^RUN_SCHEDULER=true$' .env; then
+            echo 'ERROR: worker server .env must contain RUN_SCHEDULER=true'
+            exit 1
+          fi
+
+          echo 'Worker preflight confirmed: APP_ROLE=scheduler, RUN_SCHEDULER=true'
+          REMOTE
+
+      - name: Deploy worker second
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3)
+
+          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$WORKER_HOST" "GIT_SHA='$GITHUB_SHA' bash -se" <<'REMOTE'
+          set -euo pipefail
+
+          cd /opt/wishkr
+
+          docker compose -f docker-compose.prod-worker.yml build scheduler
+          docker compose -f docker-compose.prod-worker.yml up -d scheduler
+          docker compose -f docker-compose.prod-worker.yml ps
+          REMOTE
+
+      - name: Verify worker
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3)
+
+          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$WORKER_HOST" "bash -se" <<'REMOTE'
+          set -euo pipefail
+
+          cd /opt/wishkr
+
+          scheduler_container_id="$(docker compose -f docker-compose.prod-worker.yml ps -q scheduler)"
+          if [ -z "$scheduler_container_id" ]; then
+            echo 'ERROR: scheduler container ID not found on worker'
+            exit 1
+          fi
+
+          scheduler_container_state="$(docker inspect -f '{{.State.Status}}' "$scheduler_container_id" 2>/dev/null || true)"
+          scheduler_container_health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$scheduler_container_id" 2>/dev/null || true)"
+          scheduler_container_started_at="$(docker inspect -f '{{.State.StartedAt}}' "$scheduler_container_id" 2>/dev/null || true)"
+
+          for attempt in $(seq 1 12); do
+            scheduler_container_state="$(docker inspect -f '{{.State.Status}}' "$scheduler_container_id" 2>/dev/null || true)"
+            scheduler_container_health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$scheduler_container_id" 2>/dev/null || true)"
+            if [ "$scheduler_container_health" = "healthy" ] || [ "$scheduler_container_state" = "running" ] || [ "$scheduler_container_state" = "healthy" ]; then
+              break
+            fi
+            echo "Scheduler health attempt $attempt failed; state=${scheduler_container_state:-unknown} health=${scheduler_container_health:-unknown}"
+            sleep 5
+          done
+
+          worker_ps="$(docker compose -f docker-compose.prod-worker.yml ps)"
+          worker_logs="$(docker compose -f docker-compose.prod-worker.yml logs --tail=300 scheduler || true)"
+          worker_logs_recent="$(docker compose -f docker-compose.prod-worker.yml logs --since=10m --tail=300 scheduler || true)"
+
+          printf '%s\n' "$worker_ps"
+
+          if printf '%s\n' "$worker_ps" | grep -Eqi 'backend'; then
+            echo 'ERROR: backend service should not run on the worker server'
+            exit 1
+          fi
+
+          if printf '%s\n' "$worker_ps" | grep -Eq '(^|[[:space:]])(0\.0\.0\.0:8000->8000|127\.0\.0\.1:8000->8000)'; then
+            echo 'ERROR: worker should not publish a public API port'
+            printf '%s\n' "$worker_ps"
+            exit 1
+          fi
+
+          if ! printf '%s\n' "$worker_ps" | grep -Eq 'scheduler.*(Up|healthy)'; then
+            echo 'ERROR: scheduler container is not running or healthy'
+            printf '%s\n' "$worker_logs"
+            exit 1
+          fi
+
+          scheduler_started_or_active=false
+          scheduler_has_startup_strings=false
+          scheduler_has_recent_activity=false
+          scheduler_advisory_lock_ok=false
+
+          if printf '%s\n' "$worker_logs" | grep -Eqi 'Standalone scheduler worker started|Scheduler advisory lock acquired|Scheduler started:'; then
+            scheduler_has_startup_strings=true
+          fi
+
+          if printf '%s\n' "$worker_logs_recent" | grep -Eqi 'Running job|executed successfully|retry_failed_outbound|poll_stale_orders|send_due_reminders|deliver_scheduled_gifts'; then
+            scheduler_has_recent_activity=true
+          fi
+
+          if printf '%s\n' "$worker_logs" | grep -Eqi 'alembic upgrade|Running upgrade'; then
+            echo 'ERROR: worker logs show Alembic migration output, which is forbidden on the worker'
+            printf '%s\n' "$worker_logs"
+            exit 1
+          fi
+
+          if docker compose -f docker-compose.prod-worker.yml exec -T scheduler python -c 'import sys' >/dev/null 2>&1; then
+            if docker compose -f docker-compose.prod-worker.yml exec -T scheduler python - <<'PY'
+          import asyncio
+          from sqlalchemy import text
+          from app.db.session import engine
+
+          LOCK_KEY = 41051
+
+
+          async def main() -> None:
+              async with engine.connect() as conn:
+                  acquired = bool(
+                      await conn.scalar(text("SELECT pg_try_advisory_lock(:key)"), {"key": LOCK_KEY})
+                  )
+                  if acquired:
+                      await conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": LOCK_KEY})
+                      raise SystemExit("scheduler advisory lock is not held by the worker")
+                  print("scheduler advisory lock is held by the worker")
+
+
+          asyncio.run(main())
+          PY
+            then
+              scheduler_advisory_lock_ok=true
+              :
+            else
+              scheduler_advisory_lock_ok=false
+            fi
+          else
+            echo 'skipped advisory lock DB check'
+          fi
+
+          if [ "$scheduler_container_health" = "healthy" ]; then
+            scheduler_started_or_active=true
+          fi
+
+          if [ "$scheduler_container_state" = "running" ] && \
+             { [ "$scheduler_advisory_lock_ok" = "true" ] || [ "$scheduler_has_recent_activity" = "true" ] || [ "$scheduler_has_startup_strings" = "true" ]; }; then
+            scheduler_started_or_active=true
+          fi
+
+          if [ "$scheduler_started_or_active" = "true" ]; then
+            echo "Worker verification passed: scheduler is healthy/active"
+            exit 0
+          fi
+
+          echo 'ERROR: scheduler is not showing startup or active job signals'
+          printf 'state=%s health=%s started_at=%s recent_activity=%s startup_strings=%s advisory_lock=%s\n' \
+            "${scheduler_container_state:-unknown}" \
+            "${scheduler_container_health:-unknown}" \
+            "${scheduler_container_started_at:-unknown}" \
+            "${scheduler_has_recent_activity:-false}" \
+            "${scheduler_has_startup_strings:-false}" \
+            "${scheduler_advisory_lock_ok:-false}"
+          printf '%s\n' "$worker_logs"
+          exit 1
+          REMOTE
+
+      - name: Final public health check
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 12); do
+            if curl -fsS https://api.wishkr.com/health; then
+              echo 'Final public health check passed'
+              exit 0
+            fi
+            echo "Final public health attempt $attempt failed; retrying..."
+            sleep 5
+          done
+
+          echo 'Final public health check failed'
+          exit 1
+
+      - name: Deployment summary
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3)
+
+          echo "GitHub SHA deployed: ${GITHUB_SHA}"
+          echo "web host: ${WEB_HOST}"
+          echo "worker host: ${WORKER_HOST}"
+          echo "public health result: passed"
+
+          echo "web compose status:"
+          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$WEB_HOST" "cd /opt/wishkr && docker compose -f docker-compose.prod-web.yml ps" || true
+
+          echo "worker compose status:"
+          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$WORKER_HOST" "cd /opt/wishkr && docker compose -f docker-compose.prod-worker.yml ps" || true
+
+      - name: Failure diagnostics
+        if: failure()
+        shell: bash
+        env:
+          WEB_HOST: ${{ secrets.HETZNER_WEB_HOST }}
+          WORKER_HOST: ${{ secrets.HETZNER_WORKER_HOST }}
+          DEPLOY_USER: ${{ secrets.HETZNER_DEPLOY_USER }}
+        run: |
+          set +e
+
+          if [ ! -f "$HOME/.ssh/deploy_key" ]; then
+            echo "SSH key missing; skipping remote diagnostics"
+            exit 0
+          fi
+
+          if [ -z "${WEB_HOST:-}" ] || [ -z "${WORKER_HOST:-}" ] || [ -z "${DEPLOY_USER:-}" ]; then
+            echo "Deployment host variables are missing; skipping remote diagnostics"
+            exit 0
+          fi
+
+          SSH_OPTS=(-i "$HOME/.ssh/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3)
+
+          echo "Web diagnostics:"
+          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$WEB_HOST" "bash -se" <<'REMOTE' || true
+          set +e
+
+          cd /opt/wishkr 2>/dev/null || exit 0
+
+          if [ -f docker-compose.prod-web.yml ]; then
+            docker compose -f docker-compose.prod-web.yml ps || true
+            docker compose -f docker-compose.prod-web.yml logs --tail=150 backend || true
+
+            if command -v nginx >/dev/null 2>&1; then
+              (sudo -n nginx -t || nginx -t) || true
+            else
+              echo 'nginx not available'
+            fi
+          else
+            echo 'web compose file not present; skipping web diagnostics'
+          fi
+          REMOTE
+
+          echo "Worker diagnostics:"
+          ssh "${SSH_OPTS[@]}" "$DEPLOY_USER@$WORKER_HOST" "bash -se" <<'REMOTE' || true
+          set +e
+
+          cd /opt/wishkr 2>/dev/null || exit 0
+
+          if [ -f docker-compose.prod-worker.yml ]; then
+            docker compose -f docker-compose.prod-worker.yml ps || true
+            docker compose -f docker-compose.prod-worker.yml logs --tail=150 scheduler || true
+          else
+            echo 'worker compose file not present; skipping worker diagnostics'
+          fi
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$HOME/.ssh/deploy_key"

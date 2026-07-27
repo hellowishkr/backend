@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: wishkr-db-1
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wishkr}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-wishkr}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_BIND_IP:?DB_BIND_IP must be a Hetzner private-network or WireGuard IP, not a public IP}:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wishkr} -d ${POSTGRES_DB:-wishkr}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: wishkr-redis-1
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    ports:
+      - "${DB_BIND_IP:?DB_BIND_IP must be a Hetzner private-network or WireGuard IP, not a public IP}:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+
+volumes:
+  pgdata:
+    external: true
+    name: wishkr_pgdata
+  redisdata:
+    name: wishkr_redisdata

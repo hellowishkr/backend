@@ -627,7 +627,9 @@ async def test_read_only_wishkr_catalogue_is_available_in_reminder_only_mode(
 
     assert rows[0]["product_id"] == "prd_catalogue"
     assert rows[0]["brand"] == "Wishkr Partner"
-    assert rows[0]["browse_url"].endswith("/shop/prd_catalogue")
+    assert rows[0]["browse_url"] == (
+        "https://www.wishkr.com/shop/gaming-desk-lamp-prd_catalogue"
+    )
     assert context["wishkr_catalogue_products"] == []
 
 

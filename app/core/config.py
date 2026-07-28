@@ -198,7 +198,7 @@ class Settings(BaseSettings):
     # Optional low-cost review of deterministic gift suggestions. DeepSeek is
     # primary; Gemini Flash-Lite is the fallback.
     gift_refinement_enabled: bool = False
-    wishkr_website_url: str = "https://wishkr.com"
+    wishkr_website_url: str = "https://www.wishkr.com"
 
     # App
     app_role: str = "web"

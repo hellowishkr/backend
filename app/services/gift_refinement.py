@@ -43,6 +43,7 @@ from app.utils.budget_parser import budget_ranges_overlap, parse_budget_hint
 from app.utils.id_gen import generate_id
 from app.utils.llm_cost import estimate_cost
 from app.utils.phone_hash import hash_phone
+from app.utils.storefront_urls import wishkr_product_url
 from app.utils.text_matching import (
     contains_match_value,
     normalize_match_text,
@@ -374,8 +375,11 @@ async def _catalogue_products(
                 limit=240,
             ),
             "price_rupees": price_rupees,
-            "browse_url": (
-                f"{settings.wishkr_website_url.rstrip('/')}/shop/{product_id}"
+            "browse_url": wishkr_product_url(
+                base_url=settings.wishkr_website_url,
+                product_id=product_id,
+                product_name=name,
+                category=product.category,
             ),
         }
         if (

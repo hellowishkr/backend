@@ -78,6 +78,8 @@ Rules:
 - Select code suggestions only by their 1-based index.
 - Select Wishkr catalogue products only by their 1-based catalogue index.
 - Catalogue products are the only items you may describe as browseable on Wishkr.
+- Vendor, seller, and partner names are internal matching data. Never include
+  them in the summary, reasons, questions, or other generated output.
 - First assess whether any Wishkr catalogue product fits the recipient, occasion,
   and budget. If at least one fits, select it and return no additional ideas.
 - If no Wishkr catalogue product fits, you may add up to 3 clearly labelled
@@ -514,11 +516,15 @@ async def _build_context(
         },
         "recent_messages": await _recent_messages(db, request.phone),
         "code_suggestions": suggestions,
+        # ponytail: `description` is vendor-authored copy and may name the vendor,
+        # so the model can still echo a vendor name into free-text summary/reasons
+        # that _public_catalogue_option does not filter. Only the prompt rule guards
+        # that path. If the vendor relationship becomes contractually confidential,
+        # strip vendor names from description here rather than relying on the prompt.
         "wishkr_catalogue_products": [
             {
                 "index": index,
                 "name": product["name"],
-                "brand": product["brand"],
                 "category": product["category"],
                 "description": product["description"],
                 "price_rupees": product["price_rupees"],
@@ -667,6 +673,19 @@ def _valid_indexes(value: Any, *, maximum: int) -> list[int]:
     return out
 
 
+def _public_catalogue_option(product: dict) -> dict:
+    """Expose product details without leaking Wishkr's vendor relationship."""
+    option = {
+        key: product[key]
+        for key in ("product_id", "name", "category", "browse_url")
+        if product.get(key) is not None
+    }
+    # Always present, even when None: the bot is told to show a price, so a missing
+    # one must be visible rather than absent, or it will improvise a number.
+    option["price_rupees"] = product.get("price_rupees")
+    return option
+
+
 def _format_review(
     parsed: dict,
     request: GiftRefinementRequest,
@@ -709,7 +728,10 @@ def _format_review(
         parsed.get("catalogue_product_indexes"),
         maximum=len(catalogue_rows),
     )
-    catalogue_options = [catalogue_rows[index - 1] for index in catalogue_indexes]
+    catalogue_options = [
+        _public_catalogue_option(catalogue_rows[index - 1])
+        for index in catalogue_indexes
+    ]
 
     additional: list[dict] = []
     raw_additional = parsed.get("additional_general_ideas")
@@ -765,8 +787,10 @@ def _format_review(
         "catalogue_options": catalogue_options,
         "wishkr_catalogue_match_found": bool(catalogue_options),
         "catalogue_message": (
-            "These exact products can be browsed on Wishkr. Do not claim that "
-            "general ideas are stocked, and do not promise availability or delivery."
+            "Show each exact product with its name, price, and browse_url so the "
+            "user can open it on Wishkr. Never mention its vendor, seller, or partner. "
+            "Do not claim that general ideas are stocked, and do not promise "
+            "availability or delivery."
             if catalogue_options
             else None
         ),

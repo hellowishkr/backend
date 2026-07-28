@@ -203,7 +203,10 @@ def test_static_prompt_token_estimate_budget():
     # name instead of dead-ending new users on the safety deflection).
     # Raised 2200 -> 2300 when the RESPONSE STYLE brevity rules were added
     # (1-2 line replies, one question per message).
-    assert est <= 2300, f"static prompt too large: ~{est} tokens"
+    # Raised 2300 -> 2400 for the catalogue_options rule (show name/price/
+    # browse_url only, never the vendor). Baseline was flush at 2300, so any
+    # added line tripped this; the rule is a leak guard, not a nice-to-have.
+    assert est <= 2400, f"static prompt too large: ~{est} tokens"
 
 
 def test_tool_count_per_phase_expected():

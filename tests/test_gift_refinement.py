@@ -263,10 +263,40 @@ async def test_refinement_returns_exact_catalogue_rows_selected_by_index(
         )
 
     assert result is not None
-    assert result["catalogue_options"] == catalogue_rows
+    assert result["catalogue_options"] == [{
+        "product_id": "prd_canvas_kit",
+        "name": "Wishkr Mini Canvas Kit",
+        "category": "Art",
+        "price_rupees": 899,
+        "browse_url": "https://wishkr.com/shop/prd_canvas_kit",
+    }]
+    assert "brand" not in result["catalogue_options"][0]
+    assert "description" not in result["catalogue_options"][0]
     assert result["wishkr_catalogue_match_found"] is True
     assert result["additional_general_ideas"] == []
-    assert "exact products" in result["catalogue_message"]
+    assert "Never mention its vendor" in result["catalogue_message"]
+
+
+def test_public_catalogue_option_keeps_null_price_visible() -> None:
+    """A missing price must stay present as None, not vanish from the option."""
+    from app.services.gift_refinement import _public_catalogue_option
+
+    option = _public_catalogue_option({
+        "product_id": "prd_no_price",
+        "name": "Mystery Box",
+        "brand": "Wishkr Partner",
+        "vendor_category": "Experiences",
+        "category": "Gifts",
+        "description": "Handcrafted by Studio Kettle",
+        "price_rupees": None,
+        "browse_url": "https://wishkr.com/shop/prd_no_price",
+    })
+
+    assert "price_rupees" in option
+    assert option["price_rupees"] is None
+    assert "brand" not in option
+    assert "vendor_category" not in option
+    assert "description" not in option
 
 
 @pytest.mark.asyncio
@@ -683,6 +713,10 @@ async def test_catalogue_uses_selling_price_inventory_and_vendor_format(
         product["name"]
         for product in experience_context["wishkr_catalogue_products"]
     ] == ["Celebration Package"]
+    assert all(
+        "brand" not in product
+        for product in experience_context["wishkr_catalogue_products"]
+    )
     assert below_minimum_context["wishkr_catalogue_products"] == []
     assert physical_context["wishkr_catalogue_products"] == []
 

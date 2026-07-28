@@ -30,7 +30,7 @@ PURCHASE_DISABLED_RESPONSE = (
 
 
 WISHLIST_AFFIRMATIVE_REPROMPT = (
-    "Cool 👍 Paste the *product link* (Amazon, Flipkart, Croma, Myntra, etc.) "
+    "Cool 👍 Paste the *product link* (Wishkr, Amazon, Flipkart, Croma, etc.) "
     "and I'll add it to your wishlist."
 )
 
@@ -42,7 +42,7 @@ WISHLIST_LIMIT_RESPONSE = "Your wishlist is full (50 items). Remove one to add m
 
 WISHLIST_EMPTY_RESPONSE = (
     "Your wishlist is empty 🤔\n"
-    "Send me a product link (Amazon, Flipkart, Croma, Myntra, etc.) "
+    "Send me a product link (Wishkr, Amazon, Flipkart, Croma, etc.) "
     "and I'll add it."
 )
 

@@ -7,7 +7,7 @@ runs inline during message handling.
 from __future__ import annotations
 
 import re
-from urllib.parse import parse_qsl, urlparse, urlunparse, urlencode
+from urllib.parse import parse_qsl, unquote, urlparse, urlunparse, urlencode
 
 # Commerce domains Wishkr recognizes as product links. Deliberately narrow to
 # avoid false positives on blogs, social media, news.
@@ -35,6 +35,7 @@ _PRODUCT_DOMAINS = (
     "meesho.com",
     "snapdeal.com",
 )
+_WISHKR_HOSTS = frozenset({"wishkr.com", "www.wishkr.com"})
 
 _URL_RE = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
 
@@ -45,7 +46,8 @@ _SCHEMELESS_URL_RE = re.compile(
     r"(?:www\.)?"
     r"(?:amazon\.[a-z.]{2,6}|amzn\.to|flipkart\.com|fkrt\.[a-z.]+|"
     r"croma\.com|myntra\.com|ajio\.com|tatacliq\.com|"
-    r"reliancedigital\.[a-z.]+|nykaa\.com|meesho\.com|snapdeal\.com)"
+    r"reliancedigital\.[a-z.]+|nykaa\.com|meesho\.com|snapdeal\.com|"
+    r"wishkr\.com)"
     r"/[^\s<>\"']+",
     re.IGNORECASE,
 )
@@ -57,6 +59,7 @@ _AMAZON_ASIN_RE = re.compile(r"/(?:dp|gp/product)/([A-Z0-9]{10})", re.IGNORECASE
 _BARE_ASIN_RE = re.compile(r"(?:^|[\s/])(?:dp|gp/product)/([A-Z0-9]{10})", re.IGNORECASE)
 # Flipkart product id — last path segment often `/p/itm<hex>` or query `?pid=...`
 _FLIPKART_PID_RE = re.compile(r"/p/(itm[a-z0-9]+)", re.IGNORECASE)
+_WISHKR_PRODUCT_ID_RE = re.compile(r"(prd_[a-z0-9_]+)$", re.IGNORECASE)
 
 # Tracking parameters to strip for canonicalization
 _TRACKING_PARAMS = frozenset({
@@ -104,6 +107,19 @@ def extract_urls(text: str) -> list[str]:
     return out
 
 
+def _extract_wishkr_product_id(url: str) -> str | None:
+    """Return the internal product id from a Wishkr product-detail URL."""
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if host not in _WISHKR_HOSTS:
+        return None
+    segments = [unquote(segment) for segment in parsed.path.split("/") if segment]
+    if len(segments) < 2 or segments[0].lower() != "shop":
+        return None
+    match = _WISHKR_PRODUCT_ID_RE.search(segments[-1])
+    return match.group(1).lower() if match else None
+
+
 def is_product_link(url: str) -> bool:
     """True if the URL's host looks like a known commerce site."""
     if not url:
@@ -111,6 +127,8 @@ def is_product_link(url: str) -> bool:
     host = (urlparse(url).hostname or "").lower()
     if not host:
         return False
+    if host in _WISHKR_HOSTS:
+        return _extract_wishkr_product_id(url) is not None
     return any(d in host for d in _PRODUCT_DOMAINS)
 
 
@@ -144,19 +162,27 @@ def normalize_url(url: str) -> str:
         if k.lower() not in _TRACKING_PARAMS
     ]
     query = urlencode(kept_params)
+    # Wishkr product IDs are case-insensitive and canonicalized to lowercase.
+    # Keep the stored URL aligned with that canonical ID so differently-cased
+    # variants cannot leave inconsistent URL/ID pairs in wishlist rows.
+    raw_path = parsed.path.lower() if host in _WISHKR_HOSTS else parsed.path
     # Drop trailing slash for consistency
-    path = parsed.path.rstrip("/") or "/"
+    path = raw_path.rstrip("/") or "/"
     return urlunparse((parsed.scheme or "https", netloc, path, "", query, ""))
 
 
 def extract_product_id(url: str) -> str | None:
     """Best-effort extraction of a provider-native product identifier.
 
-    Returns e.g. 'amazon:B09XYZ1234' or 'flipkart:itm8ab…', or None.
+    Returns e.g. 'wishkr:prd_…', 'amazon:B09XYZ1234', or
+    'flipkart:itm8ab…', or None.
     """
     if not url:
         return None
     host = (urlparse(url).hostname or "").lower()
+    wishkr_product_id = _extract_wishkr_product_id(url)
+    if wishkr_product_id:
+        return f"wishkr:{wishkr_product_id}"
     if "amazon." in host or "amzn." in host:
         m = _AMAZON_ASIN_RE.search(url)
         if m:
@@ -193,6 +219,12 @@ def guess_product_name(url: str) -> str:
     if not url:
         return ""
     path = urlparse(url).path
+    if _extract_wishkr_product_id(url):
+        route_param = unquote(path.rstrip("/").rsplit("/", 1)[-1])
+        product_marker = route_param.lower().rfind("prd_")
+        slug = route_param[:product_marker].rstrip("-_")
+        if slug:
+            return re.sub(r"[-_]+", " ", slug).strip()[:60]
     # Find the longest hyphenated segment — usually the product-title slug
     segments = [s for s in path.split("/") if s and "-" in s]
     if not segments:

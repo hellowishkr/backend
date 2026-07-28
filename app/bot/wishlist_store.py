@@ -24,7 +24,7 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import User, WishlistItem
+from app.models import Product, User, WishlistItem
 from app.utils.id_gen import generate_id
 from app.utils.link_utils import extract_product_id, guess_product_name, normalize_url
 
@@ -158,6 +158,10 @@ async def add_wishlist_product_url(
 
     product_id = extract_product_id(raw_url)
     title = (guess_product_name(raw_url) or "")[:160] or None
+    if product_id and product_id.startswith("wishkr:"):
+        product = await db.get(Product, product_id.removeprefix("wishkr:"))
+        if product and product.name:
+            title = product.name[:160]
 
     user = await _get_or_create_user(db, phone)
 

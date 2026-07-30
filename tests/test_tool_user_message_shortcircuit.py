@@ -68,6 +68,61 @@ def test_long_user_message_is_truncated():
     assert len(_extract_user_message(payload)) == 1000
 
 
+def _ctx():
+    return SimpleNamespace(invocation_context=SimpleNamespace(end_invocation=False))
+
+
+def test_callback_ends_invocation_on_user_message():
+    """ADK's cooperative stop must fire, so no second LLM call is made.
+
+    Previously the loop `break`-ed out of runner.run_async instead, which threw
+    GeneratorExit into the generator mid-iteration and unwound OpenTelemetry's
+    span from another async context ("Failed to detach context" in Sentry).
+    """
+    ctx = _ctx()
+    agent._end_invocation_on_user_message(
+        None, {}, ctx,
+        {"error": "no_vibes_resolved", "user_message": "Tell me a little more."},
+    )
+    assert ctx.invocation_context.end_invocation is True
+
+
+def test_callback_leaves_successful_tools_running():
+    """A successful tool still needs the model to render its result."""
+    ctx = _ctx()
+    agent._end_invocation_on_user_message(
+        None, {}, ctx, {"catalogue_options": [{"name": "Mug"}]}
+    )
+    assert ctx.invocation_context.end_invocation is False
+
+
+def test_callback_ignores_error_without_user_message():
+    """Nothing safe to show the user — let the model phrase the failure."""
+    ctx = _ctx()
+    agent._end_invocation_on_user_message(None, {}, ctx, {"error": "upstream_timeout"})
+    assert ctx.invocation_context.end_invocation is False
+
+
+def test_callback_is_registered_on_the_agent():
+    """An unregistered callback would silently never fire."""
+    runner = agent._build_runner("unregistered", "gemini-2.5-flash", [])
+    assert runner.agent.after_tool_callback is agent._end_invocation_on_user_message
+
+
+def test_loop_does_not_break_out_of_the_generator():
+    """Guard the fix: a `break` here reintroduces the OTel context error."""
+    import inspect
+
+    src = inspect.getsource(agent.handle_message)
+    idx = src.index("short-circuit on tool user_message")
+    # Look at the handful of lines following the log call.
+    tail = src[idx : idx + 400]
+    assert "break" not in tail, (
+        "breaking out of runner.run_async tears down the OTel span from another "
+        "context; rely on end_invocation instead"
+    )
+
+
 def test_agent_reads_user_message_before_generic_fallback():
     """Guard the ordering in handle_message.
 

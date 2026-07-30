@@ -22,7 +22,7 @@ import logging
 import time
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from google.adk.agents import LlmAgent
 from google.adk.planners import BuiltInPlanner
@@ -439,6 +439,26 @@ async def _session_service_call(method_name: str, **kwargs):
             raise
 
 
+def _end_invocation_on_user_message(
+    tool: Any, args: dict[str, Any], tool_context: Any, tool_response: dict
+) -> None:
+    """Stop the turn when a failed tool already wrote the user-facing reply.
+
+    ADK's own cooperative stop. Breaking out of `runner.run_async` instead throws
+    GeneratorExit into the generator mid-iteration, which unwinds OpenTelemetry's
+    `invocation` span from a different async context and logs "Failed to detach
+    context" (harmless, but real Sentry noise). Setting end_invocation lets the
+    generator finish on its own, so no second LLM call is made and no span is
+    torn down out of order.
+    """
+    if not isinstance(tool_response, dict) or not tool_response.get("error"):
+        return None
+    direct = tool_response.get("user_message")
+    if isinstance(direct, str) and direct.strip():
+        tool_context.invocation_context.end_invocation = True
+    return None
+
+
 def _build_runner(phase: str, model: str, tools: list) -> Runner:
     # gemini-2.5-flash thinking can consume 800-1000 tokens before any
     # visible output. With max=1024, replies got truncated mid-sentence
@@ -463,6 +483,7 @@ def _build_runner(phase: str, model: str, tools: list) -> Runner:
         instruction=STATIC_SYSTEM_PROMPT,
         tools=tools,
         generate_content_config=gen_config,
+        after_tool_callback=_end_invocation_on_user_message,
         planner=BuiltInPlanner(
             thinking_config=types.ThinkingConfig(
                 thinking_budget=settings.gemini_thinking_budget,
@@ -1749,13 +1770,16 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
                     # Stop before ADK sends the tool result back to Gemini. The
                     # failed tool already supplied the user-facing reply, so the
                     # extra round-trip would only restate it.
-                    if tool_user_message:
+                    if tool_user_message and fallback_reason != "tool_user_message":
+                        # _end_invocation_on_user_message has told ADK to stop, so
+                        # the generator winds down without a second LLM call. No
+                        # break here: tearing the generator down mid-iteration is
+                        # what produced the OTel "Failed to detach context" noise.
                         fallback_reason = "tool_user_message"
                         logger.info(
                             "[%s] short-circuit on tool user_message (%s)",
                             mask_phone(phone), ",".join(tool_errors_seen[-1:]),
                         )
-                        break
 
                     # Only capture events that actually carry assistant text.
                     # function_response events have `content` but no text parts;

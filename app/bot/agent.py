@@ -545,6 +545,10 @@ _DISCOVERY_SUBFLOW_TOOLS = {
     "get_brand_details",
     "suggest_marketplace_gift_card",
     "get_self_preferences",
+    # Gift asks routinely name a date ("birthday gift for mom"), and reminders
+    # are the core product — without this the agent cannot save that occasion in
+    # the same turn and the user has to repeat themselves.
+    "add_occasion",
 }
 _OCCASION_SUBFLOW_TOOLS = {
     "get_user_profile",
@@ -604,7 +608,13 @@ def _select_tools_for_turn(
         for k in ("occasion", "ocassion", "reminder", "remind", "birthday",
                   "anniversary", "snooze", "upcoming")
     )
-    discovery_signal = intent_result.intent == "product_question" or any(
+    # The classifier is the primary signal here: "gift for my sister under 2000"
+    # names no product, so it lands on gift_suggestion rather than
+    # product_question. Before that label existed it fell through to `default`
+    # and shipped all 24 declarations (~18.3k tokens) for the single most common
+    # request shape. Keywords stay as a backstop for when the classifier is
+    # unavailable and everything degrades to "other".
+    discovery_signal = intent_result.intent in ("product_question", "gift_suggestion") or any(
         k in lower for k in ("suggest", "gift idea", "gift ideas", "brands", "vouchers")
     )
 
@@ -1654,12 +1664,16 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
             # follow-up text (a known single-tool-turn edge case in ADK).
             last_tool_name: str | None = None
             last_tool_resp: dict | None = None
+            # Server-authored reply from a failed tool, used verbatim instead of
+            # paying a second full-prompt call for the model to rephrase it.
+            tool_user_message: str | None = None
             last_usage_metadata: dict[str, int] | None = None
             fallback_reason: str | None = None
             logger.info("[%s] turn start | user_msg=%r", phone, _preview_text(text))
 
             async def _consume_events() -> None:
                 nonlocal final_response, last_usage_metadata, last_tool_name, last_tool_resp, fallback_reason
+                nonlocal tool_user_message
                 max_tool_rounds = settings.agent_max_tool_rounds
                 tool_call_count = 0
 
@@ -1705,12 +1719,32 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
                             resp = fr.response or {}
                             if isinstance(resp, dict) and resp.get("error"):
                                 tool_errors_seen.append(f"{fr.name}:{resp.get('error')}")
+                                # A tool that failed with a server-authored
+                                # `user_message` has already written the exact
+                                # reply the user should see. Letting the model
+                                # rephrase it costs a second full-prompt call
+                                # (~12k tokens, ~2s) to say the same thing, so
+                                # take it verbatim and stop the turn.
+                                direct = resp.get("user_message")
+                                if isinstance(direct, str) and direct.strip():
+                                    tool_user_message = direct.strip()[:1000]
                             else:
                                 last_tool_name = fr.name
                                 last_tool_resp = resp if isinstance(resp, dict) else None
                             logger.info("[%s] tool_resp | %s -> %s", phone, fr.name, _preview_text(resp, 300))
                     except Exception as log_e:
                         logger.warning("[%s] tool audit failed: %s", phone, log_e)
+
+                    # Stop before ADK sends the tool result back to Gemini. The
+                    # failed tool already supplied the user-facing reply, so the
+                    # extra round-trip would only restate it.
+                    if tool_user_message:
+                        fallback_reason = "tool_user_message"
+                        logger.info(
+                            "[%s] short-circuit on tool user_message (%s)",
+                            mask_phone(phone), ",".join(tool_errors_seen[-1:]),
+                        )
+                        break
 
                     # Only capture events that actually carry assistant text.
                     # function_response events have `content` but no text parts;
@@ -1883,6 +1917,10 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
                 for part in final_response.parts:
                     if hasattr(part, 'text') and part.text:
                         reply += part.text
+
+            if not reply and tool_user_message:
+                # Short-circuited above: the tool's own wording is the reply.
+                reply = tool_user_message
 
             if not reply:
                 # When the circuit broke we never called Gemini — give the user a

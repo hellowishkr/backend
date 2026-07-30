@@ -17,8 +17,13 @@ from app.core.config import settings
 from app.core.observability import init_sentry  # noqa: E402
 init_sentry(settings)
 
-# Set GOOGLE_API_KEY for ADK (reads from environment)
-os.environ["GOOGLE_API_KEY"] = settings.gemini_api_key
+# ADK reads its key from the environment. google-genai accepts either
+# GEMINI_API_KEY or GOOGLE_API_KEY, and warns on every client construction when
+# both are set ("Both GOOGLE_API_KEY and GEMINI_API_KEY are set"). Deployments
+# provide GEMINI_API_KEY, so only fill in GOOGLE_API_KEY when it is genuinely
+# absent — e.g. a local shell that exported neither.
+if settings.gemini_api_key and not os.environ.get("GEMINI_API_KEY"):
+    os.environ["GEMINI_API_KEY"] = settings.gemini_api_key
 
 _is_prod = settings.app_env == "production"
 _SCHEDULER_LOCK_KEY = 41051
@@ -408,3 +413,12 @@ app.include_router(product_orders_router, prefix="/api")
 app.include_router(vendor_edit_router, prefix="/api")
 app.include_router(vendor_edit_admin_router, prefix="/api")
 app.include_router(internal_router)
+
+# Local agent chat window (GET/POST /dev/whatsapp-chat). Registered only outside
+# production: it runs the agent as an arbitrary phone with no signature check,
+# so in production the route must not exist at all rather than be guarded.
+if (settings.app_env or "development").lower() != "production":
+    from app.api.dev_chat import router as dev_chat_router  # noqa: E402
+
+    app.include_router(dev_chat_router)
+    logger.info("dev chat window enabled at /dev/whatsapp-chat (APP_ENV=%s)", settings.app_env)

@@ -9,7 +9,9 @@ Intents:
 - menu_request     — user typed "menu" (variants)
 - affirmative      — plain yes-signal (yes/yess/haan/ok/sure/yep/y)
 - product_question — asking for a specific physical product (earbuds, phone, book, shirt...)
-- show_occasions  — user asks to list saved occasions
+- gift_suggestion  — wants gift ideas for someone, no specific product named
+- show_wishlist    — user asks to see their saved wishlist
+- show_occasions   — user asks to list saved occasions
 - other            — anything else; falls through to the main agent
 
 Only `menu_request` and `product_question` short-circuit the main agent
@@ -106,7 +108,7 @@ async def _async_log_classifier_usage(
 
 Intent = Literal[
     "greeting", "menu_request", "affirmative", "product_question",
-    "show_wishlist", "show_occasions", "other",
+    "gift_suggestion", "show_wishlist", "show_occasions", "other",
 ]
 
 
@@ -259,7 +261,9 @@ _CLASSIFIER_PROMPT = """Classify this WhatsApp user message into ONE intent:
 - menu_request: asking for options / "menu" / "help"
 - affirmative: a plain yes-signal ("yes", "haan", "ok", "sure") with nothing else
 - product_question: asking about a specific PHYSICAL product (earbuds, phone, book, clothes, flowers, etc.) — NOT a gift card, NOT a brand like Amazon/Flipkart
+- gift_suggestion: wants gift ideas for a person or occasion without naming a specific product ("gift for my sister", "birthday gift for mom under 2000", "what should I get my wife", "diwali gift ideas")
 - show_wishlist: user wants to see their saved wishlist ("show my wishlist", "what's on my wishlist", "view wishlist")
+- show_occasions: user wants to see their saved occasions or reminders ("my occasions", "list my reminders", "upcoming birthdays")
 - other: anything else (adding an occasion, asking about their account, gift card browsing, a question, etc.)
 
 Reply with ONLY the intent name. No punctuation, no explanation.
@@ -269,9 +273,13 @@ Message: {msg}"""
 
 _client: "genai.Client | None" = None
 
+# Must stay in sync with the Intent Literal and _CLASSIFIER_PROMPT: a label the
+# prompt offers but this set omits is silently discarded as "unexpected", which
+# is how show_occasions never reached the LLM path.
 _VALID_INTENTS = frozenset({
     "greeting", "menu_request", "affirmative",
-    "product_question", "show_wishlist", "other",
+    "product_question", "gift_suggestion",
+    "show_wishlist", "show_occasions", "other",
 })
 
 _CLASSIFIER_TIMEOUT_SECONDS = 3.0

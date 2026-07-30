@@ -113,6 +113,65 @@ _cache: dict[str, Any] | None = None
 _cache_load_err: str | None = None
 
 
+def live_taxonomy_hash() -> str:
+    """Hash of the taxonomy as it exists in code right now.
+
+    Must stay byte-identical to the payload scripts/build_vibe_embeddings.py
+    stamps into the cache, or every load reports false drift.
+    """
+    from app.bot.gift_taxonomy import (
+        all_vibe_ids,
+        VIBE_TO_HUBBLE_BRANDS,
+        VIBE_TO_VENDOR_CATEGORIES,
+    )
+
+    payload = {
+        "vibes": sorted(all_vibe_ids()),
+        "brands": {k: sorted(v) for k, v in VIBE_TO_HUBBLE_BRANDS.items()},
+        "vendors": {k: sorted(v) for k, v in VIBE_TO_VENDOR_CATEGORIES.items()},
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:16]
+
+
+def taxonomy_drift() -> str | None:
+    """Describe cache/taxonomy drift, or None when the cache is current.
+
+    Runtime only warns about drift — a stale cache silently degrades gift
+    suggestions rather than failing, which is how a missing `mobile_gaming`
+    vibe went unnoticed in production. The test suite asserts on this so the
+    rebuild is caught before deploy instead of in the logs afterwards.
+    """
+    if not _CACHE_PATH.exists():
+        return f"cache file missing: {_CACHE_PATH.name}"
+
+    try:
+        with _CACHE_PATH.open() as f:
+            data = json.load(f)
+    except Exception as e:
+        return f"cache unreadable: {e}"
+
+    from app.bot.gift_taxonomy import all_vibe_ids
+
+    cached_vibes = set(data.get("embeddings", {}))
+    live_vibes = set(all_vibe_ids())
+    missing = sorted(live_vibes - cached_vibes)
+    stale = sorted(cached_vibes - live_vibes)
+
+    if missing or stale:
+        parts = []
+        if missing:
+            parts.append(f"missing from cache: {missing}")
+        if stale:
+            parts.append(f"no longer in taxonomy: {stale}")
+        return "; ".join(parts)
+
+    live = live_taxonomy_hash()
+    if live != data.get("taxonomy_hash"):
+        return f"taxonomy_hash drift (cache={data.get('taxonomy_hash')} live={live})"
+
+    return None
+
+
 def _load_cache() -> dict[str, Any] | None:
     """Load the pre-computed embeddings. Returns None on any failure
     (missing file, invalid JSON, schema mismatch). Callers must tolerate
@@ -145,19 +204,7 @@ def _load_cache() -> dict[str, Any] | None:
     # Compare taxonomy hash with the current runtime taxonomy so a
     # stale cache surfaces as a warning (not a crash).
     try:
-        from app.bot.gift_taxonomy import (
-            all_vibe_ids,
-            VIBE_TO_HUBBLE_BRANDS,
-            VIBE_TO_VENDOR_CATEGORIES,
-        )
-        payload = {
-            "vibes": sorted(all_vibe_ids()),
-            "brands": {k: sorted(v) for k, v in VIBE_TO_HUBBLE_BRANDS.items()},
-            "vendors": {k: sorted(v) for k, v in VIBE_TO_VENDOR_CATEGORIES.items()},
-        }
-        live_hash = hashlib.sha256(
-            json.dumps(payload, sort_keys=True).encode()
-        ).hexdigest()[:16]
+        live_hash = live_taxonomy_hash()
         if live_hash != data.get("taxonomy_hash"):
             logger.warning(
                 "vibe_embedder: taxonomy_hash drift (cache=%s live=%s) — "

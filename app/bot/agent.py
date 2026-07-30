@@ -447,6 +447,13 @@ def _build_runner(phase: str, model: str, tools: list) -> Runner:
         temperature=settings.gemini_temperature,
         top_p=0.9,
         max_output_tokens=2048,
+        # Bound the model's internal reasoning. Unbounded, 2.5-flash decided to
+        # spend 1399 thinking tokens on a 27-token reply (7.6s server-side) —
+        # thinking, not prompt size, is the dominant latency term on this
+        # workload. -1 restores the dynamic default if this proves too tight.
+        thinking_config=types.ThinkingConfig(
+            thinking_budget=settings.gemini_thinking_budget,
+        ),
     )
     # Gemini sees declarations through tools=tools. These tools come from
     # TOOL_BY_NAME, which wraps schemas.py FunctionDeclarations via

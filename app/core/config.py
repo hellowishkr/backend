@@ -107,6 +107,12 @@ class Settings(BaseSettings):
     # without weakening tool-heavy bot turns.
     gemini_fast_model: str = "gemini-2.5-flash-lite"
     gemini_temperature: float = 0.4
+    # Cap on gemini-2.5-flash's internal reasoning tokens. Left unset the model
+    # picks its own budget, and it over-spends badly on this workload: a
+    # production turn burned 1399 thinking tokens to emit a 27-token reply and
+    # took 7.6s server-side. 512 leaves room for tool-choice reasoning while
+    # bounding the tail. 0 disables thinking; -1 restores the dynamic default.
+    gemini_thinking_budget: int = 512
     # Fallback classifier when Gemini is unavailable (503/timeout).
     # DeepSeek is OpenAI-compatible — no extra package needed, just httpx.
     deepseek_api_key: str = ""

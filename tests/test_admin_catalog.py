@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -5,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import selectinload
 
-from app.api.admin_catalog import ProductPayload, apply_product_payload
+from app.api.admin_catalog import ProductPayload, VariantPayload, apply_product_payload
 from app.api.catalog import check_pincode
 from app.db.base import Base
 from app.models.product import Product, ProductAddon, ProductVariant
@@ -107,6 +108,62 @@ async def test_admin_product_save_round_trips_gallery_images(catalog_session_fac
     assert reloaded.base_price_paise == 300000
     assert reloaded.discounted_price_paise == 250000
     assert reloaded.inventory_quantity == 7
+
+
+@pytest.mark.asyncio
+async def test_admin_product_save_round_trips_bouquet_recipe(catalog_session_factory):
+    payload = _payload([], [])
+    payload.is_customisable = True
+    payload.variants = [
+        VariantPayload(
+            name="20 roses",
+            price_delta_paise=49_900,
+            seasonal_price_paise=79_900,
+            seasonal_price_start=date(2026, 2, 7),
+            seasonal_price_end=date(2026, 2, 14),
+            bouquet_recipe={
+                "enabled": True,
+                "components": [
+                    {
+                        "name": "Red rose",
+                        "kind": "flower",
+                        "quantity": 20,
+                        "unit_label": "stem",
+                        "lot_size": 20,
+                        "off_season_lot_cost_paise": 20_000,
+                        "peak_season_lot_cost_paise": 60_000,
+                    }
+                ],
+                "making_cost_paise": 10_000,
+                "packaging_cost_paise": 9_000,
+                "other_cost_paise": 0,
+            },
+            active=True,
+            sort_order=1,
+        )
+    ]
+
+    async with catalog_session_factory() as db:
+        await _create_vendor(db)
+        product = Product(id="prd_bouquet", vendor_id="ven_test", variants=[], addons=[])
+        db.add(product)
+        await apply_product_payload(db, product, payload)
+        await db.commit()
+
+    async with catalog_session_factory() as db:
+        variant = (
+            await db.execute(
+                select(ProductVariant).where(
+                    ProductVariant.product_id == "prd_bouquet"
+                )
+            )
+        ).scalar_one()
+
+    assert variant.name == "20 roses"
+    assert variant.seasonal_price_paise == 79_900
+    assert variant.seasonal_price_start == date(2026, 2, 7)
+    assert variant.bouquet_recipe["components"][0]["lot_size"] == 20
+    assert variant.bouquet_recipe["making_cost_paise"] == 10_000
 
 
 @pytest.mark.asyncio

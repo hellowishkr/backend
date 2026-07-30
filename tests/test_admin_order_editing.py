@@ -18,6 +18,7 @@ from app.api.admin_orders import (
     create_topup_link,
     edit_order_items,
     razorpay_service,
+    serialize_order_summary,
 )
 from app.api.product_orders import ProductOrderItemPayload
 from app.db.base import Base
@@ -79,6 +80,38 @@ async def _seed(db: AsyncSession) -> None:
         )
     )
     await db.commit()
+
+
+def test_order_summary_exposes_marketing_attribution_to_admin() -> None:
+    attribution = {
+        "first_touch": {
+            "utm_source": "instagram",
+            "utm_medium": "influencer",
+            "utm_campaign": "shubham_aug2026",
+            "landing_path": "/shop",
+            "captured_at": "2026-08-01T10:00:00.000Z",
+        },
+        "last_touch": {
+            "utm_source": "instagram",
+            "utm_medium": "influencer",
+            "utm_campaign": "shubham_aug2026",
+            "utm_content": "story1",
+            "landing_path": "/shop",
+            "captured_at": "2026-08-01T10:00:00.000Z",
+        },
+    }
+    order = Order(
+        id="ord_attributed",
+        user_id="usr_1",
+        total_amount=Decimal("499.00"),
+        status=OrderStatus.PAID,
+        order_type="product",
+        marketing_attribution=attribution,
+    )
+
+    summary = serialize_order_summary(order, "House of Zaharaa")
+
+    assert summary["marketing_attribution"] == attribution
 
 
 @pytest.mark.asyncio

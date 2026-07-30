@@ -20,6 +20,11 @@ from app.models.catalog_taxonomy import GiftingOccasion, ProductCategory
 from app.models.product import Product
 from app.models.vendor import Vendor, VendorCity
 from app.services.delivery_estimate import earliest_delivery_date
+from app.services.bouquet_pricing import (
+    bouquet_recipe_cost,
+    effective_variant_prices,
+    public_bouquet_composition,
+)
 from app.services.storefront_pricing import StorefrontPricing, get_storefront_pricing
 from app.utils.redis_client import get_redis
 from app.utils.serviceability import check_product_serviceability
@@ -98,6 +103,60 @@ def serialize_pricing(pricing: StorefrontPricing | None) -> dict:
     }
 
 
+def _serialize_variant(variant, *, include_costs: bool) -> dict:
+    effective_base, effective_discount, seasonal_active = effective_variant_prices(
+        variant
+    )
+    recipe = getattr(variant, "bouquet_recipe", None)
+    body = {
+        "id": variant.id,
+        "name": variant.name,
+        "sku": variant.sku,
+        # Stored normal amounts remain available to the admin editor.
+        "price_delta_paise": variant.price_delta_paise,
+        "discounted_price_paise": getattr(
+            variant, "discounted_price_paise", None
+        ),
+        # Buyer/checkout-effective amounts account for the current seasonal
+        # window. Clients must use these when present.
+        "effective_base_price_paise": effective_base,
+        "effective_discounted_price_paise": effective_discount,
+        "seasonal_price_active": seasonal_active,
+        "discount_pct": _discount_pct(effective_base, effective_discount),
+        "inventory_quantity": getattr(variant, "inventory_quantity", None),
+        "in_stock": getattr(variant, "inventory_quantity", None) != 0,
+        "active": variant.active,
+        "sort_order": variant.sort_order,
+        "bouquet_composition": public_bouquet_composition(recipe),
+    }
+    if include_costs:
+        body.update(
+            {
+                "seasonal_price_paise": getattr(
+                    variant, "seasonal_price_paise", None
+                ),
+                "seasonal_price_start": (
+                    variant.seasonal_price_start.isoformat()
+                    if getattr(variant, "seasonal_price_start", None)
+                    else None
+                ),
+                "seasonal_price_end": (
+                    variant.seasonal_price_end.isoformat()
+                    if getattr(variant, "seasonal_price_end", None)
+                    else None
+                ),
+                "bouquet_recipe": recipe,
+                "bouquet_cost_summary": {
+                    "off_season_paise": bouquet_recipe_cost(recipe),
+                    "peak_season_paise": bouquet_recipe_cost(recipe, peak=True),
+                }
+                if recipe
+                else None,
+            }
+        )
+    return body
+
+
 def serialize_product(
     product: Product,
     *,
@@ -163,25 +222,9 @@ def serialize_product(
             else None
         ),
         "variants": [
-            {
-                "id": variant.id,
-                "name": variant.name,
-                "sku": variant.sku,
-                "price_delta_paise": variant.price_delta_paise,
-                "discounted_price_paise": getattr(
-                    variant, "discounted_price_paise", None
-                ),
-                "discount_pct": _discount_pct(
-                    variant.price_delta_paise,
-                    getattr(variant, "discounted_price_paise", None),
-                ),
-                "inventory_quantity": getattr(variant, "inventory_quantity", None),
-                "in_stock": getattr(variant, "inventory_quantity", None) != 0,
-                "active": variant.active,
-                "sort_order": variant.sort_order,
-            }
+            _serialize_variant(variant, include_costs=include_vendor_name)
             for variant in sorted(product.variants, key=lambda item: item.sort_order)
-            if variant.active
+            if include_vendor_name or variant.active
         ],
         "addons": [
             {

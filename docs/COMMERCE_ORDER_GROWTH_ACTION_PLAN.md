@@ -313,6 +313,7 @@ products.
 | CAT-P1-015 | Add at least 8 affordable hampers | VOPS, CAT | Not started | Hamper range includes delivered options below ₹1,500 |
 | CAT-P1-016 | Add at least 5 plants/home-gift options | VOPS, CAT | Not started | Neutral gifting has a viable collection |
 | CAT-P1-017 | Add at least 8 same-day/next-day Pune flower products | VOPS, CAT | Not started | Flower range includes mainstream prices and verified fast delivery |
+| CAT-P1-018 | Configure bouquet and hamper recipes, size options, and seasonal prices using the [bouquet rollout plan](BOUQUET_HAMPER_DYNAMIC_PRICING.md) | VOPS, CAT, ENG | Implemented locally; awaiting production setup | Pilot products expose verified size options without revealing vendor costs, and checkout charges the active database price |
 
 ## P1: Shipping and Delivered Pricing
 
@@ -416,6 +417,7 @@ Target completion: before paid acquisition or a major public launch.
 | DATA-P2-009 | Verify Razorpay cancellation and verification-failure tracking | ENG-WEB, ENG-BE | Not started | Payment abandonment is distinguishable from application failure |
 | DATA-P2-010 | Add vendor acknowledgement and fulfilment timing metrics | ENG-BE, VOPS | Not started | Vendor response, dispatch, and delivery SLA can be reported |
 | DATA-P2-011 | Classify traffic-versus-conversion weekly | DATA, GROWTH | Not started | Weekly report states whether the limiting stage is qualified visits, PDP engagement, cart, checkout, or payment |
+| DATA-P2-012 | Generate and reconcile shop/product campaign links using the [campaign tracking standard](SHOP_CAMPAIGN_TRACKING.md) | GROWTH, ENG-WEB, DATA | Implemented locally; awaiting deploy and GA4 verification | An attributed test order matches its admin first/last touch and GA4 product purchase |
 
 Privacy rules:
 

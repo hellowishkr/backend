@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -118,6 +119,15 @@ class ProductVariant(Base):
             "inventory_quantity IS NULL OR inventory_quantity >= 0",
             name="ck_product_variants_inventory_nonnegative",
         ),
+        CheckConstraint(
+            "seasonal_price_paise IS NULL OR seasonal_price_paise >= 0",
+            name="ck_product_variants_seasonal_price_nonnegative",
+        ),
+        CheckConstraint(
+            "seasonal_price_start IS NULL OR seasonal_price_end IS NULL "
+            "OR seasonal_price_start <= seasonal_price_end",
+            name="ck_product_variants_seasonal_window",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(30), primary_key=True)
@@ -131,6 +141,16 @@ class ProductVariant(Base):
     price_delta_paise: Mapped[int] = mapped_column(Integer, default=0)
     discounted_price_paise: Mapped[int | None] = mapped_column(Integer)
     inventory_quantity: Mapped[int | None] = mapped_column(Integer)
+    # Optional time-bounded selling-price override. When active it replaces the
+    # normal variant base/discounted price in both catalogue display and
+    # backend order pricing. Null dates make the override open-ended.
+    seasonal_price_paise: Mapped[int | None] = mapped_column(Integer)
+    seasonal_price_start: Mapped[date | None] = mapped_column(Date)
+    seasonal_price_end: Mapped[date | None] = mapped_column(Date)
+    # Admin-only costing recipe. Public catalogue serialization emits a
+    # sanitized composition (names + quantities) but never procurement,
+    # making, packaging, or margin inputs.
+    bouquet_recipe: Mapped[dict | None] = mapped_column(JSON)
     active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(

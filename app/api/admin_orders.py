@@ -70,6 +70,7 @@ def serialize_order_summary(order: Order, vendor_name: str | None) -> dict:
         "customer_name": order.shipping_name,
         "customer_phone": order.shipping_phone,
         "delivery_date": order.delivery_date.isoformat() if order.delivery_date else None,
+        "marketing_attribution": order.marketing_attribution,
         "created_at": order.created_at.isoformat() if order.created_at else None,
     }
 

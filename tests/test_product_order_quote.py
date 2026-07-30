@@ -1,5 +1,6 @@
 """Backend-authoritative marketplace checkout quote tests."""
 
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -187,6 +188,41 @@ async def test_active_flash_uses_base_and_ignores_normal_discount(session_factor
     assert quote.product_list_subtotal_paise == 162_500
     assert quote.product_subtotal_paise == 130_000
     assert quote.discount_paise == 32_500
+
+
+async def test_quote_uses_active_seasonal_bouquet_variant_price(session_factory) -> None:
+    async with session_factory() as db:
+        await _seed(db)
+        db.add(
+            ProductVariant(
+                id="var_40_roses",
+                product_id="prd_one",
+                name="40 roses",
+                price_delta_paise=79_900,
+                discounted_price_paise=69_900,
+                seasonal_price_paise=119_900,
+                seasonal_price_start=date(2020, 1, 1),
+                seasonal_price_end=date(2030, 12, 31),
+                active=True,
+                sort_order=1,
+            )
+        )
+        await db.commit()
+        quote = await build_product_order_quote(
+            db,
+            [
+                ProductOrderItemPayload(
+                    product_id="prd_one",
+                    variant_id="var_40_roses",
+                    qty=1,
+                )
+            ],
+        )
+
+    assert quote.base_product_total_paise == 119_900
+    assert quote.raw_product_total_paise == 119_900
+    assert quote.product_list_subtotal_paise == 119_900
+    assert quote.product_subtotal_paise == 119_900
 
 
 async def test_quote_rejects_products_from_different_vendors(session_factory) -> None:

@@ -1,8 +1,8 @@
 import hmac
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import PurePosixPath
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile
@@ -100,6 +100,32 @@ class VendorPayload(BaseModel):
     city_ids: list[str] = Field(default_factory=list)
 
 
+class BouquetComponentPayload(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    kind: Literal["flower", "filler", "chocolate", "gift", "packaging", "other"] = (
+        "flower"
+    )
+    quantity: int = Field(ge=1)
+    unit_label: str = Field(default="stem", min_length=1, max_length=30)
+    lot_size: int = Field(default=1, ge=1)
+    off_season_lot_cost_paise: int = Field(default=0, ge=0)
+    peak_season_lot_cost_paise: int | None = Field(default=None, ge=0)
+
+
+class BouquetRecipePayload(BaseModel):
+    enabled: bool = True
+    components: list[BouquetComponentPayload] = Field(default_factory=list)
+    making_cost_paise: int = Field(default=0, ge=0)
+    packaging_cost_paise: int = Field(default=0, ge=0)
+    other_cost_paise: int = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def _enabled_recipe_has_components(self) -> "BouquetRecipePayload":
+        if self.enabled and not self.components:
+            raise ValueError("an enabled bouquet recipe must have at least one component")
+        return self
+
+
 class VariantPayload(BaseModel):
     id: str | None = None
     name: str = Field(min_length=1, max_length=120)
@@ -107,6 +133,10 @@ class VariantPayload(BaseModel):
     price_delta_paise: int = 0
     discounted_price_paise: int | None = Field(default=None, ge=0)
     inventory_quantity: int | None = Field(default=None, ge=0)
+    seasonal_price_paise: int | None = Field(default=None, ge=0)
+    seasonal_price_start: date | None = None
+    seasonal_price_end: date | None = None
+    bouquet_recipe: BouquetRecipePayload | None = None
     active: bool = True
     sort_order: int = 0
 
@@ -128,6 +158,20 @@ class VariantPayload(BaseModel):
             raise ValueError(
                 "variant discounted price must be less than or equal to base price"
             )
+        if (
+            self.seasonal_price_start is not None
+            and self.seasonal_price_end is not None
+            and self.seasonal_price_start > self.seasonal_price_end
+        ):
+            raise ValueError("seasonal price start must not be after its end")
+        if (
+            self.seasonal_price_paise is None
+            and (
+                self.seasonal_price_start is not None
+                or self.seasonal_price_end is not None
+            )
+        ):
+            raise ValueError("seasonal dates require a seasonal price")
         return self
 
 
@@ -348,6 +392,18 @@ async def sync_product_children(
             variant.discounted_price_paise = payload.discounted_price_paise
         if "inventory_quantity" in payload.model_fields_set:
             variant.inventory_quantity = payload.inventory_quantity
+        if "seasonal_price_paise" in payload.model_fields_set:
+            variant.seasonal_price_paise = payload.seasonal_price_paise
+        if "seasonal_price_start" in payload.model_fields_set:
+            variant.seasonal_price_start = payload.seasonal_price_start
+        if "seasonal_price_end" in payload.model_fields_set:
+            variant.seasonal_price_end = payload.seasonal_price_end
+        if "bouquet_recipe" in payload.model_fields_set:
+            variant.bouquet_recipe = (
+                payload.bouquet_recipe.model_dump()
+                if payload.bouquet_recipe is not None
+                else None
+            )
         variant.active = payload.active
         variant.sort_order = payload.sort_order or index + 1
 

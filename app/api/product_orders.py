@@ -17,6 +17,7 @@ from app.models.order_line_item import OrderLineItem
 from app.models.product import Product, ProductVariant
 from app.models.vendor import Vendor
 from app.models.vendor import VendorCity
+from app.services.bouquet_pricing import effective_variant_prices
 from app.services.delivery_estimate import earliest_delivery_date
 from app.services.razorpay_service import razorpay_service
 from app.services.storefront_pricing import get_storefront_pricing
@@ -282,14 +283,15 @@ async def price_line(db: AsyncSession, item: ProductOrderItemPayload) -> PricedL
     # added to it. `price_delta_paise` holds that absolute amount when a variant
     # is chosen (legacy column name). Base price applies only when no variant is
     # selected. Add-ons and customisation surcharges stack on top either way.
-    base_product_paise = (
-        variant.price_delta_paise if variant else product.base_price_paise
-    )
-    discounted_product_paise = (
-        getattr(variant, "discounted_price_paise", None)
-        if variant
-        else getattr(product, "discounted_price_paise", None)
-    )
+    if variant:
+        (
+            base_product_paise,
+            discounted_product_paise,
+            _seasonal_price_active,
+        ) = effective_variant_prices(variant)
+    else:
+        base_product_paise = product.base_price_paise
+        discounted_product_paise = getattr(product, "discounted_price_paise", None)
     if discounted_product_paise is None:
         discounted_product_paise = base_product_paise
     extras_paise = addon_total_paise + customization_total_paise

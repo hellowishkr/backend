@@ -44,12 +44,18 @@ def test_thinking_budget_below_observed_overspend():
     assert settings.gemini_thinking_budget < 1399
 
 
-def test_gen_config_passes_thinking_budget_to_gemini():
-    """A setting nothing reads would be a silent no-op."""
-    import inspect
+def test_agent_actually_applies_the_budget():
+    """A setting nothing reads would be a silent no-op.
 
-    from app.bot import agent
+    Built through the real LlmAgent rather than by reading source: ADK validates
+    that thinking_config arrives via `planner`, not inside
+    generate_content_config, and rejects the latter at construction time.
+    """
+    from app.bot import agent as agent_mod
 
-    src = inspect.getsource(agent._build_runner)
-    assert "thinking_config" in src, "thinking_config missing from generate config"
-    assert "gemini_thinking_budget" in src, "budget must come from settings, not a literal"
+    runner = agent_mod._build_runner("unregistered", settings.gemini_model, [])
+    planner = runner.agent.planner
+    assert planner is not None, "no planner — thinking budget is unset"
+    assert (
+        planner.thinking_config.thinking_budget == settings.gemini_thinking_budget
+    )

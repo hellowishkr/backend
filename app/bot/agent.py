@@ -25,6 +25,7 @@ from decimal import Decimal
 from typing import Optional
 
 from google.adk.agents import LlmAgent
+from google.adk.planners import BuiltInPlanner
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService, Session
 from google.genai import errors as genai_errors, types
@@ -447,23 +448,26 @@ def _build_runner(phase: str, model: str, tools: list) -> Runner:
         temperature=settings.gemini_temperature,
         top_p=0.9,
         max_output_tokens=2048,
-        # Bound the model's internal reasoning. Unbounded, 2.5-flash decided to
-        # spend 1399 thinking tokens on a 27-token reply (7.6s server-side) —
-        # thinking, not prompt size, is the dominant latency term on this
-        # workload. -1 restores the dynamic default if this proves too tight.
-        thinking_config=types.ThinkingConfig(
-            thinking_budget=settings.gemini_thinking_budget,
-        ),
     )
     # Gemini sees declarations through tools=tools. These tools come from
     # TOOL_BY_NAME, which wraps schemas.py FunctionDeclarations via
     # SchemaFunctionTool while preserving the adapter execution wrappers.
+    # Bound the model's internal reasoning. Unbounded, 2.5-flash spent 1399
+    # thinking tokens on a 27-token reply (7.6s server-side, 59% of turn cost —
+    # thinking bills at the output rate). Thinking, not prompt size, is the
+    # dominant latency term on this workload. ADK rejects thinking_config inside
+    # generate_content_config and requires a planner instead.
     agent = LlmAgent(
         name=f"wishkr_{phase}",
         model=model,
         instruction=STATIC_SYSTEM_PROMPT,
         tools=tools,
         generate_content_config=gen_config,
+        planner=BuiltInPlanner(
+            thinking_config=types.ThinkingConfig(
+                thinking_budget=settings.gemini_thinking_budget,
+            ),
+        ),
     )
     runner = Runner(
         agent=agent,

@@ -1,0 +1,12 @@
+[Unit]
+Description=Check Wishkr production backup health hourly
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5m
+Persistent=true
+AccuracySec=1m
+Unit=wishkr-backup-monitor.service
+
+[Install]
+WantedBy=timers.target

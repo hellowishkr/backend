@@ -1,0 +1,27 @@
+[Unit]
+Description=Validate Wishkr production backup freshness and size
+Documentation=file:///opt/wishkr/current/ops/backup/README.md
+ConditionPathExists=/var/lib/wishkr/backup/last-run.env
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/wishkr-backup-status
+UMask=0077
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+PrivateTmp=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes

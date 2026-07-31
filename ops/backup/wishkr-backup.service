@@ -1,0 +1,38 @@
+[Unit]
+Description=Wishkr encrypted production backup to Cloudflare R2 and OVH FTPS
+Documentation=file:///opt/wishkr/current/ops/backup/README.md
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/wishkr/secrets/r2-backup.env
+ConditionPathExists=/etc/wishkr/secrets/restic_r2_password
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/wishkr-backup
+UMask=0077
+Environment=RESTIC_CACHE_DIR=/var/cache/wishkr-restic
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=strict
+ReadWritePaths=/var/backups/wishkr /var/cache/wishkr-restic /var/lib/wishkr/backup
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+
+[Install]
+WantedBy=multi-user.target

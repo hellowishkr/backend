@@ -8,7 +8,7 @@
 | Field | Value |
 |---|---|
 | Status | In progress |
-| Current gate | Item 8 — Prepare application deployment; external UDP scan remains open in Item 5 |
+| Current gate | Item 11 — Backups and disaster recovery; external UDP scan remains open in Item 5 |
 | Last updated | 2026-07-31 |
 | Target environment | OVHcloud Mumbai bare metal |
 | Source architecture | [PRODUCTION_3_SERVER_SETUP.md](./PRODUCTION_3_SERVER_SETUP.md) |
@@ -769,15 +769,65 @@ Completion evidence (31 July 2026):
 
 **Status:** `[~]` In progress (2026-07-31)
 
-- [ ] Activate included OVHcloud backup storage, if available for this server.
-- [ ] Configure encrypted PostgreSQL backups.
-- [ ] Configure Redis/application-state backups where required.
-- [ ] Keep an off-provider backup in Cloudflare R2.
-- [ ] Define retention and deletion policies.
-- [ ] Monitor backup completion, size, and age.
-- [ ] Perform and document a complete restoration test.
-- [ ] Document bare-metal rebuild and recovery steps.
+- [x] Activate and validate encrypted backups to the included OVHcloud Backup Storage (500 GB, hosted in BHS; OVH source `148.113.6.76/32`; explicit FTPS only).
+- [x] Configure encrypted PostgreSQL backups.
+- [x] Configure Redis/application-state backups where required.
+- [x] Keep an off-provider backup in Cloudflare R2.
+- [x] Define retention and deletion policies.
+- [x] Monitor backup completion, size, and age.
+- [x] Perform and document a complete restoration test.
+- [x] Document bare-metal rebuild and recovery steps.
 - [ ] Store recovery documentation outside the OVH server.
+
+Progress evidence (2026-07-31):
+
+- OVHcloud included Backup Storage is active (500 GB, BHS) and restricted to
+  the OVH server address.
+- A new account-level Cloudflare R2 token is restricted to
+  `wishkr-db-backup` with Object Read & Write permissions and the OVH public
+  source addresses.
+- The OVH host stores the R2 credentials and an independent 256-bit restic
+  repository password in root-owned mode-`0600` files.
+- R2 authentication succeeded and the isolated encrypted repository at prefix
+  `restic/ovh-prod` was initialized without modifying the legacy Hetzner
+  backup objects.
+- `wishkr-backup.timer` runs daily at 02:15 UTC with up to 10 minutes of
+  random delay and persistent catch-up. Retention is 7 daily, 5 weekly,
+  12 monthly, and 3 yearly snapshots.
+- The first encrypted R2 backup completed successfully at
+  `2026-07-31T12:00:33Z`; PostgreSQL and Redis artifacts passed pre-upload
+  validation and the freshness monitor passed.
+- The isolated R2 restoration drill verified all repository data, restored
+  534 files/directories with matching artifact checksums, validated the Redis
+  RDB in a network-isolated disposable container, and restored all 54 public
+  PostgreSQL tables into a uniquely named scratch database. The scratch
+  database and temporary restore directory were both confirmed absent after
+  cleanup.
+- The first dual-destination backup completed successfully at
+  `2026-07-31T12:44:11Z`. The secondary repository is client-side encrypted
+  locally, transferred using explicit FTPS with certificate verification, and
+  synchronized to `wishkr/restic/ovh-prod` on the included OVH storage.
+- The independent OVH restoration drill downloaded the repository from BHS,
+  passed restic's full cryptographic data check, restored 537 files/directories
+  with matching artifact checksums, validated Redis, and restored all 54
+  public PostgreSQL tables. No scratch database or restored temporary
+  directory remained afterward.
+- A fresh post-monitoring backup completed at `2026-07-31T12:56:42Z` in 125
+  seconds. The R2 upload, encrypted local OVH repository update, FTPS sync, and
+  downloaded remote-content comparison all passed. Recorded metrics were a
+  141,110-byte PostgreSQL dump, 89-byte Redis RDB, and 1,692,834-byte encrypted
+  OVH restic repository.
+- `wishkr-backup-monitor.timer` runs hourly with a randomized delay and fails
+  if the backup is older than 30 hours, the daily timer is inactive, the last
+  service failed, or a recorded PostgreSQL, Redis, or encrypted-repository
+  size is invalid. Its first production execution returned status `0` and all
+  checks passed. External notification delivery belongs to Item 12.
+- The total-loss procedure is documented in
+  [`OVHCLOUD_BARE_METAL_RECOVERY_RUNBOOK.md`](./OVHCLOUD_BARE_METAL_RECOVERY_RUNBOOK.md),
+  including R2-first recovery, OVH fallback, secure existing-password entry,
+  database/Redis restore order, validation, cutover, and abort criteria. It is
+  present in the local Git worktree but is not considered safely off-host
+  until committed and pushed to the private GitHub repository.
 
 ### 12. Configure monitoring and alerting
 

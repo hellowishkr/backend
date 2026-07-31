@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+max_age_seconds=${WISHKR_BACKUP_MAX_AGE_SECONDS:-108000}
+state_file=${WISHKR_BACKUP_STATE_FILE:-/var/lib/wishkr/backup/last-success.epoch}
+metrics_file=${WISHKR_BACKUP_METRICS_FILE:-/var/lib/wishkr/backup/last-run.env}
+
+if [[ ! -s ${state_file} ]]; then
+  echo "CRITICAL: no successful Wishkr backup has been recorded" >&2
+  exit 2
+fi
+
+if [[ ! -s ${metrics_file} ]]; then
+  echo "CRITICAL: backup metrics are missing" >&2
+  exit 2
+fi
+
+read_metric() {
+  local metric_name=$1
+  awk -F= -v name="${metric_name}" '$1 == name {print $2; exit}' "${metrics_file}"
+}
+
+postgres_size_bytes=$(read_metric postgres_size_bytes)
+redis_size_bytes=$(read_metric redis_size_bytes)
+ovh_repository_size_bytes=$(read_metric ovh_repository_size_bytes)
+duration_seconds=$(read_metric duration_seconds)
+
+for metric_name in postgres_size_bytes redis_size_bytes ovh_repository_size_bytes duration_seconds; do
+  metric_value=${!metric_name:-}
+  if [[ ! ${metric_value} =~ ^[0-9]+$ ]]; then
+    echo "CRITICAL: invalid backup metric ${metric_name}" >&2
+    exit 2
+  fi
+done
+
+if ((postgres_size_bytes < 1024)); then
+  echo "CRITICAL: PostgreSQL dump is unexpectedly small (${postgres_size_bytes} bytes)" >&2
+  exit 2
+fi
+
+if ((redis_size_bytes < 9)); then
+  echo "CRITICAL: Redis RDB is unexpectedly small (${redis_size_bytes} bytes)" >&2
+  exit 2
+fi
+
+if ((ovh_repository_size_bytes < 1024)); then
+  echo "CRITICAL: local encrypted OVH repository is unexpectedly small (${ovh_repository_size_bytes} bytes)" >&2
+  exit 2
+fi
+
+last_success=$(<"${state_file}")
+if [[ ! ${last_success} =~ ^[0-9]+$ ]]; then
+  echo "CRITICAL: invalid backup timestamp" >&2
+  exit 2
+fi
+
+now=$(date -u +%s)
+age_seconds=$((now - last_success))
+if ((age_seconds < 0 || age_seconds > max_age_seconds)); then
+  echo "CRITICAL: last successful Wishkr backup is ${age_seconds}s old" >&2
+  exit 2
+fi
+
+timer_state=$(systemctl is-active wishkr-backup.timer 2>/dev/null || true)
+service_result=$(systemctl show wishkr-backup.service --property=Result --value 2>/dev/null || true)
+if [[ ${timer_state} != active ]]; then
+  echo "CRITICAL: wishkr-backup.timer is ${timer_state:-unknown}" >&2
+  exit 2
+fi
+
+if [[ ${service_result} != success ]]; then
+  echo "CRITICAL: wishkr-backup.service result=${service_result:-unknown}" >&2
+  exit 2
+fi
+
+echo "PASS: backup_age_seconds=${age_seconds} timer=active service_result=success duration_seconds=${duration_seconds} postgres_size_bytes=${postgres_size_bytes} redis_size_bytes=${redis_size_bytes} ovh_repository_size_bytes=${ovh_repository_size_bytes}"

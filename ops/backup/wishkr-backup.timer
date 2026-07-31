@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Wishkr encrypted production backup daily
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+RandomizedDelaySec=10m
+Persistent=true
+AccuracySec=1m
+Unit=wishkr-backup.service
+
+[Install]
+WantedBy=timers.target

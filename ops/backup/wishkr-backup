@@ -1,0 +1,272 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+umask 077
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+if [[ ${EUID} -ne 0 ]]; then
+  echo "ERROR: run as root" >&2
+  exit 1
+fi
+
+credentials_file=${WISHKR_R2_CREDENTIALS_FILE:-/etc/wishkr/secrets/r2-backup.env}
+ovh_credentials_file=${WISHKR_OVH_CREDENTIALS_FILE:-/etc/wishkr/secrets/ovh-backup.env}
+postgres_container=${POSTGRES_CONTAINER:-wishkr-db-1}
+redis_container=${REDIS_CONTAINER:-wishkr-redis-1}
+staging_root=${WISHKR_BACKUP_STAGING_DIR:-/var/backups/wishkr/staging}
+state_dir=${WISHKR_BACKUP_STATE_DIR:-/var/lib/wishkr/backup}
+cache_dir=${RESTIC_CACHE_DIR:-/var/cache/wishkr-restic}
+backup_host=${WISHKR_BACKUP_HOST:-wishkr-prod-mum-01}
+
+for command_name in docker flock openssl restic sha256sum; do
+  if ! command -v "${command_name}" >/dev/null 2>&1; then
+    echo "ERROR: required command not found: ${command_name}" >&2
+    exit 1
+  fi
+done
+
+if [[ ! -s ${credentials_file} ]]; then
+  echo "ERROR: missing R2 credentials file: ${credentials_file}" >&2
+  exit 1
+fi
+
+if [[ $(stat -c '%U:%G' "${credentials_file}") != root:root || $(stat -c '%a' "${credentials_file}") != 600 ]]; then
+  echo "ERROR: R2 credentials must be root:root mode 0600" >&2
+  exit 1
+fi
+
+set -a
+# shellcheck disable=SC1090
+source "${credentials_file}"
+set +a
+
+for variable_name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY RESTIC_PASSWORD_FILE RESTIC_REPOSITORY; do
+  if [[ -z ${!variable_name:-} ]]; then
+    echo "ERROR: ${variable_name} is missing from ${credentials_file}" >&2
+    exit 1
+  fi
+done
+
+r2_repository=${RESTIC_REPOSITORY}
+r2_password_file=${RESTIC_PASSWORD_FILE}
+
+if [[ ! -s ${r2_password_file} ]]; then
+  echo "ERROR: missing restic password file: ${r2_password_file}" >&2
+  exit 1
+fi
+
+if [[ $(stat -c '%U:%G' "${r2_password_file}") != root:root || $(stat -c '%a' "${r2_password_file}") != 600 ]]; then
+  echo "ERROR: restic password must be root:root mode 0600" >&2
+  exit 1
+fi
+
+ovh_repository=
+ovh_password_file=
+ovh_rclone_destination=
+if [[ -e ${ovh_credentials_file} ]]; then
+  if ! command -v rclone >/dev/null 2>&1; then
+    echo "ERROR: rclone is required for the OVH FTPS destination" >&2
+    exit 1
+  fi
+  if [[ ! -s ${ovh_credentials_file} || $(stat -c '%U:%G' "${ovh_credentials_file}") != root:root || $(stat -c '%a' "${ovh_credentials_file}") != 600 ]]; then
+    echo "ERROR: OVH credentials must be a non-empty root:root mode-0600 file" >&2
+    exit 1
+  fi
+  set -a
+  # shellcheck disable=SC1090
+  source "${ovh_credentials_file}"
+  set +a
+  ovh_repository=${OVH_RESTIC_REPOSITORY:-}
+  ovh_password_file=${OVH_RESTIC_PASSWORD_FILE:-}
+  ovh_rclone_destination=${OVH_RCLONE_DESTINATION:-}
+  if [[ -z ${ovh_repository} || -z ${ovh_rclone_destination} || ! -s ${ovh_password_file} ]]; then
+    echo "ERROR: OVH restic repository configuration is incomplete" >&2
+    exit 1
+  fi
+  if [[ $(stat -c '%U:%G' "${ovh_password_file}") != root:root || $(stat -c '%a' "${ovh_password_file}") != 600 ]]; then
+    echo "ERROR: OVH restic password must be root:root mode 0600" >&2
+    exit 1
+  fi
+fi
+
+install -d -o root -g root -m 0700 "${staging_root}" "${state_dir}" "${cache_dir}"
+export RESTIC_CACHE_DIR=${cache_dir}
+
+exec 9>/run/lock/wishkr-backup.lock
+if ! flock -n 9; then
+  echo "ERROR: another Wishkr backup is already running" >&2
+  exit 1
+fi
+
+started_at_epoch=$(date -u +%s)
+
+for container in "${postgres_container}" "${redis_container}"; do
+  state=$(docker inspect --format '{{.State.Status}}' "${container}" 2>/dev/null || true)
+  health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "${container}" 2>/dev/null || true)
+  if [[ ${state} != running || ${health} != healthy ]]; then
+    echo "ERROR: ${container} state=${state:-missing} health=${health:-missing}" >&2
+    exit 1
+  fi
+done
+
+run_id=$(date -u +%Y%m%dT%H%M%SZ)
+run_dir=$(mktemp -d "${staging_root}/run-${run_id}.XXXXXX")
+cleanup() {
+  if [[ -n ${run_dir:-} && -d ${run_dir} ]]; then
+    rm -rf -- "${run_dir}"
+  fi
+}
+trap cleanup EXIT
+
+postgres_dump=${run_dir}/wishkr-postgres.dump
+redis_dump=${run_dir}/wishkr-redis.rdb
+manifest=${run_dir}/manifest.txt
+
+echo "backup_phase=postgres_dump status=started"
+docker exec "${postgres_container}" sh -ec \
+  'PGPASSWORD="${POSTGRES_PASSWORD}" exec pg_dump \
+    --username="${POSTGRES_USER:-wishkr}" \
+    --dbname="${POSTGRES_DB:-wishkr}" \
+    --format=custom --compress=9 --no-password' >"${postgres_dump}"
+
+test -s "${postgres_dump}"
+docker exec -i "${postgres_container}" pg_restore --list <"${postgres_dump}" >/dev/null
+postgres_size_bytes=$(stat -c %s "${postgres_dump}")
+echo "backup_phase=postgres_dump status=passed size_bytes=${postgres_size_bytes}"
+
+redis_cli() {
+  docker exec "${redis_container}" sh -ec \
+    'REDISCLI_AUTH="${REDIS_PASSWORD}" exec redis-cli --raw "$@"' sh "$@"
+}
+
+wait_for_redis_save() {
+  local attempt info
+  for attempt in $(seq 1 180); do
+    info=$(redis_cli INFO persistence | tr -d '\r')
+    if grep -qx 'rdb_bgsave_in_progress:0' <<<"${info}"; then
+      if grep -qx 'rdb_last_bgsave_status:ok' <<<"${info}"; then
+        return 0
+      fi
+      echo "ERROR: Redis reports a failed background save" >&2
+      return 1
+    fi
+    sleep 1
+  done
+  echo "ERROR: timed out waiting for Redis background save" >&2
+  return 1
+}
+
+echo "backup_phase=redis_snapshot status=started"
+wait_for_redis_save
+redis_cli BGSAVE >/dev/null
+wait_for_redis_save
+docker cp "${redis_container}:/data/dump.rdb" "${redis_dump}" >/dev/null
+test -s "${redis_dump}"
+redis_size_bytes=$(stat -c %s "${redis_dump}")
+echo "backup_phase=redis_snapshot status=passed size_bytes=${redis_size_bytes}"
+
+{
+  printf 'created_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf 'source_host=%s\n' "$(hostname -f 2>/dev/null || hostname)"
+  printf 'backup_host=%s\n' "${backup_host}"
+  printf 'postgres_container=%s\n' "${postgres_container}"
+  printf 'postgres_image=%s\n' "$(docker inspect --format '{{.Config.Image}}' "${postgres_container}")"
+  printf 'postgres_sha256=%s\n' "$(sha256sum "${postgres_dump}" | awk '{print $1}')"
+  printf 'postgres_size_bytes=%s\n' "${postgres_size_bytes}"
+  printf 'redis_container=%s\n' "${redis_container}"
+  printf 'redis_image=%s\n' "$(docker inspect --format '{{.Config.Image}}' "${redis_container}")"
+  printf 'redis_sha256=%s\n' "$(sha256sum "${redis_dump}" | awk '{print $1}')"
+  printf 'redis_size_bytes=%s\n' "${redis_size_bytes}"
+} >"${manifest}"
+
+backup_paths=("${run_dir}")
+for recovery_path in /etc/wishkr /etc/nginx /etc/wireguard; do
+  if [[ -e ${recovery_path} ]]; then
+    backup_paths+=("${recovery_path}")
+  fi
+done
+
+current_release=$(readlink -f /opt/wishkr/current 2>/dev/null || true)
+if [[ -n ${current_release} && -d ${current_release} ]]; then
+  backup_paths+=("${current_release}")
+fi
+
+backup_to_repository() {
+  local destination=$1
+  local repository=$2
+  local password_file=$3
+
+  echo "backup_phase=${destination}_encrypted_upload status=started"
+  RESTIC_REPOSITORY="${repository}" RESTIC_PASSWORD_FILE="${password_file}" restic backup \
+    --host "${backup_host}" \
+    --tag wishkr-production \
+    --tag automated \
+    --exclude-caches \
+    --exclude='**/.git/**' \
+    --exclude='**/__pycache__/**' \
+    --exclude='**/.pytest_cache/**' \
+    --exclude='**/node_modules/**' \
+    --quiet \
+    "${backup_paths[@]}"
+
+  RESTIC_REPOSITORY="${repository}" RESTIC_PASSWORD_FILE="${password_file}" restic forget \
+    --host "${backup_host}" \
+    --tag wishkr-production \
+    --keep-daily 7 \
+    --keep-weekly 5 \
+    --keep-monthly 12 \
+    --keep-yearly 3 \
+    --prune \
+    --quiet
+  echo "backup_phase=${destination}_encrypted_upload status=passed"
+}
+
+backup_to_repository r2 "${r2_repository}" "${r2_password_file}"
+if [[ -n ${ovh_repository} ]]; then
+  install -d -o root -g root -m 0700 "${ovh_repository}"
+  if ! RESTIC_REPOSITORY="${ovh_repository}" RESTIC_PASSWORD_FILE="${ovh_password_file}" restic cat config >/dev/null 2>&1; then
+    RESTIC_REPOSITORY="${ovh_repository}" RESTIC_PASSWORD_FILE="${ovh_password_file}" restic init >/dev/null
+  fi
+  backup_to_repository ovh_local "${ovh_repository}" "${ovh_password_file}"
+
+  echo "backup_phase=ovh_ftps_sync status=started"
+  rclone sync "${ovh_repository}" "${ovh_rclone_destination}" \
+    --checkers 1 \
+    --transfers 1 \
+    --delete-after \
+    --retries 3 \
+    --low-level-retries 10 \
+    --quiet
+  rclone check "${ovh_repository}" "${ovh_rclone_destination}" \
+    --checkers 1 \
+    --one-way \
+    --download \
+    --quiet
+  echo "backup_phase=ovh_ftps_sync status=passed"
+fi
+
+completed_at_epoch=$(date -u +%s)
+completed_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+duration_seconds=$((completed_at_epoch - started_at_epoch))
+ovh_repository_size_bytes=0
+if [[ -n ${ovh_repository} ]]; then
+  ovh_repository_size_bytes=$(du -sb "${ovh_repository}" | awk '{print $1}')
+fi
+
+state_tmp=$(mktemp "${state_dir}/last-run.XXXXXX")
+{
+  printf 'completed_at_epoch=%s\n' "${completed_at_epoch}"
+  printf 'completed_at_utc=%s\n' "${completed_at_utc}"
+  printf 'duration_seconds=%s\n' "${duration_seconds}"
+  printf 'postgres_size_bytes=%s\n' "${postgres_size_bytes}"
+  printf 'redis_size_bytes=%s\n' "${redis_size_bytes}"
+  printf 'ovh_repository_size_bytes=%s\n' "${ovh_repository_size_bytes}"
+} >"${state_tmp}"
+chmod 0600 "${state_tmp}"
+mv -f "${state_tmp}" "${state_dir}/last-run.env"
+
+printf '%s\n' "${completed_at_epoch}" >"${state_dir}/last-success.epoch"
+printf '%s\n' "${completed_at_utc}" >"${state_dir}/last-success.txt"
+chmod 0600 "${state_dir}/last-success.epoch" "${state_dir}/last-success.txt" "${state_dir}/last-run.env"
+
+echo "backup_result=success completed_at_utc=${completed_at_utc} duration_seconds=${duration_seconds} postgres_size_bytes=${postgres_size_bytes} redis_size_bytes=${redis_size_bytes} ovh_repository_size_bytes=${ovh_repository_size_bytes}"

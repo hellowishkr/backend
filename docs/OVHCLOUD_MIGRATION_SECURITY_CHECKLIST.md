@@ -579,20 +579,20 @@ References:
 
 ### 8. Prepare the application deployment
 
-**Status:** `[~]` In progress
+**Status:** `[x]` Completed on 31 July 2026
 
-- [ ] Create documented application, data, backup, and log directories.
-- [ ] Deploy PostgreSQL 16.
-- [ ] Deploy Redis 7 with required persistence and authentication.
-- [ ] Deploy the FastAPI web service.
-- [ ] Deploy APScheduler as a separate service.
-- [ ] Ensure that exactly one scheduler instance is active.
-- [ ] Mount only required persistent directories.
-- [ ] Keep secrets outside the Git repository and container images.
-- [ ] Set secret-file ownership and permissions to `0600`.
-- [ ] Configure graceful shutdown and restart behaviour.
-- [ ] Add readiness and health checks.
-- [ ] Confirm Cloudflare R2 access with a least-privilege credential.
+- [x] Create documented application, data, backup, and log directories.
+- [x] Deploy PostgreSQL 16.
+- [x] Deploy Redis 7 with required persistence and authentication.
+- [x] Deploy the FastAPI web service.
+- [x] Deploy APScheduler as a separate service.
+- [x] Ensure that exactly one scheduler instance is active.
+- [x] Mount only required persistent directories.
+- [x] Keep secrets outside the Git repository and container images.
+- [x] Set secret-file ownership and permissions to `0600`.
+- [x] Configure graceful shutdown and restart behaviour.
+- [x] Add readiness and health checks.
+- [x] Confirm Cloudflare R2 access with a least-privilege credential.
 
 Progress notes (31 July 2026):
 
@@ -602,8 +602,62 @@ Progress notes (31 July 2026):
   Public SSH keys and public certificate files remain eligible for version
   control.
 - Verified that no already tracked file is newly matched by these secret
-  ignore rules. A content-level secret scan is still required before the
-  Item 7/8 changes are pushed.
+  ignore rules. The content-level secret scan was subsequently completed as
+  recorded below.
+
+Completion evidence:
+
+- Gitleaks `8.30.1` was downloaded from the official release, verified
+  against SHA-256
+  `b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5`,
+  and run with full redaction. Ten Git commits, the proposed repository
+  contents, and each release candidate returned zero findings.
+- Created root-owned host paths for immutable releases, secrets, reserved
+  application state, local backup staging, and audit logs. The layout and
+  release/rollback procedure are documented in `ops/deployment/README.md`.
+- Production application credentials were streamed directly from
+  `/opt/wishkr/.env` on the Hetzner web host to OVH through SSH. No local copy
+  was created and no value was printed. Deployment-specific database, Redis,
+  role, host, and runtime fields were replaced on OVH.
+- Generated independent 256-bit PostgreSQL and Redis passwords on OVH.
+  `/etc/wishkr/secrets/production.env`, `postgres_password`, and
+  `redis_password` are all `root:root 0600`. Docker CLI access remains
+  root-only.
+- Deployed PostgreSQL `16.14` with data checksums enabled, SCRAM-SHA-256
+  password encryption, a 90-second stop grace period, a non-root UID, and the
+  labeled `wishkr_pgdata` volume. This is a freshly initialized database;
+  Hetzner production data has not yet been imported or cut over.
+- Deployed authenticated Redis 7 with AOF enabled,
+  `appendfsync everysec`, successful AOF status, a non-root UID, and the
+  labeled `wishkr_redisdata` volume.
+- Deployed `wishkr-backend-1` on `127.0.0.1:8000` only and
+  `wishkr-scheduler-1` without a published port. PostgreSQL and Redis have no
+  host ports. All four services have read-only root filesystems where
+  applicable, `no-new-privileges`, dropped capabilities, PID/CPU/memory
+  limits, rotating logs, and health checks.
+- Confirmed exactly one scheduler container and acquisition of PostgreSQL
+  advisory lock `41051`. A controlled SIGTERM restart showed the API shutdown
+  hook running and the scheduler lock being released and reacquired; both
+  services returned healthy.
+- The first production start exposed two packaging/deployment defects before
+  public traffic existed: standalone Compose file-secret ownership was
+  incompatible with fixed non-root service UIDs, and Sentry's Starlette
+  integration required the missing `jinja2==3.1.6` dependency. Both were
+  corrected without weakening host secret permissions or container UIDs.
+- Removed macOS AppleDouble metadata from the release process and excluded
+  `._*`/`.DS_Store` from Git and Docker contexts. The final archive and image
+  contain zero AppleDouble files, and Alembic loaded the complete revision
+  graph successfully.
+- The test suite completed with `797 passed`, `3 skipped`, and two warnings.
+  The final backend, custom PostgreSQL, and Redis images each passed Trivy
+  with zero HIGH/CRITICAL findings.
+- An R2 canary verified put, get, prefix-list, integrity, and delete access.
+  The credential could not see an unrelated bucket. The random canary object
+  was deleted during the test.
+- `ops/deployment/validate-runtime.sh` passed every service, singleton,
+  authenticated-query, health, loopback exposure, and Compose check.
+  Nginx/Cloudflare public routing remains intentionally unavailable until
+  Item 9.
 
 ### 9. Configure Nginx, TLS, and Cloudflare
 

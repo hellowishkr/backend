@@ -105,13 +105,15 @@ def main() -> None:
     require(networks["data"].get("name") == "wishkr-data", "data network name is wrong")
 
     require(
-        any(secret.get("source") == "postgres_password" for secret in services["db"].get("secrets", [])),
-        "db: PostgreSQL password secret is missing",
+        bool(services["db"].get("environment", {}).get("POSTGRES_PASSWORD")),
+        "db: PostgreSQL password is missing",
     )
     require(
-        any(secret.get("source") == "redis_password" for secret in services["redis"].get("secrets", [])),
-        "redis: Redis password secret is missing",
+        bool(services["redis"].get("environment", {}).get("REDIS_PASSWORD")),
+        "redis: Redis password is missing",
     )
+    require(not services["db"].get("secrets"), "db: unexpected secret bind mount")
+    require(not services["redis"].get("secrets"), "redis: unexpected secret bind mount")
 
     print("PASS: rendered Compose model satisfies all Wishkr security invariants")
 

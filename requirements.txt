@@ -3,6 +3,8 @@ fastapi==0.139.2
 # Explicitly pin the transitive framework because it processes all HTTP input.
 starlette==1.3.1
 uvicorn[standard]==0.34.2
+# Required when Sentry's Starlette integration patches template handling.
+jinja2==3.1.6
 
 # Database
 sqlalchemy==2.0.40

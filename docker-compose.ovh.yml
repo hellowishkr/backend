@@ -4,6 +4,7 @@ x-app-security: &app-security
   init: true
   user: "1001:1001"
   read_only: true
+  stop_signal: SIGTERM
   security_opt:
     - no-new-privileges:true
   cap_drop:
@@ -12,6 +13,12 @@ x-app-security: &app-security
   stop_grace_period: 30s
   tmpfs:
     - /tmp:rw,noexec,nosuid,nodev,size=256m
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
 
 services:
   db:
@@ -23,10 +30,9 @@ services:
     user: "70:70"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-wishkr}
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-wishkr}
-    secrets:
-      - postgres_password
+      POSTGRES_INITDB_ARGS: --data-checksums --auth-host=scram-sha-256
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
@@ -45,6 +51,8 @@ services:
     mem_reservation: 4g
     shm_size: 1g
     stop_grace_period: 90s
+    stop_signal: SIGTERM
+    logging: *default-logging
     healthcheck:
       test:
         - CMD-SHELL
@@ -59,12 +67,18 @@ services:
     container_name: wishkr-redis-1
     restart: unless-stopped
     user: "999:1000"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     command:
       - sh
       - -ec
-      - exec redis-server --appendonly yes --requirepass "$$(cat /run/secrets/redis_password)"
-    secrets:
-      - redis_password
+      - >-
+        umask 077;
+        printf 'appendonly yes\nappendfsync everysec\nrequirepass %s\n'
+        "$${REDIS_PASSWORD}" > /tmp/redis.conf;
+        unset REDIS_PASSWORD;
+        exec redis-server
+        /tmp/redis.conf
     volumes:
       - redisdata:/data
     networks:
@@ -81,10 +95,12 @@ services:
     mem_limit: 2g
     mem_reservation: 256m
     stop_grace_period: 30s
+    stop_signal: SIGTERM
+    logging: *default-logging
     healthcheck:
       test:
         - CMD-SHELL
-        - REDISCLI_AUTH="$$(cat /run/secrets/redis_password)" redis-cli ping
+        - REDISCLI_AUTH="$${REDIS_PASSWORD}" redis-cli ping
       interval: 10s
       timeout: 3s
       retries: 6
@@ -92,6 +108,7 @@ services:
 
   backend:
     <<: *app-security
+    container_name: wishkr-backend-1
     build:
       context: .
       args:
@@ -99,7 +116,7 @@ services:
     image: wishkr-backend:${GIT_SHA:-migration}
     restart: unless-stopped
     env_file:
-      - ${WISHKR_ENV_FILE:-.env.ovh}
+      - ${WISHKR_ENV_FILE:-/etc/wishkr/secrets/production.env}
     environment:
       APP_ROLE: web
       RUN_SCHEDULER: "false"
@@ -120,6 +137,7 @@ services:
     cpus: 3.0
     mem_limit: 4g
     mem_reservation: 512m
+    logging: *default-logging
     command:
       - sh
       - -ec
@@ -141,10 +159,11 @@ services:
 
   scheduler:
     <<: *app-security
+    container_name: wishkr-scheduler-1
     image: wishkr-backend:${GIT_SHA:-migration}
     restart: unless-stopped
     env_file:
-      - ${WISHKR_ENV_FILE:-.env.ovh}
+      - ${WISHKR_ENV_FILE:-/etc/wishkr/secrets/production.env}
     environment:
       APP_ROLE: scheduler
       RUN_SCHEDULER: "true"
@@ -164,6 +183,7 @@ services:
     mem_limit: 2g
     mem_reservation: 256m
     pids_limit: 256
+    logging: *default-logging
     command:
       - python
       - -m
@@ -188,11 +208,9 @@ networks:
 volumes:
   pgdata:
     name: wishkr_pgdata
+    labels:
+      com.wishkr.purpose: postgres-production-data
   redisdata:
     name: wishkr_redisdata
-
-secrets:
-  postgres_password:
-    file: ${WISHKR_SECRETS_DIR:-/etc/wishkr/secrets}/postgres_password
-  redis_password:
-    file: ${WISHKR_SECRETS_DIR:-/etc/wishkr/secrets}/redis_password
+    labels:
+      com.wishkr.purpose: redis-production-data

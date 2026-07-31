@@ -47,3 +47,9 @@ build/
 graphify-out
 .ruff_cache
 .mypy_cache
+
+# macOS metadata must never enter Linux release archives or Docker contexts
+.DS_Store
+**/.DS_Store
+._*
+**/._*

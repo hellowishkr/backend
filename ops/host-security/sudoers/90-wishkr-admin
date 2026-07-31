@@ -1,0 +1,4 @@
+# The named administrator authenticates with independent WireGuard and SSH
+# keys. The local password remains locked, so sudo is intentionally
+# non-interactive. OVHcloud IPMI/rescue is the emergency recovery path.
+karan ALL=(ALL:ALL) NOPASSWD: ALL

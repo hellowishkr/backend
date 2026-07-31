@@ -1,3 +1,5 @@
 pytest
 pytest-asyncio
 aiosqlite
+ruff==0.9.10
+mypy==1.15.0

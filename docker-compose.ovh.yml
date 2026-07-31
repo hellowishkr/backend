@@ -1,0 +1,198 @@
+name: wishkr
+
+x-app-security: &app-security
+  init: true
+  user: "1001:1001"
+  read_only: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  pids_limit: 512
+  stop_grace_period: 30s
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,size=256m
+
+services:
+  db:
+    build:
+      context: ./ops/images/postgres
+    image: wishkr-postgres:16.14-alpine3.24.1
+    container_name: wishkr-db-1
+    restart: unless-stopped
+    user: "70:70"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wishkr}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: ${POSTGRES_DB:-wishkr}
+    secrets:
+      - postgres_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=256m
+      - /var/run/postgresql:rw,nosuid,nodev,uid=70,gid=70,mode=3775,size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 512
+    cpus: 3.0
+    mem_limit: 20g
+    mem_reservation: 4g
+    shm_size: 1g
+    stop_grace_period: 90s
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+    container_name: wishkr-redis-1
+    restart: unless-stopped
+    user: "999:1000"
+    command:
+      - sh
+      - -ec
+      - exec redis-server --appendonly yes --requirepass "$$(cat /run/secrets/redis_password)"
+    secrets:
+      - redis_password
+    volumes:
+      - redisdata:/data
+    networks:
+      - data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 128
+    cpus: 1.0
+    mem_limit: 2g
+    mem_reservation: 256m
+    stop_grace_period: 30s
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - REDISCLI_AUTH="$$(cat /run/secrets/redis_password)" redis-cli ping
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+
+  backend:
+    <<: *app-security
+    build:
+      context: .
+      args:
+        GIT_SHA: ${GIT_SHA:-}
+    image: wishkr-backend:${GIT_SHA:-migration}
+    restart: unless-stopped
+    env_file:
+      - ${WISHKR_ENV_FILE:-.env.ovh}
+    environment:
+      APP_ROLE: web
+      RUN_SCHEDULER: "false"
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL must be set}
+      APP_ENV: production
+      GIT_SHA: ${GIT_SHA:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app
+      - data
+    ports:
+      - 127.0.0.1:8000:8000
+    cpus: 3.0
+    mem_limit: 4g
+    mem_reservation: 512m
+    command:
+      - sh
+      - -ec
+      - >-
+        alembic upgrade head &&
+        exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+        --workers "$${WEB_WORKERS:-1}" --proxy-headers
+        --forwarded-allow-ips=127.0.0.1
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -fsS
+        - http://127.0.0.1:8000/health
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 30s
+
+  scheduler:
+    <<: *app-security
+    image: wishkr-backend:${GIT_SHA:-migration}
+    restart: unless-stopped
+    env_file:
+      - ${WISHKR_ENV_FILE:-.env.ovh}
+    environment:
+      APP_ROLE: scheduler
+      RUN_SCHEDULER: "true"
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL must be set}
+      APP_ENV: production
+      GIT_SHA: ${GIT_SHA:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app
+      - data
+    cpus: 2.0
+    mem_limit: 2g
+    mem_reservation: 256m
+    pids_limit: 256
+    command:
+      - python
+      - -m
+      - app.scheduler_worker
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - test -f /tmp/wishkr-scheduler-worker.ready
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+
+networks:
+  app:
+    external: true
+    name: wishkr-app
+  data:
+    external: true
+    name: wishkr-data
+
+volumes:
+  pgdata:
+    name: wishkr_pgdata
+  redisdata:
+    name: wishkr_redisdata
+
+secrets:
+  postgres_password:
+    file: ${WISHKR_SECRETS_DIR:-/etc/wishkr/secrets}/postgres_password
+  redis_password:
+    file: ${WISHKR_SECRETS_DIR:-/etc/wishkr/secrets}/redis_password

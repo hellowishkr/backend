@@ -1,0 +1,29 @@
+# Wishkr production host AIDE noise controls.
+#
+# Exclude ephemeral session state and machine-generated caches. These paths do
+# not contain authoritative configuration and change during every check.
+!/run/user$
+!/run/user/.*
+!/var/lib/landscape/landscape-sysinfo\.cache$
+
+# Docker/containerd graph state and Trivy's downloaded vulnerability database
+# are large, mutable caches rather than authoritative configuration. Immutable
+# image digests plus pre-deployment Trivy reports cover these artifacts; AIDE
+# continues to monitor Docker's configuration and systemd policy under /etc.
+!/var/lib/docker$
+!/var/lib/docker/.*
+!/var/lib/containerd$
+!/var/lib/containerd/.*
+!/var/lib/trivy$
+!/var/lib/trivy/.*
+!/var/cache/wishkr-image-scans$
+!/var/cache/wishkr-image-scans/.*
+
+# aideinit writes these files while it is constructing the database, so they
+# cannot form a stable baseline. The scheduled AIDE report remains monitored.
+!/var/log/aide/aideinit\.(log|errors)$
+
+# These logs change continuously. Keep their identity and existing content
+# protected while allowing legitimate append-only growth.
+/var/log/audit/audit\.log$ f ActLog
+/var/log/sysstat/sa[0-9]+$ f ActLog

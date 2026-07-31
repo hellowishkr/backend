@@ -1,0 +1,71 @@
+#!/bin/sh
+set -eu
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Run this scanner wrapper as root" >&2
+    exit 1
+fi
+
+if [ "$#" -ne 1 ]; then
+    echo "Usage: wishkr-scan-image IMAGE[:TAG|@DIGEST]" >&2
+    exit 2
+fi
+
+image="$1"
+case "${image}" in
+    -*)
+        echo "Image reference cannot begin with '-'" >&2
+        exit 2
+        ;;
+esac
+
+docker image inspect "${image}" >/dev/null
+
+SCAN_USER="trivy-scan"
+SCAN_CACHE="/var/lib/trivy"
+SCAN_DIR="/var/cache/wishkr-image-scans"
+REPORT_DIR="/var/log/wishkr-trivy"
+
+install -d -o "${SCAN_USER}" -g "${SCAN_USER}" -m 0750 "${SCAN_CACHE}"
+install -d -o root -g "${SCAN_USER}" -m 0750 "${SCAN_DIR}"
+install -d -o root -g adm -m 0750 "${REPORT_DIR}"
+
+archive="$(
+    mktemp --tmpdir="${SCAN_DIR}" wishkr-image.XXXXXX.tar
+)"
+timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+report="${REPORT_DIR}/scan-${timestamp}.log"
+
+cleanup() {
+    rm -f "${archive}"
+}
+trap cleanup EXIT HUP INT TERM
+
+docker image save --output "${archive}" "${image}"
+chown "${SCAN_USER}:${SCAN_USER}" "${archive}"
+chmod 0640 "${archive}"
+
+# Do not inherit an administrator home as the current directory. Trivy checks
+# its working directory for an optional trivy.yaml configuration file.
+cd "${SCAN_CACHE}"
+
+set +e
+runuser -u "${SCAN_USER}" -- \
+    env HOME="${SCAN_CACHE}" \
+    trivy --cache-dir "${SCAN_CACHE}" image \
+        --input "${archive}" \
+        --scanners vuln \
+        --severity HIGH,CRITICAL \
+        --ignore-unfixed \
+        --exit-code 1 \
+        >"${report}" 2>&1
+scan_status="$?"
+set -e
+
+chown root:adm "${report}"
+chmod 0640 "${report}"
+
+cat "${report}"
+printf '\nTrivy report: %s\n' "${report}"
+
+exit "${scan_status}"

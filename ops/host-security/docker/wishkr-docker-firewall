@@ -1,0 +1,34 @@
+#!/bin/sh
+set -eu
+
+# Docker-published traffic is forwarded before UFW's INPUT rules. Own the
+# documented DOCKER-USER hook and reject all new container ingress arriving on
+# the public OVH interface. Established replies remain allowed so containers
+# can make outbound connections. WireGuard ingress is unaffected.
+PUBLIC_IF="enp3s0f0"
+
+if ! /usr/sbin/ip link show "${PUBLIC_IF}" >/dev/null 2>&1; then
+    echo "Public interface ${PUBLIC_IF} does not exist" >&2
+    exit 1
+fi
+
+apply_rules() {
+    firewall_tool="$1"
+
+    if ! "${firewall_tool}" -w -nL DOCKER-USER >/dev/null 2>&1; then
+        "${firewall_tool}" -w -N DOCKER-USER
+    fi
+
+    if ! "${firewall_tool}" -w -C FORWARD -j DOCKER-USER >/dev/null 2>&1; then
+        "${firewall_tool}" -w -I FORWARD 1 -j DOCKER-USER
+    fi
+
+    "${firewall_tool}" -w -F DOCKER-USER
+    "${firewall_tool}" -w -A DOCKER-USER \
+        -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+    "${firewall_tool}" -w -A DOCKER-USER -i "${PUBLIC_IF}" -j DROP
+    "${firewall_tool}" -w -A DOCKER-USER -j RETURN
+}
+
+apply_rules /usr/sbin/iptables
+apply_rules /usr/sbin/ip6tables

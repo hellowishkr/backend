@@ -1,0 +1,3 @@
+# Explicitly define the optional systemd environment variable so the service
+# starts without an "unset smartd_opts" warning.
+smartd_opts=""

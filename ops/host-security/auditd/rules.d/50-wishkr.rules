@@ -1,0 +1,42 @@
+# Authentication and account databases.
+-w /etc/passwd -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+-w /etc/security/opasswd -p wa -k identity
+
+# Privilege and remote-access policy.
+-w /etc/sudoers -p wa -k sudoers
+-w /etc/sudoers.d/ -p wa -k sudoers
+-w /etc/ssh/sshd_config -p wa -k sshd_config
+-w /etc/ssh/sshd_config.d/ -p wa -k sshd_config
+
+# Network security and audit policy.
+-w /etc/wireguard/ -p wa -k wireguard_config
+-w /etc/ufw/ -p wa -k firewall_config
+-w /etc/fail2ban/ -p wa -k fail2ban_config
+-w /etc/audit/ -p wa -k audit_config
+
+# Service and scheduled-task definitions.
+-w /etc/systemd/system/ -p wa -k systemd_config
+-w /etc/crontab -p wa -k cron_config
+-w /etc/cron.d/ -p wa -k cron_config
+
+# Security-sensitive command execution.
+-w /usr/bin/sudo -p x -k privileged_command
+-w /usr/bin/su -p x -k privileged_command
+-w /usr/bin/passwd -p x -k privileged_command
+-w /usr/sbin/useradd -p x -k account_command
+-w /usr/sbin/usermod -p x -k account_command
+-w /usr/sbin/userdel -p x -k account_command
+
+# Administrative kernel, mount, clock, and hostname changes. Filtering on a
+# real login UID avoids routine daemon activity while retaining sudo activity.
+-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -F auid>=1000 -F auid!=unset -k kernel_module
+-a always,exit -F arch=b64 -S mount,umount2 -F auid>=1000 -F auid!=unset -k mounts
+-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -F auid>=1000 -F auid!=unset -k time_change
+-a always,exit -F arch=b64 -S sethostname,setdomainname -F auid>=1000 -F auid!=unset -k host_identity
+
+# Keep the rules enabled but mutable during the migration. Switch to -e 2 only
+# after the production policy is stable because immutable rules require reboot.
+-e 1

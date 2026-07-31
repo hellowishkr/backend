@@ -1,0 +1,14 @@
+[Unit]
+Description=Wishkr Docker public-ingress firewall
+Documentation=https://docs.docker.com/engine/network/firewall-iptables/
+Requires=docker.service
+After=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/wishkr-docker-firewall
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+event="${1:-Unknown}"
+md_device="${2:-Unknown}"
+component="${3:-None}"
+
+exec /usr/bin/logger \
+  --priority daemon.crit \
+  --tag mdadm-monitor \
+  -- \
+  "event=${event} md_device=${md_device} component=${component}"

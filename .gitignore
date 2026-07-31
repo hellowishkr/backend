@@ -1,4 +1,41 @@
+# Environment files (including .env.ovh and production variants)
 .env*
+
+# Local mirrors of server-side secrets (/etc/wishkr/secrets on the host)
+/etc/wishkr/secrets/
+/wishkr/secrets/
+/.secrets/
+/secrets/
+
+# SSH and WireGuard private keys/configurations (public *.pub keys remain allowed)
+**/id_rsa
+**/id_dsa
+**/id_ecdsa
+**/id_ed25519
+**/ssh_host_*_key
+**/wireguard/privatekey
+**/wireguard/*.conf
+**/wg-private.key
+**/wg*.conf
+
+# API credentials, passwords, recovery codes, and certificate private keys
+**/credentials*.json
+**/service-account*.json
+**/service_account*.json
+**/api-token*
+**/api_token*
+**/passwords.*
+**/recovery-codes*
+**/recovery_codes*
+**/privkey*.pem
+**/*-private.pem
+**/*_private.pem
+**/*.p8
+**/*.pk8
+**/*.p12
+**/*.pfx
+**/*.key
+
 __pycache__/
 *.pyc
 .venv/

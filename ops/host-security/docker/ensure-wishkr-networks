@@ -1,0 +1,39 @@
+#!/bin/sh
+set -eu
+
+create_network() {
+    network_name="$1"
+    subnet="$2"
+    bridge_name="$3"
+    internal_flag="$4"
+
+    if docker network inspect "${network_name}" >/dev/null 2>&1; then
+        return
+    fi
+
+    if [ "${internal_flag}" = "yes" ]; then
+        docker network create \
+            --driver bridge \
+            --internal \
+            --subnet "${subnet}" \
+            --opt "com.docker.network.bridge.name=${bridge_name}" \
+            --label "com.wishkr.environment=production" \
+            --label "com.wishkr.purpose=data-only" \
+            "${network_name}" >/dev/null
+    else
+        docker network create \
+            --driver bridge \
+            --subnet "${subnet}" \
+            --opt "com.docker.network.bridge.name=${bridge_name}" \
+            --label "com.wishkr.environment=production" \
+            --label "com.wishkr.purpose=application-egress" \
+            "${network_name}" >/dev/null
+    fi
+}
+
+# Web and scheduler containers use this network for controlled outbound access.
+create_network wishkr-app 172.28.10.0/24 br-wishkr-app no
+
+# PostgreSQL and Redis attach only to this internal, non-routed network.
+# Backend/scheduler containers attach to both networks when they need data.
+create_network wishkr-data 172.28.20.0/24 br-wishkr-data yes

@@ -1,0 +1,17 @@
+CONFIG="/etc/aide/aide.conf"
+CRON_DAILY_RUN=yes
+
+# The systemd service records output in journald. Do not attempt e-mail
+# delivery; off-host alerting will consume the journal in the observability
+# stage.
+QUIETREPORTS=yes
+SILENTREPORTS=yes
+
+COMMAND=check
+COPYNEWDB=no
+FILTERUPDATES=no
+FILTERINSTALLATIONS=no
+TRUNCATEDETAILS=no
+LINES=1000
+AIDEARGS=""
+CRONEXITHOOK=""

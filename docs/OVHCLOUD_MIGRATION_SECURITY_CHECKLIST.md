@@ -661,38 +661,113 @@ Completion evidence:
 
 ### 9. Configure Nginx, TLS, and Cloudflare
 
-**Status:** `[ ]` Not started
+**Status:** `[~]` Staging complete — DNS cutover and live Cloudflare request
+validation are intentionally deferred to Items 13–14
 
-- [ ] Install and harden Nginx.
-- [ ] Configure TLS 1.2 and TLS 1.3.
+- [x] Install and harden Nginx.
+- [x] Configure TLS 1.2 and TLS 1.3.
 - [ ] Proxy `api.wishkr.com` through Cloudflare.
-- [ ] Enable Cloudflare Full (strict) mode.
-- [ ] Configure Authenticated Origin Pulls.
-- [ ] Trust forwarded client IPs only from current Cloudflare ranges.
-- [ ] Disable caching for API and webhook routes.
-- [ ] Configure safe request-body and timeout limits.
-- [ ] Disable unnecessary server-version disclosure.
-- [ ] Add appropriate security headers.
-- [ ] Add endpoint-specific rate limits.
+- [x] Stage Cloudflare Full (strict) for `api.wishkr.com` with a hostname
+  configuration rule.
+- [x] Configure Authenticated Origin Pulls globally and require a valid
+  Cloudflare client certificate for non-VPN origin requests.
+- [x] Trust forwarded client IPs only from current Cloudflare ranges.
+- [x] Disable caching for API and webhook routes.
+- [x] Configure safe request-body and timeout limits.
+- [x] Disable unnecessary server-version disclosure.
+- [x] Add appropriate security headers.
+- [x] Add endpoint-specific rate limits.
 - [ ] Verify the WhatsApp webhook without Cloudflare browser challenges.
-- [ ] Verify that unauthorized direct-origin requests are rejected.
+- [x] Verify that unauthorized direct-origin requests are rejected.
+
+Item 9 staging evidence (2026-07-31):
+
+- The existing Hetzner origin was inspected read-only. It proxies
+  `api.wishkr.com` to loopback port 8000, but the zone record is currently
+  DNS-only to `5.223.77.195`; no DNS change was made.
+- Nginx `1.24.0-2ubuntu7.15` is enabled on OVH and proxies only to
+  `127.0.0.1:8000`. Nginx listens on public IPv4 port 443, but UFW and the
+  OVHcloud Edge Network Firewall admit origin HTTPS only from the 15 published
+  Cloudflare IPv4 ranges; WireGuard administration remains independently
+  available.
+- The origin ECDSA P-256 private key was generated on OVH with mode `0600`; it
+  never left `/etc/wishkr/tls`. The matching Cloudflare Origin CA certificate
+  for `api.wishkr.com` is installed and expires on 30 July 2029.
+- Cloudflare dashboard staging is complete: hostname-scoped Full (strict),
+  global Authenticated Origin Pulls, API cache bypass, a signed-webhook WAF
+  skip rule for incompatible rate-limit/managed/bot checks, and a method-safe
+  HTTP-to-HTTPS `308` redirect that preserves paths and query strings.
+- TLS 1.2 and 1.3 handshakes succeeded over WireGuard; TLS 1.0 and unknown SNI
+  were rejected. Public `148.113.6.76:443` timed out as intended.
+- `/health` returned 200 through Nginx, a synthetic invalid Meta signature
+  returned 403 from the application, and the admin-login limiter returned 429
+  after its configured burst.
+- A forged `CF-Connecting-IP` header sent over WireGuard was ignored. Access
+  logs retained the VPN peer address and omitted query strings and synthetic
+  sensitive canaries.
+- Final revalidation passed: `nginx -t`, active service state, VPN `/health`
+  HTTP 200, certificate expiry, loopback-only backend listener, and all 15 UFW
+  Cloudflare-origin rules. Production DNS still resolves to Hetzner
+  `5.223.77.195`; proxy activation, Cloudflare-to-origin mTLS, the `308`
+  redirect, and live WhatsApp webhook delivery must be verified during the
+  controlled cutover.
 
 ### 10. Secure and tune PostgreSQL and Redis
 
-**Status:** `[ ]` Not started
+**Status:** `[x]` Complete
 
-- [ ] Use strong, independent credentials.
-- [ ] Bind both services only to internal networks.
-- [ ] Configure PostgreSQL connection and memory limits for the 64 GB host.
-- [ ] Configure Redis memory, persistence, and eviction policy.
-- [ ] Enable useful PostgreSQL error and slow-query logging.
-- [ ] Restrict administrative database access.
-- [ ] Establish schema migration and rollback procedures.
-- [ ] Verify that application containers can connect without exposing public ports.
+- [x] Use strong, independent credentials.
+- [x] Bind both services only to internal networks.
+- [x] Configure PostgreSQL connection and memory limits for the 64 GB host.
+- [x] Configure Redis memory, persistence, and eviction policy.
+- [x] Enable useful PostgreSQL error and slow-query logging.
+- [x] Restrict administrative database access.
+- [x] Establish schema migration and rollback procedures.
+- [x] Verify that application containers can connect without exposing public ports.
+
+Completion evidence (31 July 2026):
+
+- PostgreSQL `16.14` and Redis `7.4.10` run as non-root, read-only containers
+  exclusively on the internal `wishkr-data` network. Neither publishes a host
+  port; only FastAPI remains published on host loopback.
+- Independent 256-bit PostgreSQL application, PostgreSQL administrator, and
+  Redis passwords were generated directly on OVH. Their files and the merged
+  production environment remain `root:root 0600`; no credential value was
+  printed, copied into the repository, or retained in deployment output.
+- All local and Docker-network PostgreSQL connections require SCRAM-SHA-256.
+  The immutable bootstrap identity is now `wishkr_admin` with a three-session
+  limit; the new `wishkr` application owner has no superuser, role-creation,
+  database-creation, replication, or row-security-bypass privilege and has a
+  90-session limit. A privilege probe confirmed it cannot create roles.
+- The application database and all 57 application relations are owned by
+  `wishkr`; zero non-system application relations remain owned by
+  `wishkr_admin`. Protected PostgreSQL system objects and the `plpgsql`
+  extension remain with the bootstrap administrator.
+- PostgreSQL is explicitly configured for at most 100 connections, 4 GiB
+  shared buffers, 12 GiB effective cache, 8 MiB work memory, bounded
+  maintenance/autovacuum memory, NVMe-aware I/O costs, 4 GiB maximum WAL,
+  60-second idle-transaction termination, lock/checkpoint/autovacuum logging,
+  and one-second slow-query logging with bind-parameter values suppressed.
+- Redis has a 1 GiB dataset ceiling inside its 2 GiB container limit,
+  `allkeys-lru` eviction, protected mode, RDB snapshots, AOF persistence with
+  `everysec` fsync, successful background-save/rewrite status, and healthy
+  authenticated queries.
+- The replacement PostgreSQL image passed disposable fresh-database and
+  idempotent role-migration tests, rejected passwordless authentication,
+  rejected application role creation, and passed the Trivy release gate with
+  zero vulnerabilities.
+- `/var/backups/wishkr/item10-prechange-20260731.dump` is a readable,
+  root-only custom-format recovery point. Alembic upgrades run before web
+  startup; rollback requires an explicit reviewed migration or restoration
+  decision and is never automatic.
+- Both data services and both application processes returned healthy after the
+  controlled restart. Runtime validation confirmed the singleton scheduler,
+  advisory lock, authenticated PostgreSQL/Redis queries, loopback API health,
+  private port exposure, valid Compose model, and Nginx `/health` HTTP 200.
 
 ### 11. Configure backups and disaster recovery
 
-**Status:** `[ ]` Not started
+**Status:** `[~]` In progress (2026-07-31)
 
 - [ ] Activate included OVHcloud backup storage, if available for this server.
 - [ ] Configure encrypted PostgreSQL backups.
@@ -817,6 +892,11 @@ outage. At least one check must run externally.
 | 2026-07-31 | 7 — Image security | Installed isolated Trivy `0.72.0` scanner and remediated all release-gating findings | Backend initially had 10 HIGH findings and official PostgreSQL `gosu` had 14 HIGH/1 CRITICAL; final backend, PostgreSQL derivative, and Redis scans contain zero HIGH/CRITICAL findings | Codex |
 | 2026-07-31 | 7 — Compatibility verification | Ran the complete backend suite against the exact final container image | `797 passed, 3 skipped`; non-root PostgreSQL/Redis live query test passed; all disposable Docker objects were removed | Codex |
 | 2026-07-31 | 7 — Integrity verification | Rebuilt and independently checked the post-Docker AIDE baseline | No differences across 103,881 entries; `debsums` clean; zero failed units, pending upgrades, or reboot requirement | Codex |
+| 2026-07-31 | 9 — Nginx and origin TLS | Installed and hardened the OVH reverse proxy and Cloudflare Origin CA certificate | Nginx configuration valid and active; TLS 1.2/1.3 only; VPN health returned 200; certificate valid through 30 July 2029 | Karan / Codex |
+| 2026-07-31 | 9 — Cloudflare staging | Staged strict TLS, Authenticated Origin Pulls, API cache bypass, signed-webhook exclusions, and method-preserving HTTPS redirect | Dashboard changes confirmed by account owner; origin HTTPS restricted to all 15 current Cloudflare IPv4 ranges; production DNS remains on Hetzner pending cutover | Karan / Codex |
+| 2026-07-31 | 10 — PostgreSQL security and tuning | Introduced SCRAM-only application/admin role separation and explicit resource, WAL, timeout, and privacy-aware slow-query settings | Disposable migration tests passed; `wishkr` is non-superuser owner of 57 application relations; PostgreSQL `16.14` healthy after controlled restart | Codex |
+| 2026-07-31 | 10 — Redis security and tuning | Applied bounded memory, LRU eviction, protected mode, RDB snapshots, and AOF `everysec` persistence | Redis `7.4.10` authenticated and healthy; persistence status clean; PostgreSQL/Redis publish no host ports | Codex |
+| 2026-07-31 | 10 — Recovery and runtime verification | Captured and verified a root-only pre-change PostgreSQL dump, then ran complete data-service and application validation | Database dump readable; all four containers healthy; singleton scheduler/advisory lock, authenticated queries, loopback API, Compose, Nginx, and exposure checks passed | Codex |
 
 ## Decisions and exceptions
 

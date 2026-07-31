@@ -55,7 +55,9 @@ fi
 echo "PASS: scheduler owns the PostgreSQL advisory lock"
 
 docker exec wishkr-db-1 pg_isready -U wishkr -d wishkr >/dev/null
-docker exec wishkr-db-1 psql -U wishkr -d wishkr -Atqc 'SELECT 1' | grep -qx '1'
+docker exec wishkr-db-1 sh -ec \
+  'PGPASSWORD="${POSTGRES_PASSWORD}" psql -U wishkr -d wishkr -Atqc "SELECT 1"' |
+  grep -qx '1'
 echo "PASS: PostgreSQL accepts authenticated application-database queries"
 
 docker exec wishkr-redis-1 sh -ec \

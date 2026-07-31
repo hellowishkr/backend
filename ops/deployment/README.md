@@ -19,6 +19,15 @@ PostgreSQL and Redis use the Docker-managed volumes `wishkr_pgdata` and
 tree. Application containers log to stdout/stderr using Docker's rotating
 `json-file` driver.
 
+PostgreSQL is explicitly sized against its 20 GiB container limit and the
+application's bounded connection pools. Its `wishkr` role owns the application
+database but is not a cluster superuser; the `wishkr_admin` role uses an
+independent root-owned 256-bit credential. Local and Docker-network database
+connections both require SCRAM-SHA-256 authentication. Redis has a 1 GiB
+dataset ceiling inside its 2 GiB
+container limit, uses `allkeys-lru` for cache/state degradation under extreme
+pressure, and retains both AOF (`everysec`) and RDB persistence.
+
 ## Required secret files
 
 All files below are created directly on the host, owned by `root:root`, and
@@ -26,9 +35,10 @@ mode `0600`:
 
 - `/etc/wishkr/secrets/production.env`
 - `/etc/wishkr/secrets/postgres_password`
+- `/etc/wishkr/secrets/postgres_admin_password`
 - `/etc/wishkr/secrets/redis_password`
 
-The two generated internal passwords are synchronized into the root-only
+The three generated internal passwords are synchronized into the root-only
 `production.env` file for Compose interpolation. Standalone Compose implements
 file-based secrets as bind mounts, which preserve the host's `root:root 0600`
 ownership and therefore cannot be read by the fixed non-root PostgreSQL and
@@ -49,6 +59,7 @@ GIFT_REFINEMENT_ENABLED=true
 POSTGRES_USER=wishkr
 POSTGRES_DB=wishkr
 POSTGRES_PASSWORD=<generated>
+POSTGRES_ADMIN_PASSWORD=<generated>
 REDIS_PASSWORD=<generated>
 DATABASE_URL=postgresql+asyncpg://wishkr:<generated>@db:5432/wishkr
 REDIS_URL=redis://:<generated>@redis:6379/0
@@ -88,7 +99,11 @@ before invoking Compose.
    ```
 
 7. Run `validate-runtime.sh`.
-8. Stream `validate-r2.py` into the running backend container. It creates and
+8. Run `ops/database/apply-postgres-role-policy.sh`, then
+   `ops/database/validate-data-services.sh` as root. The role-policy script is
+   required once for an existing PostgreSQL volume; new volumes receive the
+   same policy automatically during initialization.
+9. Stream `validate-r2.py` into the running backend container. It creates and
    deletes one random canary object and fails if unrelated buckets are visible.
 
 The web process always sets `RUN_SCHEDULER=false`. Only

@@ -27,9 +27,10 @@ create_secret() {
 }
 
 create_secret "${secrets_dir}/postgres_password"
+create_secret "${secrets_dir}/postgres_admin_password"
 create_secret "${secrets_dir}/redis_password"
 
-for secret_file in postgres_password redis_password; do
+for secret_file in postgres_password postgres_admin_password redis_password; do
   mode=$(stat -c '%a' "${secrets_dir}/${secret_file}")
   owner=$(stat -c '%U:%G' "${secrets_dir}/${secret_file}")
   if [[ ${mode} != "600" || ${owner} != "root:root" ]]; then

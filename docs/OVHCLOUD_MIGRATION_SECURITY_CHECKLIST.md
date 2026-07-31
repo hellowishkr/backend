@@ -831,9 +831,9 @@ Progress evidence (2026-07-31):
 
 ### 12. Configure monitoring and alerting
 
-**Status:** `[ ]` Not started
+**Status:** `[~]` In progress (2026-07-31)
 
-- [ ] Configure external uptime monitoring.
+- [x] Configure external uptime monitoring.
 - [ ] Alert on CPU, memory, load, filesystem, and inode exhaustion.
 - [ ] Alert on RAID degradation and NVMe health.
 - [ ] Alert on container restart loops and failed health checks.
@@ -847,6 +847,21 @@ Progress evidence (2026-07-31):
 
 An uptime monitor running only on this server cannot report a complete server
 outage. At least one check must run externally.
+
+Progress evidence (2026-07-31):
+
+- Sentry Uptime monitor `Wishkr Production API Downtime` checks
+  `GET https://api.wishkr.com/health` externally every minute in project
+  `wishkr-prod-1`, environment `production`, with a 10-second timeout.
+- Three consecutive failures create an issue; two consecutive successes
+  resolve it. The monitor is assigned to the Wishkr team and has the documented
+  Cloudflare, VPN, Nginx, container, backup, and disaster-recovery triage steps.
+- Connected email alert `Notify Karan Dumbre` is active, and successful monitor
+  check-ins and notification delivery were confirmed by the account owner.
+- An independent external request returned HTTP `200` with `{"status":"ok"}`
+  in approximately 197 ms. The current DNS target remains Hetzner
+  (`5.223.77.195`); the same hostname monitor will follow the Cloudflare-proxied
+  OVH origin during cutover.
 
 ### 13. Stage and validate the migration
 
@@ -948,6 +963,7 @@ outage. At least one check must run externally.
 | 2026-07-31 | 10 — Redis security and tuning | Applied bounded memory, LRU eviction, protected mode, RDB snapshots, and AOF `everysec` persistence | Redis `7.4.10` authenticated and healthy; persistence status clean; PostgreSQL/Redis publish no host ports | Codex |
 | 2026-07-31 | 10 — Recovery and runtime verification | Captured and verified a root-only pre-change PostgreSQL dump, then ran complete data-service and application validation | Database dump readable; all four containers healthy; singleton scheduler/advisory lock, authenticated queries, loopback API, Compose, Nginx, and exposure checks passed | Codex |
 | 2026-07-31 | 11 — Backups and disaster recovery | Implemented and verified encrypted dual-destination backups, hourly health monitoring, complete restore drills, and the off-host bare-metal recovery runbook | R2 and OVH FTPS copies verified; PostgreSQL/Redis restoration passed from both destinations; recovery controls stored in private GitHub commit `39b49c2` | Karan / Codex |
+| 2026-07-31 | 12 — External uptime | Created and verified a one-minute Sentry Uptime monitor and connected email alert for the public API health endpoint | Successful check-ins and notification delivery confirmed; independent external request returned HTTP `200` and `{"status":"ok"}` | Karan / Codex |
 
 ## Decisions and exceptions
 

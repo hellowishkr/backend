@@ -8,7 +8,7 @@
 | Field | Value |
 |---|---|
 | Status | In progress |
-| Current gate | Item 11 — Backups and disaster recovery; external UDP scan remains open in Item 5 |
+| Current gate | Item 12 — Monitoring and alerting; external UDP scan remains open in Item 5 |
 | Last updated | 2026-07-31 |
 | Target environment | OVHcloud Mumbai bare metal |
 | Source architecture | [PRODUCTION_3_SERVER_SETUP.md](./PRODUCTION_3_SERVER_SETUP.md) |
@@ -767,7 +767,7 @@ Completion evidence (31 July 2026):
 
 ### 11. Configure backups and disaster recovery
 
-**Status:** `[~]` In progress (2026-07-31)
+**Status:** `[x]` Completed and verified (2026-07-31)
 
 - [x] Activate and validate encrypted backups to the included OVHcloud Backup Storage (500 GB, hosted in BHS; OVH source `148.113.6.76/32`; explicit FTPS only).
 - [x] Configure encrypted PostgreSQL backups.
@@ -777,7 +777,7 @@ Completion evidence (31 July 2026):
 - [x] Monitor backup completion, size, and age.
 - [x] Perform and document a complete restoration test.
 - [x] Document bare-metal rebuild and recovery steps.
-- [ ] Store recovery documentation outside the OVH server.
+- [x] Store recovery documentation outside the OVH server.
 
 Progress evidence (2026-07-31):
 
@@ -825,9 +825,9 @@ Progress evidence (2026-07-31):
 - The total-loss procedure is documented in
   [`OVHCLOUD_BARE_METAL_RECOVERY_RUNBOOK.md`](./OVHCLOUD_BARE_METAL_RECOVERY_RUNBOOK.md),
   including R2-first recovery, OVH fallback, secure existing-password entry,
-  database/Redis restore order, validation, cutover, and abort criteria. It is
-  present in the local Git worktree but is not considered safely off-host
-  until committed and pushed to the private GitHub repository.
+  database/Redis restore order, validation, cutover, and abort criteria. The
+  runbook and non-secret backup tooling are stored outside OVHcloud in the
+  private GitHub repository at commit `39b49c2`.
 
 ### 12. Configure monitoring and alerting
 
@@ -947,6 +947,7 @@ outage. At least one check must run externally.
 | 2026-07-31 | 10 — PostgreSQL security and tuning | Introduced SCRAM-only application/admin role separation and explicit resource, WAL, timeout, and privacy-aware slow-query settings | Disposable migration tests passed; `wishkr` is non-superuser owner of 57 application relations; PostgreSQL `16.14` healthy after controlled restart | Codex |
 | 2026-07-31 | 10 — Redis security and tuning | Applied bounded memory, LRU eviction, protected mode, RDB snapshots, and AOF `everysec` persistence | Redis `7.4.10` authenticated and healthy; persistence status clean; PostgreSQL/Redis publish no host ports | Codex |
 | 2026-07-31 | 10 — Recovery and runtime verification | Captured and verified a root-only pre-change PostgreSQL dump, then ran complete data-service and application validation | Database dump readable; all four containers healthy; singleton scheduler/advisory lock, authenticated queries, loopback API, Compose, Nginx, and exposure checks passed | Codex |
+| 2026-07-31 | 11 — Backups and disaster recovery | Implemented and verified encrypted dual-destination backups, hourly health monitoring, complete restore drills, and the off-host bare-metal recovery runbook | R2 and OVH FTPS copies verified; PostgreSQL/Redis restoration passed from both destinations; recovery controls stored in private GitHub commit `39b49c2` | Karan / Codex |
 
 ## Decisions and exceptions
 

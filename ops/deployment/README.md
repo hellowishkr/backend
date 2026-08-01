@@ -119,3 +119,22 @@ provides an independent singleton guard.
 Point `/opt/wishkr/current` back to the previous reviewed release and repeat
 the Compose command. Database migrations require their own reviewed rollback
 decision; never downgrade the database automatically.
+
+## GitHub Actions deployment
+
+The production workflow uses the same immutable release boundary. Pushes run
+tests only; deployment requires an explicit manual confirmation. A dedicated
+WireGuard peer reaches the VPN-only SSH service, and a pinned host-key entry
+prevents trust-on-first-use in the runner.
+
+The runner uploads a Git archive to `/var/tmp` and invokes the root-owned
+`/usr/local/sbin/wishkr-deploy-release` helper. The helper accepts only the
+approved archive namespace, verifies its SHA-256 checksum and path layout,
+serializes deployments, renders Compose without printing the environment,
+builds and vulnerability-scans both local images, switches the immutable
+release symlink, and runs `validate-runtime.sh`.
+
+Provision a dedicated CI WireGuard/SSH identity and a narrowly scoped sudo rule
+for the installed helper. Never reuse the personal administrator peer or SSH
+key. Required GitHub `production` environment secrets are documented in
+[`../../deploy/README.md`](../../deploy/README.md).

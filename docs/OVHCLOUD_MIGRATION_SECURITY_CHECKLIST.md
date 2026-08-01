@@ -1075,7 +1075,7 @@ Progress evidence (2026-08-01):
 
 ### 14. Cut over production
 
-**Status:** `[~]` Gate D passed; observation in progress through 03:25:10 IST
+**Status:** `[x]` Completed and accepted (2026-08-01)
 
 - [x] Prepare the planning-only cutover, validation, and rollback runbook.
 - [x] Lower relevant DNS TTLs before the migration window.
@@ -1085,8 +1085,8 @@ Progress evidence (2026-08-01):
 - [x] Apply final database and object-storage synchronization.
 - [x] Change API DNS to the Cloudflare-proxied OVH origin.
 - [x] Verify TLS, API, catalog, scheduler, and WhatsApp flows.
-- [ ] Monitor errors, latency, queues, scheduled jobs, and system resources.
-- [ ] Roll back if a predefined rollback condition is met.
+- [x] Monitor errors, latency, queues, scheduled jobs, and system resources.
+- [x] Confirm no rollback condition remains active; rollback was not required.
 
 Planning evidence (2026-08-01):
 
@@ -1144,6 +1144,16 @@ Planning evidence (2026-08-01):
   errors, outbound sends, or database timeout terminations. The full runtime
   validator and Hetzner stopped/no-lock checks passed. The fresh observation
   window began at 02:25:10 IST and its complete baseline was healthy.
+- The account owner confirmed the observation complete and green. The final
+  audit covered 62,173 seconds from baseline. All four containers were healthy
+  with zero restarts/OOM events; the scheduler retained one idle lock holder
+  with no open transaction, completed 7,515 jobs, and recorded zero errors.
+  Its only send was the expected successful 09:00 IST founder report. No
+  observation-window message remained non-final. PostgreSQL, Redis, TLS,
+  Alloy, monitoring timers, backups, RAID, NVMe, disk/inodes, load, public
+  catalog/security checks, and the complete runtime validator passed. The
+  privacy-safe Nginx window contained 1,674 requests with zero 5xx, 429, 499,
+  or parse errors. No rollback condition remained active; Item 14 was accepted.
 
 ### 15. Stabilize and retire Hetzner
 
@@ -1251,8 +1261,9 @@ evidence and an approved ownership/escalation arrangement are available.
 | 2026-08-01 | 14 — TTL preparation | Selected the immediate maintenance window, announced the 30-minute write-freeze limit and rollback criteria, and lowered the existing DNS-only API TTL to 60 seconds | Authoritative DNS, `1.1.1.1`, and `8.8.8.8` returned the unchanged Hetzner target at TTL 60; DNS remained unproxied and health returned `200` | Karan / Codex |
 | 2026-08-01 | 14 — Write freeze and final synchronization | Stopped Hetzner scheduler/web, backed up OVH staging, streamed and restored the final frozen PostgreSQL archive, activated the validated database, reset staging Redis, and validated shared R2 | No source writer/lock; checksums, 54-table schema, Alembic, row/sequence fingerprints, role policy, datastore hardening, private API/catalog/cache, R2 canary, monitoring, and backup checks passed; DNS unchanged and OVH scheduler stopped | Karan / Codex |
 | 2026-08-01 | 14 — Cloudflare DNS cutover | Changed the existing API record to the reviewed OVH origin and enabled Cloudflare proxying | Authoritative and public DNS returned Cloudflare anycast; public TLS/health/catalog/signature/redirect and direct-origin controls passed; Nginx 5xx was zero; write freeze ended after about 13 minutes | Karan / Codex |
-| 2026-08-01 | 14 — Gate D live validation hold | Completed one controlled WhatsApp test, started one OVH scheduler, detected loss of its singleton lock, and stopped it safely | WhatsApp and initial runtime checks passed; zero unexpected sends; PostgreSQL's one-minute idle-in-transaction timeout terminated the uncommitted lock session; local regression fix passes `4/4` but is not deployed | Karan / Codex |
+| 2026-08-01 | 14 — Gate D live validation hold | Completed one controlled WhatsApp test, started one OVH scheduler, detected loss of its singleton lock, and stopped it safely | WhatsApp and initial runtime checks passed; zero unexpected sends; PostgreSQL's one-minute idle-in-transaction timeout terminated the uncommitted lock session; local regression fix passed `4/4` and was not yet deployed at the time of the hold | Karan / Codex |
 | 2026-08-01 | 14 — Gate D scheduler hotfix | Deployed a one-file transaction-finalization hotfix from the existing production base and repeated only scheduler validation | Secret and vulnerability scans passed; backend untouched; one healthy scheduler retained one idle lock with no open transaction beyond 149 seconds; seven jobs and complete runtime validation passed with zero errors or sends | Karan / Codex |
+| 2026-08-01 | 14 — Cutover acceptance | Completed the required observation and final point-in-time acceptance audit | 62,173-second audit span; healthy singleton runtime, datastores, TLS, monitoring, backups and hardware; 1,674 Nginx requests with zero 5xx/429/499; only expected founder report send; no rollback threshold active | Karan / Codex |
 
 ## Decisions and exceptions
 

@@ -8,40 +8,40 @@ bare-metal server. Work through
 one verified item at a time and update that living checklist after every
 completed control.
 
-The current work is **Item 14: 60-minute post-cutover observation**.
+Item 14 is **complete and accepted**. OVH is the production runtime.
 Item 13 is complete. Item 12 is complete, and its two unresolved OVHcloud
 provider-notification ownership controls remain intact in Item 16 at the
 account owner's direction.
 
 ## Immediate next action
 
-Gate D passed after a narrow scheduler-lock hotfix. The one controlled WhatsApp
-test passed and was not repeated. The running backend was not restarted. One
-OVH scheduler is healthy with seven jobs and retained lock `41051` through 149
-seconds with no open transaction, restart, error, send, or PostgreSQL timeout.
-The complete runtime validator passed. Hetzner web/scheduler remain stopped
-with no source lock.
+The final acceptance audit covered 62,173 seconds from the observation baseline
+and passed runtime, singleton lock, application logs, queues, PostgreSQL, Redis,
+Nginx, TLS, Alloy, monitoring timers, backups, RAID, NVMe, resources, public
+catalog, signature rejection, redirect, and direct-origin controls. The only
+scheduler send was the expected successful 09:00 IST founder report. No
+rollback threshold remained active.
 
-Continue the observation window that began at 02:25:10 IST through at least
-03:25:10 IST. Keep checking public health, errors, queues, Nginx, PostgreSQL,
-Redis, singleton lock/jobs, containers, system resources, TLS, Alloy, RAID, and
-NVMe. Stop the scheduler immediately on a singleton failure. At the end choose
-accept, hold, or rollback using the documented thresholds. Do not repeat the
-WhatsApp test or begin Item 15 before Item 14 is accepted.
+Do not retire, delete, repurpose, or wipe Hetzner yet. Item 15 is not authorized.
+Its first planning/preflight action should confirm rollback-host access and the
+retention/stability period; final SSH checks from the current client network
+timed out even though the source stopped/no-lock state was verified during Gate
+D and no duplicate source action was observed. Item 16's second-operator and
+provider-notification ownership controls also remain open.
 
 ## Repository state
 
 - Repository: `/Users/karan/Desktop/Wishkr/wishkr-backend`
 - Branch: `main`
-- Current committed HEAD: `d918b5c`
-  (`test: add scheduler lock acquisition and release tests with transaction
-  commit validation`).
-- `origin/main` remains `1fb2305`; local `main` is six commits ahead.
+- Current committed HEAD: `ac346e6`
+  (`Add monitoring scripts and alert rules for Wishkr containers, datastores,
+  and NVMe devices`).
+- `origin/main` is also `ac346e6`; local `main` is not ahead.
 - The monitoring implementation through Sentry, bounded log retention, Item
   12/16 checklist reorganization, Item 13 evidence, reminder test-fixture
-  correction, the Item 14 runbook, Gate A-D evidence, scheduler-lock fix, and
-  regression tests are committed locally but not pushed. Hotfix deployment and
-  observation-start evidence are currently uncommitted.
+  correction, Item 14 runbook and Gate A-D/hotfix/observation-start evidence,
+  scheduler-lock fix, and regression tests are committed and present on
+  `origin/main`. Final Item 14 acceptance evidence is currently uncommitted.
 - Run `git status --short`, `git diff --cached --check`, and the relevant script
   validations before committing.
 - Preserve unrelated user changes. Do not reset or discard the worktree.
@@ -389,9 +389,10 @@ not any live cutover action.
 
 ## Recommended continuation order
 
-1. Continue the active observation window through at least 03:25:10 IST.
-2. Keep exactly one OVH scheduler and lock; keep Hetzner web/scheduler stopped.
-3. At 60 minutes, apply the documented accept/hold/rollback thresholds and
-   update Item 14. Do not repeat the passed WhatsApp test.
+1. Keep OVH production monitoring active and retain Hetzner unchanged.
+2. Obtain explicit authorization before beginning Item 15 planning or making
+   any Hetzner change; first restore/confirm rollback-host administrative access.
+3. Complete the separate Item 16 notification-ownership work when a legitimate
+   second-operator arrangement becomes available.
 4. Complete the deferred OVHcloud notification ownership and escalation work
    under Item 16 when a legitimate second-operator arrangement is available.

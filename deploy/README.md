@@ -1,36 +1,50 @@
 # Wishkr Backend Deployment
 
-Production deploys now run through GitHub Actions in `.github/workflows/deploy-backend.yml`.
+OVH production uses the immutable single-host release procedure in
+[`../ops/deployment/README.md`](../ops/deployment/README.md). The GitHub
+workflow is `.github/workflows/deploy-backend.yml`.
 
-## CI/CD Flow
+## GitHub Actions behavior
 
-The workflow:
+- Pushes to `main` run tests but never deploy automatically.
+- Production deployment requires a manual workflow dispatch with the explicit
+  `DEPLOY_OVH_PRODUCTION` confirmation.
+- The runner connects through a dedicated WireGuard peer; public SSH must stay
+  closed.
+- SSH uses a pinned `known_hosts` entry rather than live `ssh-keyscan` trust.
+- A root-owned host helper validates the archive and checksum, builds and scans
+  images, activates an immutable release, and runs the runtime validator.
+- The workflow targets one OVH host and never contacts a Hetzner server.
 
-1. Triggers on push to `main` and `workflow_dispatch`.
-2. Runs backend tests before any deploy step.
-3. Rsyncs the standalone backend repository root to `/opt/wishkr/` on the web server and worker server separately.
-4. Leaves `.env` in place on each server and never syncs it.
-5. Deploys the web server first with `docker compose -f docker-compose.prod-web.yml up -d --build backend`.
-6. Verifies `http://127.0.0.1:8000/health` on the web host and `https://api.wishkr.com/health` externally.
-7. Deploys the worker server second with `docker compose -f docker-compose.prod-worker.yml up -d --build scheduler`.
-8. Never touches the DB server from CI.
-9. Never runs `docker compose down` in CI.
+### Required `production` environment secrets
 
-### Required GitHub Secrets
+- `OVH_SSH_KEY`
+- `OVH_HOST` — the OVH WireGuard address, not its public address
+- `OVH_DEPLOY_USER`
+- `OVH_SSH_KNOWN_HOSTS`
+- `OVH_WIREGUARD_CONFIG` — a dedicated CI peer, never a personal peer
 
-- `HETZNER_SSH_KEY`
-- `HETZNER_WEB_HOST`
-- `HETZNER_WORKER_HOST`
-- `HETZNER_DEPLOY_USER`
+Do not paste secret values into source control, workflow logs, tickets, or
+chat. The old `HETZNER_*` secrets must remain only until the new path passes a
+controlled deployment, then be deleted from the GitHub environment.
 
-### Server Roles
+## Host prerequisite
 
-- Web/API: `5.223.77.195`
-- Worker/Scheduler: `5.223.79.238`
-- DB: `5.223.61.116`
+Install the reviewed helper as a root-owned executable before enabling the
+workflow:
 
-The web container startup path runs Alembic as part of its startup command. The worker container must not run Alembic.
+```bash
+sudo install -o root -g root -m 0755 \
+  ops/deployment/deploy-release.sh \
+  /usr/local/sbin/wishkr-deploy-release
+```
 
-## Local Deployment Helpers
+The deployment identity must be a dedicated VPN/SSH identity with permission
+to run only the installed helper non-interactively. Do not reuse the personal
+administrator key or grant the CI identity general-purpose sudo.
 
-The scripts in this directory are still available for manual server setup and troubleshooting, but they are not the production rollout path.
+## Legacy three-server helpers
+
+`deploy-prod-web.sh` and `deploy-prod-worker.sh` are retained only for the
+temporary Hetzner rollback environment. They require an explicit host argument
+and contain no default address. They are not the OVH production rollout path.

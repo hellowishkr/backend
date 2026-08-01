@@ -17,8 +17,8 @@ records, database values, or secret-bearing commands.
 
 | Field | Value |
 |---|---|
-| Plan status | Approved through Gate D |
-| Execution status | Gate D revalidated after hotfix; 60-minute observation runs 02:25:10–03:25:10 IST |
+| Plan status | Executed and accepted |
+| Execution status | Item 14 complete; observation and final acceptance passed on 2026-08-01 |
 | Maintenance window | 2026-08-01, starting 01:26 IST |
 | Maximum write freeze | 30 minutes |
 | Source | Hetzner web/API, worker/scheduler, and PostgreSQL/Redis hosts |
@@ -408,8 +408,8 @@ Record only outcomes and non-sensitive identifiers.
 | External TLS/health/catalog/signature validation | TLS, health, catalog and unsigned-signature rejection pass |
 | WhatsApp controlled test result | Pass: one signed inbound, one successful reply, one durable `done` record, zero processing/rate-limit/backpressure errors |
 | Singleton scheduler/lock validation | Pass after hotfix: one healthy scheduler, seven MVP jobs, one idle lock holder with no open transaction through 149 seconds, zero errors/sends, full runtime validator pass |
-| 60-minute monitoring result | In progress from 02:25:10 through 03:25:10 IST; baseline passed |
-| Item 14 outcome | Gate D passed; acceptance pending completion of the observation window |
+| 60-minute monitoring result | Pass; operator observed through the required window, and final audit covered 62,173 seconds from the observation baseline |
+| Item 14 outcome | Accepted; OVH is production, Hetzner remains retained for Item 15 |
 
 Gate A evidence (2026-08-01): the account owner selected an immediate window
 starting at 01:26 IST and authorized TTL preparation. At 01:33 IST, Cloudflare
@@ -477,6 +477,22 @@ sends. The full runtime validator passed, while Hetzner web/scheduler remained
 stopped with no lock. The official 60-minute observation began at 02:25:10 IST;
 its baseline passed public health, containers, PostgreSQL, Redis, Nginx, TLS,
 Alloy, RAID, NVMe, queue, and aggregate payment/order safety checks.
+
+Item 14 acceptance evidence (2026-08-01): the account owner confirmed the
+observation complete and green. The final audit covered 62,173 seconds from the
+02:25:10 IST baseline, exceeding the required 60 minutes. All four containers
+were healthy with zero restarts or OOM events. The scheduler retained one idle
+advisory-lock holder with no open transaction, recorded zero errors, and
+completed 7,515 job runs. Its only WhatsApp send was the expected 09:00 IST
+daily founder report, which succeeded; there were no reminder or wishlist
+sends. No observation-window processed message remained non-final. PostgreSQL,
+Redis persistence, TLS, Alloy, five monitoring timers, backups, RAID, NVMe,
+filesystem/inodes, load, and public catalog/security checks passed. Across
+1,674 privacy-safe Nginx records there were zero 5xx, 429, or 499 responses and
+zero parse errors. The public API and catalog returned `200`, unsigned WhatsApp
+returned `403`, HTTP redirected with `308`, and direct-origin access remained
+blocked. The complete runtime validator passed again. No rollback threshold
+remained active, so Item 14 was accepted without rollback.
 
 Do not remove final dump/backup artifacts, the preserved destination staging
 database, or any source host during Item 14. Cleanup and retirement decisions

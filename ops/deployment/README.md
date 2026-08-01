@@ -141,3 +141,22 @@ Provision a dedicated CI WireGuard/SSH identity and a narrowly scoped sudo rule
 for the installed helper. Never reuse the personal administrator peer or SSH
 key. Required GitHub `production` environment secrets are documented in
 [`../../deploy/README.md`](../../deploy/README.md).
+
+## Manual maintenance workflows
+
+Two additional `workflow_dispatch` workflows reuse the dedicated VPN/SSH
+identity and the production concurrency lock:
+
+- `OVH Cleanup Stale Docker Containers` removes only stopped containers older
+  than seven days. It never prunes images, volumes, networks, build cache,
+  running services, or rollback artifacts.
+- `OVH Run Latest Database Migrations` requires the active release to match the
+  selected Git commit, creates and verifies a fresh encrypted backup, runs
+  `alembic upgrade head`, compares the database and release migration heads,
+  and validates runtime/public health. It does not upload migrations from a
+  release that is not already active.
+
+Both workflows require their explicit confirmation choice. The root-owned
+helpers are `/usr/local/sbin/wishkr-cleanup-docker` and
+`/usr/local/sbin/wishkr-run-migrations`; the CI sudo policy permits only these
+helpers and the immutable-release deployer.

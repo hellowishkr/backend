@@ -44,6 +44,20 @@ The deployment identity must be a dedicated VPN/SSH identity with permission
 to run only the installed helper non-interactively. Do not reuse the personal
 administrator key or grant the CI identity general-purpose sudo.
 
+## Manual maintenance
+
+GitHub Actions also exposes two manual-only workflows:
+
+- `OVH Cleanup Stale Docker Containers` with confirmation
+  `CLEANUP_OVH_DOCKER`.
+- `OVH Run Latest Database Migrations` with confirmation
+  `RUN_OVH_MIGRATIONS`.
+
+The cleanup workflow removes only stopped containers older than seven days.
+The migration workflow requires the selected commit to be the active OVH
+release and takes a fresh encrypted backup before running Alembic. Both share
+the production concurrency lock, so they cannot overlap a deployment.
+
 ## Legacy three-server helpers
 
 `deploy-prod-web.sh` and `deploy-prod-worker.sh` are retained only for the

@@ -1,3 +1,5 @@
 # The GitHub deployment identity has no general sudo access. The root-owned
 # helper validates every argument, archive path, checksum, and release ID.
 wishkr-deploy ALL=(root) NOPASSWD: /usr/local/sbin/wishkr-deploy-release *
+wishkr-deploy ALL=(root) NOPASSWD: /usr/local/sbin/wishkr-cleanup-docker
+wishkr-deploy ALL=(root) NOPASSWD: /usr/local/sbin/wishkr-run-migrations *

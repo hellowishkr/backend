@@ -1,0 +1,96 @@
+name: OVH Cleanup Stale Docker Containers
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Select CLEANUP_OVH_DOCKER to remove stopped containers older than seven days
+        required: true
+        default: DO_NOT_CLEANUP
+        type: choice
+        options:
+          - DO_NOT_CLEANUP
+          - CLEANUP_OVH_DOCKER
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-backend-production
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Cleanup stopped OVH containers
+    if: inputs.confirmation == 'CLEANUP_OVH_DOCKER'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      SSH_KEY: ${{ secrets.OVH_SSH_KEY }}
+      OVH_HOST: ${{ secrets.OVH_HOST }}
+      DEPLOY_USER: ${{ secrets.OVH_DEPLOY_USER }}
+      SSH_KNOWN_HOSTS: ${{ secrets.OVH_SSH_KNOWN_HOSTS }}
+      WIREGUARD_CONFIG: ${{ secrets.OVH_WIREGUARD_CONFIG }}
+
+    steps:
+      - name: Validate inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "${SSH_KEY:-}" ] || missing+=(OVH_SSH_KEY)
+          [ -n "${OVH_HOST:-}" ] || missing+=(OVH_HOST)
+          [ -n "${DEPLOY_USER:-}" ] || missing+=(OVH_DEPLOY_USER)
+          [ -n "${SSH_KNOWN_HOSTS:-}" ] || missing+=(OVH_SSH_KNOWN_HOSTS)
+          [ -n "${WIREGUARD_CONFIG:-}" ] || missing+=(OVH_WIREGUARD_CONFIG)
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "ERROR: required production secrets are missing: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Connect dedicated deployment VPN peer
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y wireguard-tools
+          wg_config="$RUNNER_TEMP/wishkr-ci.conf"
+          printf '%s\n' "$WIREGUARD_CONFIG" > "$wg_config"
+          chmod 600 "$wg_config"
+          sudo wg-quick up "$wg_config"
+
+      - name: Configure pinned SSH identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$SSH_KEY" > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+          ssh-keygen -y -f "$HOME/.ssh/deploy_key" >/dev/null
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+          ssh-keygen -F "$OVH_HOST" -f "$HOME/.ssh/known_hosts" >/dev/null
+
+      - name: Cleanup stale stopped containers
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/deploy_key" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=3 \
+            "$DEPLOY_USER@$OVH_HOST" \
+            'sudo -n /usr/local/sbin/wishkr-cleanup-docker'
+
+      - name: Verify public health
+        run: curl --fail --silent --show-error https://api.wishkr.com/health >/dev/null
+
+      - name: Cleanup deployment credentials and VPN
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          sudo wg-quick down "$RUNNER_TEMP/wishkr-ci.conf" 2>/dev/null || true
+          rm -f "$HOME/.ssh/deploy_key" "$RUNNER_TEMP/wishkr-ci.conf"

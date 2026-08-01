@@ -25,6 +25,8 @@ repo_root=$(cd -- "${script_dir}/../.." && pwd)
 [[ -f ${public_key_file} && ! -L ${public_key_file} ]] \
   || fail "SSH public key file is invalid"
 [[ -f ${script_dir}/deploy-release.sh ]] || fail "deployment helper is missing"
+[[ -f ${script_dir}/cleanup-docker.sh ]] || fail "Docker cleanup helper is missing"
+[[ -f ${script_dir}/run-migrations.sh ]] || fail "migration helper is missing"
 [[ -f ${script_dir}/90-wishkr-deploy.sudoers ]] || fail "sudoers policy is missing"
 [[ -f ${repo_root}/ops/host-security/ssh/10-wishkr-hardening.conf ]] \
   || fail "SSH policy is missing"
@@ -59,6 +61,10 @@ rm -f "${authorized_keys}"
 
 install -o root -g root -m 0755 \
   "${script_dir}/deploy-release.sh" "${HELPER_PATH}"
+install -o root -g root -m 0755 \
+  "${script_dir}/cleanup-docker.sh" /usr/local/sbin/wishkr-cleanup-docker
+install -o root -g root -m 0755 \
+  "${script_dir}/run-migrations.sh" /usr/local/sbin/wishkr-run-migrations
 install -o root -g root -m 0440 \
   "${script_dir}/90-wishkr-deploy.sudoers" "${SUDOERS_PATH}"
 install -o root -g root -m 0644 \

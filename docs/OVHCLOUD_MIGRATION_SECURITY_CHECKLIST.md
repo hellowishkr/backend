@@ -1157,16 +1157,46 @@ Planning evidence (2026-08-01):
 
 ### 15. Stabilize and retire Hetzner
 
-**Status:** `[ ]` Not started
+**Status:** `[~]` In progress (2026-08-01)
 
 - [ ] Keep Hetzner available as a rollback target during the stability period.
-- [ ] Confirm that no production DNS or integrations still target Hetzner.
-- [ ] Confirm successful backups and a post-cutover restoration test.
+- [x] Confirm that no production DNS or integrations still target Hetzner.
+- [x] Confirm successful backups and a post-cutover restoration test.
 - [ ] Rotate credentials that were present on the old servers.
 - [ ] Export required logs and audit evidence.
 - [ ] Securely destroy remaining sensitive data.
 - [ ] Cancel Hetzner resources only after written approval.
 - [ ] Update architecture, operations, and incident-response documentation.
+
+Item 15 preflight retained all three Hetzner servers. PostgreSQL and Redis were
+verified healthy on the controlled rollback data host before it was shut down;
+the DB, Web, and Worker hosts are now all powered off to prevent duplicate
+traffic or scheduler execution. Hetzner contains seven available daily
+DB-server backups and no snapshots. Delete and rebuild protection are enabled
+on all three powered-off servers.
+
+The account owner selected a seven-day rollback stability period from the
+August 1 cutover through August 8, 2026. Do not delete, rebuild, repurpose,
+wipe, or cancel any Hetzner resource before the end-date review. Credential
+rotation that would invalidate the preserved rollback environment is deferred
+until that review; cancellation still requires separate written approval.
+
+Production DNS and the Meta, Razorpay, Vercel, Sentry uptime, and Grafana
+integrations were confirmed against the OVH-backed production hostname with no
+Hetzner target. GitHub Actions was migrated from the split Hetzner workflow to
+the single-host OVH immutable-release workflow through a dedicated
+WireGuard/SSH identity and restricted root-owned helpers. Its controlled live
+deployment passed tests, image scans, runtime validation, and public health.
+The legacy `HETZNER_*` production-environment secrets were then deleted; all
+required `OVH_*` secret names remain present without exposing their values.
+
+The post-cutover recovery drill restored the latest backup independently from
+R2 and OVH Backup Storage. Both repositories passed full data checks; each
+restore recovered 539 files/directories with valid artifact checksums,
+validated Redis in a network-isolated disposable container, and restored 54
+PostgreSQL tables into a uniquely named scratch database. Final cleanup found
+no scratch database or restore directory. The complete production runtime,
+backup freshness, systemd state, and public health remained healthy.
 
 ### 16. Complete OVHcloud notification ownership and escalation
 
@@ -1264,6 +1294,9 @@ evidence and an approved ownership/escalation arrangement are available.
 | 2026-08-01 | 14 — Gate D live validation hold | Completed one controlled WhatsApp test, started one OVH scheduler, detected loss of its singleton lock, and stopped it safely | WhatsApp and initial runtime checks passed; zero unexpected sends; PostgreSQL's one-minute idle-in-transaction timeout terminated the uncommitted lock session; local regression fix passed `4/4` and was not yet deployed at the time of the hold | Karan / Codex |
 | 2026-08-01 | 14 — Gate D scheduler hotfix | Deployed a one-file transaction-finalization hotfix from the existing production base and repeated only scheduler validation | Secret and vulnerability scans passed; backend untouched; one healthy scheduler retained one idle lock with no open transaction beyond 149 seconds; seven jobs and complete runtime validation passed with zero errors or sends | Karan / Codex |
 | 2026-08-01 | 14 — Cutover acceptance | Completed the required observation and final point-in-time acceptance audit | 62,173-second audit span; healthy singleton runtime, datastores, TLS, monitoring, backups and hardware; 1,674 Nginx requests with zero 5xx/429/499; only expected founder report send; no rollback threshold active | Karan / Codex |
+| 2026-08-01 | 15 — Production integration retirement | Replaced the legacy split-host GitHub deployment with a manual-gated, VPN-only OVH immutable-release workflow and removed the unused Hetzner GitHub secrets after a successful controlled deployment | Tests, pinned SSH, dedicated WireGuard peer, image scans, health wait, runtime validator, and public health passed; Meta, Razorpay, Vercel, Sentry uptime, Grafana, and DNS were confirmed on the production hostname | Karan / Codex |
+| 2026-08-01 | 15 — Post-cutover recovery | Restored and validated the latest encrypted production backup independently from R2 and OVH Backup Storage | Both repository checks passed; each restored 539 files/directories, valid checksums, isolated Redis data, and 54 PostgreSQL tables; scratch data was removed and production remained healthy | Codex |
+| 2026-08-01 | 15 — Rollback stability period | Retained all three powered-off Hetzner servers with deletion/rebuild protection for seven days | Stability period selected through August 8, 2026; no wipe, cancellation, repurpose, or rollback-breaking credential rotation before end-date review | Karan / Codex |
 
 ## Decisions and exceptions
 

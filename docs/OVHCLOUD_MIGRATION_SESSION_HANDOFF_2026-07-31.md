@@ -12,6 +12,8 @@ Item 14 is **complete and accepted**. OVH is the production runtime.
 Item 13 is complete. Item 12 is complete, and its two unresolved OVHcloud
 provider-notification ownership controls remain intact in Item 16 at the
 account owner's direction.
+Item 15 is in progress: production integrations no longer target Hetzner and
+the post-cutover restore drill has passed from both encrypted destinations.
 
 ## Immediate next action
 
@@ -22,26 +24,27 @@ catalog, signature rejection, redirect, and direct-origin controls. The only
 scheduler send was the expected successful 09:00 IST founder report. No
 rollback threshold remained active.
 
-Do not retire, delete, repurpose, or wipe Hetzner yet. Item 15 is not authorized.
-Its first planning/preflight action should confirm rollback-host access and the
-retention/stability period; final SSH checks from the current client network
-timed out even though the source stopped/no-lock state was verified during Gate
-D and no duplicate source action was observed. Item 16's second-operator and
+Do not retire, delete, repurpose, or wipe Hetzner yet. The Hetzner DB, Web, and
+Worker hosts are all powered off with deletion and rebuild protection enabled;
+PostgreSQL and Redis were healthy before the DB shutdown. The immediate Item 15
+action is the August 8, 2026 end-of-stability review for the selected seven-day
+rollback period. Do not perform rollback-breaking credential rotation, secure
+destruction, repurpose, or cancellation before that review. Evidence export,
+credential rotation, secure destruction, cancellation with written approval,
+and final documentation remain pending. Item 16's second-operator and
 provider-notification ownership controls also remain open.
 
 ## Repository state
 
 - Repository: `/Users/karan/Desktop/Wishkr/wishkr-backend`
 - Branch: `main`
-- Current committed HEAD: `ac346e6`
-  (`Add monitoring scripts and alert rules for Wishkr containers, datastores,
-  and NVMe devices`).
-- `origin/main` is also `ac346e6`; local `main` is not ahead.
-- The monitoring implementation through Sentry, bounded log retention, Item
-  12/16 checklist reorganization, Item 13 evidence, reminder test-fixture
-  correction, Item 14 runbook and Gate A-D/hotfix/observation-start evidence,
-  scheduler-lock fix, and regression tests are committed and present on
-  `origin/main`. Final Item 14 acceptance evidence is currently uncommitted.
+- Current committed HEAD: `40af111`
+  (`feat: add OVH maintenance workflows`).
+- `origin/main` is also `40af111`; local `main` is not ahead before this
+  documentation update.
+- The complete Item 14 cutover record, scheduler-lock fix, OVH deployment and
+  maintenance workflows, dedicated CI access controls, and associated
+  regression/validation work are committed and present on `origin/main`.
 - Run `git status --short`, `git diff --cached --check`, and the relevant script
   validations before committing.
 - Preserve unrelated user changes. Do not reset or discard the worktree.

@@ -159,6 +159,11 @@ async def _try_acquire_scheduler_lock():
         await conn.scalar(text("SELECT pg_try_advisory_lock(:key)"), {"key": _SCHEDULER_LOCK_KEY})
     )
     if got_lock:
+        # SQLAlchemy autobegins a transaction for the SELECT above.  The lock
+        # is session-scoped, so committing keeps it held while preventing the
+        # connection from sitting "idle in transaction" until PostgreSQL's
+        # hardened timeout terminates the session and silently drops the lock.
+        await conn.commit()
         logger.info(
             "Scheduler advisory lock acquired lock_key=%s worker_pid=%s pg_backend_pid=%s",
             _SCHEDULER_LOCK_KEY,
@@ -198,6 +203,7 @@ async def _release_scheduler_lock(conn) -> None:
             return
 
         await conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": _SCHEDULER_LOCK_KEY})
+        await conn.commit()
         logger.info(
             "Scheduler advisory lock released lock_key=%s worker_pid=%s",
             _SCHEDULER_LOCK_KEY,

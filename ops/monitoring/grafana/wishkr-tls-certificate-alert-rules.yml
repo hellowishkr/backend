@@ -1,0 +1,87 @@
+groups:
+  - name: wishkr-tls-certificate
+    interval: 1m
+    rules:
+      - alert: WishkrTLSCertificateMetricsMissing
+        expr: absent_over_time(wishkr_tls_certificate_last_collection_timestamp_seconds{instance="wishkr-prod-mum-01"}[18h]) == 1
+        for: 10m
+        keep_firing_for: 30m
+        labels:
+          severity: critical
+          component: tls
+          team: wishkr-operations
+        annotations:
+          summary: "Origin certificate metrics are missing from {{ $labels.instance }}"
+          description: "Grafana has received no origin-certificate collection timestamp for 18 hours. Check Alloy and the wishkr-tls-certificate-metrics timer."
+
+      - alert: WishkrTLSCertificateMetricsStale
+        expr: (time() - wishkr_tls_certificate_last_collection_timestamp_seconds{instance="wishkr-prod-mum-01"}) > 64800
+        for: 10m
+        keep_firing_for: 30m
+        labels:
+          severity: critical
+          component: tls
+          team: wishkr-operations
+        annotations:
+          summary: "Origin certificate metrics are stale on {{ $labels.instance }}"
+          description: "The last origin-certificate export is more than 18 hours old. Check the exporter service, timer, certificate path, and Alloy textfile collector."
+
+      - alert: WishkrTLSCertificateCollectionFailed
+        expr: wishkr_tls_certificate_collection_success{instance="wishkr-prod-mum-01",certificate="api-origin"} < 1
+        for: 10m
+        keep_firing_for: 30m
+        labels:
+          severity: critical
+          component: tls
+          team: wishkr-operations
+        annotations:
+          summary: "Origin certificate collection failed on {{ $labels.instance }}"
+          description: "The public certificate could not be read or its validity dates could not be parsed. Check the root-only exporter and public certificate file."
+
+      - alert: WishkrTLSCertificateInvalid
+        expr: wishkr_tls_certificate_valid_now{instance="wishkr-prod-mum-01",certificate="api-origin"} < 1
+        for: 1m
+        keep_firing_for: 30m
+        labels:
+          severity: critical
+          component: tls
+          team: wishkr-operations
+        annotations:
+          summary: "Origin certificate is not currently valid on {{ $labels.instance }}"
+          description: "The current time is outside the installed origin certificate's validity window. Check the certificate dates, system time, and replacement procedure immediately."
+
+      - alert: WishkrTLSCertificateHostnameMismatch
+        expr: wishkr_tls_certificate_hostname_matches{instance="wishkr-prod-mum-01",certificate="api-origin"} < 1
+        for: 1m
+        keep_firing_for: 30m
+        labels:
+          severity: critical
+          component: tls
+          team: wishkr-operations
+        annotations:
+          summary: "Origin certificate hostname mismatch on {{ $labels.instance }}"
+          description: "The installed origin certificate does not match api.wishkr.com. Restore the reviewed certificate before reloading Nginx or changing DNS."
+
+      - alert: WishkrTLSCertificateExpiresSoon
+        expr: wishkr_tls_certificate_seconds_until_expiry{instance="wishkr-prod-mum-01",certificate="api-origin"} <= 2592000 and wishkr_tls_certificate_seconds_until_expiry{instance="wishkr-prod-mum-01",certificate="api-origin"} > 1209600
+        for: 1h
+        keep_firing_for: 30m
+        labels:
+          severity: warning
+          component: tls
+          team: wishkr-operations
+        annotations:
+          summary: "Origin certificate expires within 30 days on {{ $labels.instance }}"
+          description: "Create and validate a replacement Cloudflare Origin CA certificate, install it atomically, test Nginx, and confirm the expiry alert clears."
+
+      - alert: WishkrTLSCertificateExpiryCritical
+        expr: wishkr_tls_certificate_seconds_until_expiry{instance="wishkr-prod-mum-01",certificate="api-origin"} <= 1209600
+        for: 10m
+        keep_firing_for: 30m
+        labels:
+          severity: critical
+          component: tls
+          team: wishkr-operations
+        annotations:
+          summary: "Origin certificate expires within 14 days on {{ $labels.instance }}"
+          description: "Replace the Cloudflare Origin CA certificate immediately. Validate hostname, dates, key match, Nginx configuration, and Full (strict) connectivity before expiry."

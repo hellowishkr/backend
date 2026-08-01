@@ -1,0 +1,13 @@
+[Unit]
+Description=Collect Wishkr origin TLS certificate metrics every six hours
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=6h
+RandomizedDelaySec=5min
+AccuracySec=1min
+Persistent=true
+Unit=wishkr-tls-certificate-metrics.service
+
+[Install]
+WantedBy=timers.target

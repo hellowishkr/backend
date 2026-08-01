@@ -19,6 +19,10 @@ PostgreSQL and Redis use the Docker-managed volumes `wishkr_pgdata` and
 tree. Application containers log to stdout/stderr using Docker's rotating
 `json-file` driver.
 
+The complete important-log scope and bounded local-retention policy are
+maintained in [`../logging`](../logging/). Grafana Alloy is metrics-only and
+must not receive `adm`, `systemd-journal`, or `docker` group membership.
+
 PostgreSQL is explicitly sized against its 20 GiB container limit and the
 application's bounded connection pools. Its `wishkr` role owns the application
 database but is not a cluster superuser; the `wishkr_admin` role uses an

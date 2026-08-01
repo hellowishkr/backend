@@ -1,0 +1,111 @@
+groups:
+  - name: wishkr-containers
+    interval: 1m
+    rules:
+      - alert: WishkrContainerMetricsMissing
+        expr: absent_over_time(wishkr_container_last_collection_timestamp_seconds{instance="wishkr-prod-mum-01"}[5m]) == 1
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: containers
+          team: wishkr-operations
+        annotations:
+          summary: "Container metrics are missing from {{ $labels.instance }}"
+          description: "Grafana has received no container collection timestamp for five minutes. Check Docker, Alloy, and the wishkr-container-metrics timer."
+
+      - alert: WishkrContainerMetricsStale
+        expr: (time() - wishkr_container_last_collection_timestamp_seconds{instance="wishkr-prod-mum-01"}) > 300
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: containers
+          team: wishkr-operations
+        annotations:
+          summary: "Container metrics are stale on {{ $labels.instance }}"
+          description: "Container state has not been exported for more than five minutes. Check Docker, the exporter timer, and Alloy's textfile collector."
+
+      - alert: WishkrDockerUnavailable
+        expr: wishkr_container_docker_available{instance="wishkr-prod-mum-01"} < 1
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: containers
+          team: wishkr-operations
+        annotations:
+          summary: "Docker is unavailable on {{ $labels.instance }}"
+          description: "The container metrics exporter could not communicate with the Docker daemon. Check docker.service, the local socket, disk space, and host logs."
+
+      - alert: WishkrContainerMissing
+        expr: wishkr_container_present{instance="wishkr-prod-mum-01"} < 1
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: containers
+          team: wishkr-operations
+        annotations:
+          summary: "Expected container {{ $labels.container }} is missing on {{ $labels.instance }}"
+          description: "An expected Wishkr production container does not exist. Check the Compose project, deployment history, and Docker service."
+
+      - alert: WishkrContainerNotRunning
+        expr: wishkr_container_running{instance="wishkr-prod-mum-01"} < 1
+        for: 2m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: containers
+          team: wishkr-operations
+        annotations:
+          summary: "Container {{ $labels.container }} is not running on {{ $labels.instance }}"
+          description: "An expected production container has remained stopped for two minutes. Check Docker status, health, logs, resource pressure, and the deployment runbook."
+
+      - alert: WishkrContainerUnhealthy
+        expr: wishkr_container_healthy{instance="wishkr-prod-mum-01"} < 1
+        for: 3m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: containers
+          team: wishkr-operations
+        annotations:
+          summary: "Container {{ $labels.container }} is unhealthy on {{ $labels.instance }}"
+          description: "The configured Docker health check has failed for three minutes. Check container health output, application logs, dependencies, and resource usage."
+
+      - alert: WishkrContainerRestarting
+        expr: wishkr_container_restarting{instance="wishkr-prod-mum-01"} > 0
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: containers
+          team: wishkr-operations
+        annotations:
+          summary: "Container {{ $labels.container }} is restart-looping on {{ $labels.instance }}"
+          description: "Docker reports the production container in a restarting state. Check exit code, health, logs, configuration, and dependency availability."
+
+      - alert: WishkrContainerFrequentRestarts
+        expr: increase(wishkr_container_restart_count_total{instance="wishkr-prod-mum-01"}[15m]) >= 3
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: warning
+          component: containers
+          team: wishkr-operations
+        annotations:
+          summary: "Container {{ $labels.container }} restarted repeatedly on {{ $labels.instance }}"
+          description: "Docker recorded at least three container restarts within 15 minutes. Investigate logs, OOM events, dependency failures, and deployment changes."
+
+      - alert: WishkrContainerOOMKilled
+        expr: wishkr_container_oom_killed{instance="wishkr-prod-mum-01"} > 0
+        for: 0m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: containers
+          team: wishkr-operations
+        annotations:
+          summary: "Container {{ $labels.container }} was OOM-killed on {{ $labels.instance }}"
+          description: "Docker reports that the container process was killed by the out-of-memory handler. Check container limits, host memory, workload, and application memory behavior."

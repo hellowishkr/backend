@@ -1,0 +1,132 @@
+logging {
+	level  = "info"
+	format = "logfmt"
+}
+
+prometheus.remote_write "metrics_service" {
+	endpoint {
+		name = "grafana_cloud_metrics"
+		url  = "https://prometheus-prod-43-prod-ap-south-1.grafana.net/api/prom/push"
+
+		basic_auth {
+			username = "3414336"
+			password = sys.env("GCLOUD_RW_API_KEY")
+		}
+	}
+}
+
+discovery.relabel "integrations_node_exporter" {
+	targets = prometheus.exporter.unix.integrations_node_exporter.targets
+
+	rule {
+		target_label = "instance"
+		replacement  = constants.hostname
+	}
+
+	rule {
+		target_label = "job"
+		replacement  = "integrations/node_exporter"
+	}
+
+	rule {
+		target_label = "environment"
+		replacement  = "production"
+	}
+
+	rule {
+		target_label = "provider"
+		replacement  = "ovhcloud"
+	}
+
+	rule {
+		target_label = "region"
+		replacement  = "ap-south-mum"
+	}
+
+	rule {
+		target_label = "cluster"
+		replacement  = "wishkr-production"
+	}
+}
+
+prometheus.exporter.unix "integrations_node_exporter" {
+	disable_collectors = ["ipvs", "btrfs", "infiniband", "xfs", "zfs"]
+	enable_collectors  = ["systemd"]
+
+	filesystem {
+		fs_types_exclude     = "^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|tmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$"
+		mount_points_exclude = "^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+)($|/)"
+		mount_timeout        = "5s"
+	}
+
+	netclass {
+		ignored_devices = "^(veth.*|cali.*|br-.*|docker.*|[a-f0-9]{15})$"
+	}
+
+	netdev {
+		device_exclude = "^(veth.*|cali.*|br-.*|docker.*|[a-f0-9]{15})$"
+	}
+
+	systemd {
+		enable_restarts = true
+	}
+
+	textfile {
+		directory = "/var/lib/alloy/textfile"
+	}
+}
+
+prometheus.scrape "integrations_node_exporter" {
+	targets         = discovery.relabel.integrations_node_exporter.output
+	forward_to      = [prometheus.relabel.integrations_node_exporter.receiver]
+	scrape_interval = "60s"
+	scrape_timeout  = "10s"
+}
+
+prometheus.relabel "integrations_node_exporter" {
+	forward_to = [prometheus.remote_write.metrics_service.receiver]
+
+	rule {
+		source_labels = ["__name__"]
+		regex         = "node_scrape_collector_.+"
+		action        = "drop"
+	}
+}
+
+prometheus.exporter.self "alloy" { }
+
+discovery.relabel "alloy" {
+	targets = prometheus.exporter.self.alloy.targets
+
+	rule {
+		target_label = "instance"
+		replacement  = constants.hostname
+	}
+
+	rule {
+		target_label = "job"
+		replacement  = "integrations/alloy"
+	}
+
+	rule {
+		target_label = "environment"
+		replacement  = "production"
+	}
+
+	rule {
+		target_label = "provider"
+		replacement  = "ovhcloud"
+	}
+
+	rule {
+		target_label = "region"
+		replacement  = "ap-south-mum"
+	}
+}
+
+prometheus.scrape "alloy" {
+	targets         = discovery.relabel.alloy.output
+	forward_to      = [prometheus.remote_write.metrics_service.receiver]
+	scrape_interval = "60s"
+	scrape_timeout  = "10s"
+}

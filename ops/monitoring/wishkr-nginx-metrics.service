@@ -1,0 +1,35 @@
+[Unit]
+Description=Export privacy-safe Wishkr Nginx metrics for Grafana Alloy
+Requires=nginx.service
+After=nginx.service
+
+[Service]
+Type=oneshot
+User=root
+Group=alloy
+ExecStart=/usr/local/sbin/wishkr-export-nginx-metrics
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+IPAddressAllow=127.0.0.1/32
+IPAddressAllow=::1/128
+IPAddressDeny=any
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadOnlyPaths=-/var/log/nginx/wishkr-api-metrics.log
+ReadOnlyPaths=-/var/log/nginx/wishkr-api-metrics.log.1
+InaccessiblePaths=-/var/log/nginx/wishkr-api-access.log
+InaccessiblePaths=-/var/log/nginx/wishkr-api-error.log
+ReadWritePaths=/var/lib/alloy/textfile
+UMask=0027

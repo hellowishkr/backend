@@ -1,0 +1,13 @@
+[Unit]
+Description=Collect Wishkr NVMe SMART metrics every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+AccuracySec=15s
+Persistent=true
+Unit=wishkr-nvme-smart-metrics.service
+
+[Install]
+WantedBy=timers.target

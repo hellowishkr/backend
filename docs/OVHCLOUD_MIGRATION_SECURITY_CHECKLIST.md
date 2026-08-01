@@ -8,8 +8,8 @@
 | Field | Value |
 |---|---|
 | Status | In progress |
-| Current gate | Item 12 — Monitoring and alerting; external UDP scan remains open in Item 5 |
-| Last updated | 2026-07-31 |
+| Current gate | Item 14 — Production cutover planning only |
+| Last updated | 2026-08-01 |
 | Target environment | OVHcloud Mumbai bare metal |
 | Source architecture | [PRODUCTION_3_SERVER_SETUP.md](./PRODUCTION_3_SERVER_SETUP.md) |
 
@@ -831,19 +831,22 @@ Progress evidence (2026-07-31):
 
 ### 12. Configure monitoring and alerting
 
-**Status:** `[~]` In progress (2026-07-31)
+**Status:** `[x]` Completed and verified (2026-08-01)
 
 - [x] Configure external uptime monitoring.
-- [ ] Alert on CPU, memory, load, filesystem, and inode exhaustion.
-- [ ] Alert on RAID degradation and NVMe health.
-- [ ] Alert on container restart loops and failed health checks.
-- [ ] Monitor PostgreSQL and Redis health.
-- [ ] Monitor TLS certificate expiration.
-- [ ] Monitor Nginx error rates and unusual request volume.
-- [ ] Verify Sentry application error reporting.
-- [ ] Securely retain or centralize important logs.
-- [ ] Verify OVHcloud DDoS and hardware notifications.
-- [ ] Document alert ownership and escalation contacts.
+- [x] Alert on CPU, memory, load, filesystem, and inode exhaustion.
+- [x] Alert on RAID degradation and NVMe health.
+- [x] Alert on container restart loops and failed health checks.
+- [x] Monitor PostgreSQL and Redis health.
+- [x] Monitor TLS certificate expiration.
+- [x] Monitor Nginx error rates and unusual request volume.
+- [x] Verify Sentry application error reporting.
+- [x] Securely retain or centralize important logs.
+
+At the account owner's direction on 1 August 2026, the two unresolved
+provider-notification ownership controls were transferred intact to Item 16.
+This closes the implemented monitoring scope in Item 12 without hiding or
+waiving the remaining provider escalation work.
 
 An uptime monitor running only on this server cannot report a complete server
 outage. At least one check must run externally.
@@ -862,35 +865,285 @@ Progress evidence (2026-07-31):
   in approximately 197 ms. The current DNS target remains Hetzner
   (`5.223.77.195`); the same hostname monitor will follow the Cloudflare-proxied
   OVH origin during cutover.
+- Grafana Alloy `1.17.1` is installed from its checksum-pinned official release
+  as the unprivileged `alloy` user. Its UI is loopback-only, pprof and support
+  bundles are disabled, the unit is systemd-hardened, and it has no Docker
+  socket access or Docker group membership.
+- The root-only Grafana Cloud write token is stored outside the repository in
+  `/etc/wishkr/secrets/grafana-alloy.env` with mode `0600`. Alloy collects host
+  and systemd metrics only; Loki log collection and remote configuration are
+  not configured.
+- Production validation reported `422` remote-write samples sent and zero
+  failed after the final restart. The current process had no collector or
+  authentication errors, no systemd unit was failed, and both RAID1 arrays
+  remained healthy `[UU]`.
+- Grafana Cloud's Linux Node integration is collecting production telemetry for
+  `wishkr-prod-mum-01`. Its seven dashboards and 24 resource alert rules cover
+  CPU, memory, load, filesystem capacity, inode exhaustion, disk I/O, network,
+  systemd, textfile metrics, and RAID degradation.
+- The default Grafana notification policy delivers alerts to the tested
+  `Wishkr Operations Email` contact point, grouped by `grafana_folder` and
+  `alertname` with a 30-second group wait, five-minute group interval, and
+  four-hour repeat interval. An always-firing `node_uname_info` test alert was
+  evaluated and delivered end to end in 31 seconds, then deleted.
+- A hardened root oneshot exports non-secret SMART health metrics for both NVMe
+  devices to Alloy's textfile directory every five minutes. The production
+  baseline is SMART passed, critical-warning bitmask zero, 30/31 degrees
+  Celsius, 100 percent available spare, 20/22 percent endurance used, and zero
+  media or error-log entries.
+- Twelve imported Grafana-managed rules in `Wishkr Hardware/wishkr-nvme` cover
+  missing/stale collection, missing devices, collection failure, SMART failure,
+  critical warnings, temperature, spare threshold, endurance, media errors,
+  error-log entries, and new unsafe shutdowns. All rules were resumed and
+  confirmed Normal; the two temporary manually-created duplicates were removed.
+- A capability-free, root-only container exporter reads only the four fixed
+  Wishkr container names over the local Docker socket and publishes non-secret
+  state metrics once per minute. All four containers were present, running,
+  healthy, not restarting or OOM-killed, and had zero restarts during server-side
+  validation. Neither `karan` nor `alloy` belongs to the Docker group.
+- Nine Grafana-managed container rules were imported into
+  `Wishkr Hardware/wishkr-containers`, resumed, and confirmed active and Normal
+  by the account owner after evaluation. The final server-side preflight found
+  fresh metrics, all four expected containers present/running/healthy, zero
+  restarts/restart loops/OOM kills, `194846` remote-write samples sent, zero
+  failed samples, and no recent Alloy authentication or remote-write errors.
+- A hardened root-only oneshot now runs fixed authenticated health queries inside
+  `wishkr-db-1` and `wishkr-redis-1` once per minute over the local Docker
+  socket. It exports numeric readiness, PostgreSQL recovery/checksum/connection
+  state, and Redis RDB/AOF state to an atomic `root:alloy` mode-`0640` textfile;
+  Alloy retains no Docker, datastore, environment-file, or credential access.
+- Production datastore validation passed: PostgreSQL was ready, accepted the
+  fixed query, was not in recovery, had data checksums enabled, and used 11 of
+  100 connections. Redis answered authenticated PING, was not loading, and
+  reported successful RDB save, AOF write, and AOF rewrite state with AOF
+  enabled. The timer is active/enabled, the oneshot result is `success`, its
+  systemd exposure score is `3.9 OK`, Alloy had sent `286748` samples with zero
+  failures, and there were no recent authentication or remote-write errors.
+- Fourteen Grafana-managed rules from
+  `ops/monitoring/grafana/wishkr-datastore-alert-rules.yml` were imported into
+  `Wishkr Hardware/wishkr-datastores`, resumed, and confirmed active and Normal
+  by the account owner after evaluation.
+- A six-hour capability-free TLS oneshot now reads only the public
+  `api.wishkr.com` Origin CA certificate and publishes numeric validity and
+  expiry state. Its sandbox makes the matching private key inaccessible and has
+  no network access. Production validation reported parse success, current
+  validity, hostname match, and `94587078` seconds remaining; the timer is
+  active/enabled and the service exposure score is `3.9 OK`.
+- Nginx now exposes aggregate `stub_status` counters only on
+  `127.0.0.1:8081` with access logging disabled. A separate metrics log contains
+  only numeric timestamp and HTTP status; the exporter sandbox cannot read the
+  normal access/error logs. The one-minute exporter reported successful status
+  and log parsing, zero parse errors, and no 4xx/5xx/429/499 responses in its
+  initial safe health-check window. Its timer is active/enabled and exposure is
+  `4.3 OK`.
+- Alloy validation after both deployments reported `348045` remote-write
+  samples sent, zero failed, and no recent authentication or non-recoverable
+  errors. Installed exporter/unit/Nginx configuration checksums match the
+  reviewed repository files.
+- Seven TLS rules and nine Nginx rules were imported from
+  `ops/monitoring/grafana/wishkr-tls-certificate-alert-rules.yml` and
+  `ops/monitoring/grafana/wishkr-nginx-alert-rules.yml`. The account owner
+  resumed both groups and confirmed all 16 rules active and Normal after
+  evaluation.
+- A PII-free synthetic exception tagged `wishkr_verification=item12_controlled_test`
+  and `synthetic=true` was submitted directly through the initialized production
+  SDK without calling an HTTP, webhook, customer, scheduler, WhatsApp, or payment
+  path. Sentry assigned event ID `9fe67efb6d7f4852bcdeb1609c91adbc`.
+  On 1 August 2026, the account owner confirmed that the event and log were
+  visible in project `wishkr-prod-1`, completing end-to-end delivery
+  verification.
+- The preflight found the temporary Sentry debug-route flag still enabled. It
+  was set to false in the root-only production environment and only the backend
+  was recreated. The container returned healthy with zero restarts, `/health`
+  returned `200`, `/sentry-debug` returned `404`, the DSN remained configured,
+  and the environment file remained `root:root 0600`.
+- A source-controlled, bounded local-retention baseline now covers the systemd
+  journal (30 days/1 GiB), Nginx (14 daily rotations), all four container logs
+  (five compressed 10 MiB files each), Linux Audit (eight 64 MiB files), Wishkr
+  operational evidence (30 days), and Trivy reports (90 days). Loki remains
+  intentionally disabled pending a separate field-filtering, access-control,
+  cost, and remote-retention review.
+- The metadata-only inventory found that the package-provided `alloy` account
+  had inherited `adm` and `systemd-journal` memberships and that the three new
+  Wishkr Nginx logs were initially mode `0644`. Alloy was removed from both log
+  groups and restarted, and the Nginx files were corrected to `root:adm 0640`.
+  The installer and validator now enforce these boundaries on every deployment.
+- Production validation passed configuration checksum, journald integrity,
+  logrotate parsing, directory/file permissions, Docker rotation, auditd
+  rotation, service, and metrics-only Alloy checks. All four containers remained
+  healthy with zero restarts, the Nginx metrics oneshot returned `success`,
+  Alloy remote-write failures were zero, and the host had zero failed units.
+- On 1 August 2026, the account owner confirmed the dedicated server service
+  status is `Normal` and OVHcloud Monitoring is `Enabled with proactive
+  intervention`. The Network Security Dashboard showed no suspicious activity
+  for the selected one-year period, which OVHcloud documents as the normal
+  result when no attack has targeted the service. Provider monitoring is active;
+  recipient/contact delivery confirmation remains pending under Item 16.
+- On 1 August 2026, the account owner confirmed the administrative, technical,
+  and billing contacts all resolve to the same OVHcloud account and that no
+  second trusted OVHcloud operator is currently available. No account
+  identifier was recorded, and the contacts remain unchanged. This is one
+  notification and management path rather than independent escalation
+  coverage. No acceptance of the residual single-operator risk has been
+  recorded; the two controls remain visible and in progress under Item 16.
 
 ### 13. Stage and validate the migration
 
-**Status:** `[ ]` Not started
+**Status:** `[x]` Completed and verified (2026-08-01)
 
-- [ ] Build the OVH environment without changing production DNS.
-- [ ] Restore a recent production database copy.
-- [ ] Validate core backend and catalog functions.
-- [ ] Validate Redis-dependent behaviour.
-- [ ] Validate the scheduler without producing duplicate live actions.
-- [ ] Validate incoming WhatsApp webhook processing.
-- [ ] Validate outbound WhatsApp behaviour in a safe test scope.
-- [ ] Run application, load, backup, recovery, and security smoke tests.
-- [ ] Record performance baselines.
-- [ ] Obtain explicit go/no-go approval.
+- [x] Build the OVH environment without changing production DNS.
+- [x] Restore a recent production database copy.
+- [x] Validate core backend and catalog functions.
+- [x] Validate Redis-dependent behaviour.
+- [x] Validate the scheduler without producing duplicate live actions.
+- [x] Validate incoming WhatsApp webhook processing.
+- [x] Validate outbound WhatsApp behaviour in a safe test scope.
+- [x] Run application, load, backup, recovery, and security smoke tests.
+- [x] Record performance baselines.
+- [x] Obtain explicit go/no-go approval.
+
+Progress evidence (2026-08-01):
+
+- The private OVH environment built in Items 8–12 passed its runtime and
+  PostgreSQL/Redis hardening validators before the restore. All monitoring and
+  backup timers were active, Alloy was ready with zero failed remote-write
+  samples, the host had zero failed units, and production DNS still resolved to
+  the Hetzner origin. No DNS setting changed.
+- A fresh encrypted dual-destination OVH pre-change backup completed with
+  service result `success` and exit status `0` before any application process
+  was stopped.
+- Read-only Hetzner preflight found PostgreSQL `16.13` and 54 public tables. An
+  ephemeral official PostgreSQL 16 client validated dump connectivity without
+  displaying the database URL or records. The custom-format dump was streamed
+  over encrypted SSH into OVH without a workstation file, validated with
+  `pg_restore --list`, and retained as a `root:root 0600` recovery artifact.
+- The OVH scheduler and backend were stopped before import. The dump restored
+  atomically with `pg_restore --single-transaction`; only staging Redis was
+  flushed. The existing PostgreSQL role policy was reapplied and the complete
+  PostgreSQL/Redis hardening validator passed.
+- Only the private backend was restarted. It returned healthy and loopback
+  `/health` returned `200`; the scheduler remains intentionally stopped so no
+  restored job can send a live action. The restored database contains the
+  expected 54-table schema and non-sensitive validation confirmed production
+  data is present.
+- Private read-only checks returned `200` for health, catalog taxonomy, active
+  products, pricing, and one product detail. Response structures were valid,
+  active catalog data was present, and the taxonomy/product caches were created
+  in authenticated staging Redis with valid TTLs.
+- The non-live application suite initially exposed a timezone-boundary fixture
+  defect in the 23 July reminder regression test. The fixture now builds an exact user-local occasion calendar day; application behavior is unchanged.
+  The targeted regression and full suite then passed with `797 passed, 3 skipped`.
+- The current release symlink predates the newer source-tree monitoring
+  validator path, so that one path-based invocation was unavailable. Installed
+  service checks independently confirmed Alloy and every monitoring/backup
+  timer active; the newer validator must ship with the next reviewed release.
+- A non-sending scheduler probe registered all seven expected MVP jobs while
+  replacing `scheduler.start()` with a no-op, so no job executed. Two live
+  PostgreSQL sessions proved advisory lock `41051` permits one holder, rejects
+  a concurrent holder, and can be reacquired after release. The real scheduler
+  container remains stopped against the restored data.
+- A temporary migrated scratch database isolated the WhatsApp smoke from the
+  restored production copy. One synthetic `hi` traversed the real webhook and
+  Gemini path; Meta signature validation was bypassed only inside that test
+  process and outbound Meta delivery was intercepted. The deployed endpoint
+  separately rejected an unsigned payload with `403`. The scratch database and
+  synthetic staging Redis state were removed, and catalog caches were
+  repopulated.
+- A bounded loopback-only read load test completed with zero errors. `/health`
+  served 1,000 requests at concurrency 20 at approximately 530.8 requests/s
+  (`p50` 31.2 ms, `p95` 34.0 ms, `p99` 196.2 ms). The cached product catalog
+  served 300 requests at concurrency 10 at approximately 205.2 requests/s
+  (`p50` 37.2 ms, `p95` 192.2 ms, `p99` 203.3 ms).
+- Post-load security assertions passed: hostile Host rejected with `400`,
+  production docs and the Sentry debug route returned `404`, unauthenticated
+  admin access and unsigned WhatsApp returned `403`, no Wishkr container had a
+  wildcard-published port, the backend remained healthy with zero restarts,
+  datastore hardening passed, and the host had zero failed units.
+- A fresh encrypted dual-destination backup of the restored production copy
+  completed successfully. Isolated restore drills from both R2 and OVH Backup
+  Storage each restored 539 files/directories with matching checksums, validated
+  Redis, and restored all 54 PostgreSQL tables; both scratch restores cleaned
+  up successfully.
+- During this pre-cutover validation window, `wishkr-scheduler-1` remains
+  intentionally stopped. Container-health alerts for that service may fire and
+  are expected maintenance signals, not permission to restart it before the
+  Hetzner scheduler is paused and final synchronization is approved.
+- On 1 August 2026, the account owner gave `GO` to begin Item 14 cutover
+  planning only. The decision did not authorize a TTL change, service stop,
+  final synchronization, DNS change, scheduler start, live provider/customer
+  action, or retirement of Hetzner.
 
 ### 14. Cut over production
 
-**Status:** `[ ]` Not started
+**Status:** `[~]` Gate D passed; observation in progress through 03:25:10 IST
 
-- [ ] Lower relevant DNS TTLs before the migration window.
-- [ ] Announce the change window and rollback criteria.
-- [ ] Pause writes or perform the approved final synchronization procedure.
-- [ ] Take and verify a final pre-cutover backup.
-- [ ] Apply final database and object-storage synchronization.
-- [ ] Change API DNS to the Cloudflare-proxied OVH origin.
-- [ ] Verify TLS, API, catalog, scheduler, and WhatsApp flows.
+- [x] Prepare the planning-only cutover, validation, and rollback runbook.
+- [x] Lower relevant DNS TTLs before the migration window.
+- [x] Announce the change window and rollback criteria.
+- [x] Pause writes or perform the approved final synchronization procedure.
+- [x] Take and verify a final pre-cutover backup.
+- [x] Apply final database and object-storage synchronization.
+- [x] Change API DNS to the Cloudflare-proxied OVH origin.
+- [x] Verify TLS, API, catalog, scheduler, and WhatsApp flows.
 - [ ] Monitor errors, latency, queues, scheduled jobs, and system resources.
 - [ ] Roll back if a predefined rollback condition is met.
+
+Planning evidence (2026-08-01):
+
+- The phase-specific approval gates, hard write freeze, final PostgreSQL
+  synchronization, shared-R2 validation, Cloudflare DNS change, singleton
+  scheduler transition, monitoring thresholds, and pre-/post-write rollback
+  branches are documented in
+  [`OVHCLOUD_MIGRATION_CUTOVER_PLAN_2026-08-01.md`](./OVHCLOUD_MIGRATION_CUTOVER_PLAN_2026-08-01.md).
+- The plan leaves every post-TTL Item 14 control unchecked. The maintenance
+  window was selected as 1 August 2026 starting at 01:26 IST with a 30-minute
+  maximum write freeze. Execution requires a new approval at each externally
+  visible or write-affecting gate.
+- Gate A was authorized and completed on 1 August 2026. At 01:33 IST,
+  Cloudflare authoritative DNS and two independent public resolvers returned
+  the unchanged Hetzner address with a 60-second TTL. The record remained
+  DNS-only and public health remained `200`; no service, origin target, proxy
+  state, or scheduler changed. Gate B may not begin before 01:39 IST and still
+  requires explicit approval.
+- Gate B began at 01:39:33 IST. Hetzner web and scheduler are stopped with no
+  client writer or scheduler lock, while its PostgreSQL and Redis remain
+  healthy. The final encrypted backup passed both destinations; the frozen
+  PostgreSQL 16 archive transferred with matching checksum and restored into a
+  fresh OVH database. All 54 tables, Alembic revision, row-count fingerprint,
+  and sequence-state fingerprint matched before activation. Role policy,
+  datastore hardening, shared-R2 equivalence/canary, private backend/catalog,
+  Redis cache, security-negative, exposure, monitoring, and backup checks pass.
+  The OVH scheduler remains stopped and DNS remains on Hetzner pending Gate C.
+- Gate C completed at approximately 01:52 IST. Authoritative DNS and two public
+  resolvers returned only Cloudflare anycast addresses at TTL `300`. Public
+  Cloudflare TLS/health, taxonomy, products, pricing, product detail, cache
+  bypass, unsigned WhatsApp rejection, `308` redirect, and direct-origin block
+  checks passed. Three consecutive health probes returned `200`; OVH Nginx
+  reported zero 5xx responses, both collection paths passed, Alloy was ready,
+  and the host had zero failed units. The write freeze lasted about 13 minutes.
+  Hetzner web/scheduler remain stopped and the OVH scheduler remains stopped
+  pending Gate D.
+- Gate D's single controlled WhatsApp test passed: exactly one signed inbound,
+  one successful reply, and one durable `done` record were observed with zero
+  webhook, rate-limit, or backpressure errors. The OVH scheduler then started
+  healthy with one lock holder and all seven MVP jobs; the complete runtime
+  validator passed and no unexpected send occurred.
+- The first observation checkpoint detected that lock `41051` had disappeared
+  while the scheduler container remained healthy. PostgreSQL confirmed its
+  one-minute idle-in-transaction timeout terminated the lock session. The OVH
+  scheduler was stopped at 02:06:30 IST; Hetzner web/scheduler remain stopped,
+  while the OVH backend continues serving public traffic. A local fix commits
+  the lock-acquisition transaction without releasing the session-level lock;
+  focused regression tests pass `4/4`.
+- The account owner authorized the narrow hotfix and scheduler-only Gate D
+  retry. The reviewed release differs from the deployed base by only
+  `app/main.py`; its checksum, secret scan, image vulnerability scan, rollback
+  image, and rollback release link passed. The running backend was not
+  restarted. The scheduler registered seven jobs and retained one idle lock
+  holder with no open transaction through 149 seconds, with zero restarts,
+  errors, outbound sends, or database timeout terminations. The full runtime
+  validator and Hetzner stopped/no-lock checks passed. The fresh observation
+  window began at 02:25:10 IST and its complete baseline was healthy.
 
 ### 15. Stabilize and retire Hetzner
 
@@ -904,6 +1157,19 @@ Progress evidence (2026-07-31):
 - [ ] Securely destroy remaining sensitive data.
 - [ ] Cancel Hetzner resources only after written approval.
 - [ ] Update architecture, operations, and incident-response documentation.
+
+### 16. Complete OVHcloud notification ownership and escalation
+
+**Status:** `[~]` In progress (2026-08-01)
+
+- [ ] Verify OVHcloud DDoS and hardware notifications.
+- [ ] Document alert ownership and escalation contacts.
+
+Provider monitoring is active, but all three OVHcloud contact roles currently
+resolve to one account and no second trusted operator is available. Keep the
+contacts unchanged; do not create a duplicate/shared account or simulate DDoS
+or hardware failure. Complete this item when legitimate notification-delivery
+evidence and an approved ownership/escalation arrangement are available.
 
 ## Security controls intentionally deferred unless required
 
@@ -964,6 +1230,29 @@ Progress evidence (2026-07-31):
 | 2026-07-31 | 10 — Recovery and runtime verification | Captured and verified a root-only pre-change PostgreSQL dump, then ran complete data-service and application validation | Database dump readable; all four containers healthy; singleton scheduler/advisory lock, authenticated queries, loopback API, Compose, Nginx, and exposure checks passed | Codex |
 | 2026-07-31 | 11 — Backups and disaster recovery | Implemented and verified encrypted dual-destination backups, hourly health monitoring, complete restore drills, and the off-host bare-metal recovery runbook | R2 and OVH FTPS copies verified; PostgreSQL/Redis restoration passed from both destinations; recovery controls stored in private GitHub commit `39b49c2` | Karan / Codex |
 | 2026-07-31 | 12 — External uptime | Created and verified a one-minute Sentry Uptime monitor and connected email alert for the public API health endpoint | Successful check-ins and notification delivery confirmed; independent external request returned HTTP `200` and `{"status":"ok"}` | Karan / Codex |
+| 2026-07-31 | 12 — Host metrics ingestion | Installed a metrics-only, non-root, systemd-hardened Grafana Alloy collector using a checksum-pinned release and root-only token file | Loopback-only health passed; 422 samples sent, zero failed; no collector/authentication errors or failed units; RAID remained `[UU]` | Karan / Codex |
+| 2026-07-31 | 12 — Host resource alerts | Installed the Grafana Linux Node dashboards and alert rules and verified the default email notification path end to end | 24 integration rules cover CPU, memory, load, filesystems, inodes, disk I/O, network, systemd, textfile metrics, and RAID; a temporary firing alert reached the operations mailbox in 31 seconds and was deleted | Karan / Codex |
+| 2026-07-31 | 12 — NVMe alerts | Installed a hardened five-minute SMART textfile exporter and imported 12 editable Grafana-managed alert rules | Both devices report healthy SMART, cool temperatures, full spare capacity, no media errors, and all collection, health, wear, temperature, and error rules are active and Normal | Karan / Codex |
+| 2026-07-31 | 12 — Container alerts | Installed a least-privilege one-minute container-state exporter and imported nine editable Grafana-managed alert rules | All four expected containers were healthy with zero restarts, restart loops, or OOM kills; all nine rules were confirmed active and Normal after evaluation | Karan / Codex |
+| 2026-07-31 | 12 — Datastore metrics | Installed a hardened one-minute PostgreSQL/Redis readiness and persistence exporter and staged 14 editable Grafana-managed alert rules | Fixed authenticated queries passed; PostgreSQL recovery/checksum/connection state and Redis RDB/AOF state were healthy; timer active, unit exposure `3.9 OK`, and Alloy remote write had zero failed samples | Codex |
+| 2026-07-31 | 12 — Datastore alerts | Imported and resumed 14 PostgreSQL/Redis readiness, connection-pressure, recovery, checksum, RDB, and AOF alert rules | All 14 `wishkr-datastores` rules were confirmed active and Normal after evaluation | Karan / Codex |
+| 2026-07-31 | 12 — TLS metrics | Installed a hardened six-hour public-certificate validity/expiry exporter and staged seven Grafana-managed rules | Certificate parse, validity, hostname, permissions, timer, sandbox, Alloy delivery, and installed-file checksums passed; private key is inaccessible to the oneshot | Codex |
+| 2026-07-31 | 12 — TLS alerts | Imported and resumed seven public-certificate parse, validity, hostname, and expiry alert rules | All seven `wishkr-tls-certificate` rules were confirmed active and Normal after evaluation | Karan / Codex |
+| 2026-07-31 | 12 — Nginx metrics | Added a loopback-only aggregate status endpoint, timestamp/status-only metrics log, hardened one-minute exporter, and nine staged Grafana-managed rules | Nginx config/reload, loopback bind, privacy-safe parsing, timer, sandbox, Alloy delivery, and installed-file checksums passed; initial 5xx/429/499 counts were zero | Codex |
+| 2026-07-31 | 12 — Nginx alerts | Imported and resumed nine availability, collection, parse, connection, request-volume, and response-status alert rules | All nine `wishkr-nginx` rules were confirmed active and Normal after evaluation | Karan / Codex |
+| 2026-08-01 | 12 — Sentry error reporting | Submitted one isolated, PII-free synthetic exception through the production SDK and removed the temporary debug route | Event `9fe67efb6d7f4852bcdeb1609c91adbc` was confirmed visible in `wishkr-prod-1`; backend remained healthy and `/sentry-debug` returned `404` | Karan / Codex |
+| 2026-08-01 | 12 — Important-log retention | Installed and validated a source-controlled bounded local-retention policy and removed unintended Alloy log access | Journald, Nginx, Docker, auditd, Wishkr operations, and Trivy scopes have explicit limits; sensitive Nginx logs are `root:adm 0640`; Alloy has no log-reader groups or Loki configuration; all services remained healthy | Codex |
+| 2026-08-01 | 12 / 16 — Provider notifications | Closed Item 12's implemented monitoring scope and transferred its two unresolved provider-notification ownership controls intact to new Item 16 | Provider monitoring is active; all contact roles still resolve to one account, no second trusted operator is available, and neither remaining control was waived or hidden | Karan / Codex |
+| 2026-08-01 | 13 — Staging database restore | Took a fresh encrypted OVH backup, streamed a validated production PostgreSQL dump from Hetzner, and restored it atomically with application processes stopped | Root-only archive validated; role policy and datastore hardening passed; backend restarted healthy while scheduler remains intentionally stopped | Codex |
+| 2026-08-01 | 13 — Private application validation | Ran restored-data health, catalog, pricing, product-detail, Redis-cache, and complete non-live application tests | Private HTTP structures and Redis TTLs passed; reminder fixture timezone boundary corrected; `797 passed, 3 skipped` | Codex |
+| 2026-08-01 | 13 — Scheduler and WhatsApp safety | Validated scheduler registration/locking without executing jobs and ran an isolated webhook/Gemini smoke with outbound Meta delivery intercepted | Seven MVP jobs registered; singleton lock lifecycle passed; unsigned deployed webhook rejected; scratch database and synthetic cache state removed | Codex |
+| 2026-08-01 | 13 — Load, security, backup and recovery | Ran bounded private load/security checks, backed up the restored production copy, and restored it from both encrypted destinations | Zero load-test errors; security assertions and health passed; R2 and OVH drills each restored 539 files/directories and 54 PostgreSQL tables with valid checksums | Codex |
+| 2026-08-01 | 13 / 14 — Go decision and cutover planning | Account owner gave GO for Item 14 planning only; prepared the source-controlled cutover and rollback runbook | Item 13 closed; all Item 14 live actions remain unchecked and require phase-specific approval | Karan / Codex |
+| 2026-08-01 | 14 — TTL preparation | Selected the immediate maintenance window, announced the 30-minute write-freeze limit and rollback criteria, and lowered the existing DNS-only API TTL to 60 seconds | Authoritative DNS, `1.1.1.1`, and `8.8.8.8` returned the unchanged Hetzner target at TTL 60; DNS remained unproxied and health returned `200` | Karan / Codex |
+| 2026-08-01 | 14 — Write freeze and final synchronization | Stopped Hetzner scheduler/web, backed up OVH staging, streamed and restored the final frozen PostgreSQL archive, activated the validated database, reset staging Redis, and validated shared R2 | No source writer/lock; checksums, 54-table schema, Alembic, row/sequence fingerprints, role policy, datastore hardening, private API/catalog/cache, R2 canary, monitoring, and backup checks passed; DNS unchanged and OVH scheduler stopped | Karan / Codex |
+| 2026-08-01 | 14 — Cloudflare DNS cutover | Changed the existing API record to the reviewed OVH origin and enabled Cloudflare proxying | Authoritative and public DNS returned Cloudflare anycast; public TLS/health/catalog/signature/redirect and direct-origin controls passed; Nginx 5xx was zero; write freeze ended after about 13 minutes | Karan / Codex |
+| 2026-08-01 | 14 — Gate D live validation hold | Completed one controlled WhatsApp test, started one OVH scheduler, detected loss of its singleton lock, and stopped it safely | WhatsApp and initial runtime checks passed; zero unexpected sends; PostgreSQL's one-minute idle-in-transaction timeout terminated the uncommitted lock session; local regression fix passes `4/4` but is not deployed | Karan / Codex |
+| 2026-08-01 | 14 — Gate D scheduler hotfix | Deployed a one-file transaction-finalization hotfix from the existing production base and repeated only scheduler validation | Secret and vulnerability scans passed; backend untouched; one healthy scheduler retained one idle lock with no open transaction beyond 149 seconds; seven jobs and complete runtime validation passed with zero errors or sends | Karan / Codex |
 
 ## Decisions and exceptions
 
@@ -980,3 +1269,7 @@ Record material decisions, accepted risks, and temporary exceptions here.
 | 2026-07-31 | 7 — Trivy installation | Pin and checksum-verify Trivy `0.72.0` directly from its immutable release | Avoided affected `0.69.4` artifacts and mutable package-repository resolution after the 2026 supply-chain incident | On each scanner upgrade |
 | 2026-07-31 | 7 — PostgreSQL image | Run a minimal derivative of the pinned official PostgreSQL image as UID/GID `70` and remove `gosu` | Upstream `gosu` was unused in a non-root start but contained 14 HIGH/1 CRITICAL fixable Go findings | On every PostgreSQL image refresh |
 | 2026-07-31 | 7 — Deployment boundary | Do not start production application services during runtime hardening | Item 7 proves the engine, policy, images, and disposable data-service behavior; secrets/data restoration and live deployment belong to Item 8 | Item 8 |
+| 2026-08-01 | 12 / 16 — Provider notification ownership | Transfer the two incomplete OVHcloud notification/ownership controls from completed Item 12 to new Item 16 without waiving them | No second trusted OVHcloud operator is currently available; staging validation can continue while the gap remains visible | Item 16 |
+| 2026-08-01 | 13 — Scheduler maintenance state | Keep the OVH scheduler stopped after restoring production data | Starting it while Hetzner remains active could duplicate reminders, retries, reconciliation, or other live actions; monitoring alerts are expected during this controlled window | Item 14 final synchronization and cutover |
+| 2026-08-01 | 14 — Cutover consistency model | Use a hard Hetzner web/scheduler write freeze, a PostgreSQL 16 custom dump restored into a fresh OVH database, no authoritative Redis migration, and shared-R2 equivalence validation | The application has no maintenance-mode switch; PostgreSQL is authoritative, Redis is bounded runtime state, and both environments use the existing application R2 store | Before Gate B execution |
+| 2026-08-01 | 14 — Approval boundary | Treat the Item 13 GO as authorization to plan only; require separate approval for TTL preparation, freeze/final sync, DNS, live validation/scheduler start, and rollback | Prevents planning approval from causing an externally visible or destructive production change | At every Item 14 gate |

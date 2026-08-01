@@ -22,6 +22,43 @@ class _DummyApp:
 
 
 @pytest.mark.asyncio
+async def test_scheduler_lock_acquisition_commits_autobegun_transaction(monkeypatch):
+    """The session lock must not remain idle inside an open transaction."""
+    fake_conn = SimpleNamespace(
+        scalar=AsyncMock(side_effect=[321, True]),
+        commit=AsyncMock(),
+        close=AsyncMock(),
+    )
+    fake_engine = SimpleNamespace(connect=AsyncMock(return_value=fake_conn))
+
+    import app.db.session as db_session
+
+    monkeypatch.setattr(db_session, "engine", fake_engine)
+
+    acquired = await main._try_acquire_scheduler_lock()
+
+    assert acquired is fake_conn
+    fake_conn.commit.assert_awaited_once_with()
+    fake_conn.close.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_scheduler_lock_release_commits_before_closing():
+    fake_conn = SimpleNamespace(
+        closed=False,
+        execute=AsyncMock(),
+        commit=AsyncMock(),
+        close=AsyncMock(),
+    )
+
+    await main._release_scheduler_lock(fake_conn)
+
+    fake_conn.execute.assert_awaited_once()
+    fake_conn.commit.assert_awaited_once_with()
+    fake_conn.close.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
 async def test_lifespan_lock_acquired_starts_and_stops_scheduler(monkeypatch):
     app = _DummyApp()
     fake_conn = SimpleNamespace(execute=AsyncMock(), close=AsyncMock())

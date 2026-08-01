@@ -1,0 +1,171 @@
+groups:
+  - name: wishkr-datastores
+    interval: 1m
+    rules:
+      - alert: WishkrDatastoreMetricsMissing
+        expr: absent_over_time(wishkr_datastore_last_collection_timestamp_seconds{instance="wishkr-prod-mum-01"}[5m]) == 1
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: datastores
+          team: wishkr-operations
+        annotations:
+          summary: "PostgreSQL and Redis metrics are missing from {{ $labels.instance }}"
+          description: "Grafana has received no datastore collection timestamp for five minutes. Check Docker, Alloy, and the wishkr-datastore-metrics timer."
+
+      - alert: WishkrDatastoreMetricsStale
+        expr: (time() - wishkr_datastore_last_collection_timestamp_seconds{instance="wishkr-prod-mum-01"}) > 300
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: datastores
+          team: wishkr-operations
+        annotations:
+          summary: "PostgreSQL and Redis metrics are stale on {{ $labels.instance }}"
+          description: "The last datastore export is more than five minutes old. Check the exporter timer, Docker, and Alloy's textfile collector."
+
+      - alert: WishkrPostgreSQLCollectionFailed
+        expr: wishkr_datastore_collection_success{instance="wishkr-prod-mum-01",datastore="postgresql"} < 1
+        for: 2m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: postgresql
+          team: wishkr-operations
+        annotations:
+          summary: "PostgreSQL health collection failed on {{ $labels.instance }}"
+          description: "The authenticated PostgreSQL health query failed or returned an unexpected result. Check the datastore exporter service and database container."
+
+      - alert: WishkrPostgreSQLNotReady
+        expr: wishkr_datastore_ready{instance="wishkr-prod-mum-01",datastore="postgresql"} < 1
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: postgresql
+          team: wishkr-operations
+        annotations:
+          summary: "PostgreSQL is not ready on {{ $labels.instance }}"
+          description: "PostgreSQL has failed its readiness probe for one minute. Check the database container, storage, memory, connections, and recent maintenance."
+
+      - alert: WishkrPostgreSQLUnexpectedRecovery
+        expr: wishkr_postgresql_in_recovery{instance="wishkr-prod-mum-01"} > 0
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: postgresql
+          team: wishkr-operations
+        annotations:
+          summary: "PostgreSQL entered recovery mode on {{ $labels.instance }}"
+          description: "The single production PostgreSQL instance unexpectedly reports recovery mode. Check startup logs, data integrity, and the recovery runbook before allowing writes."
+
+      - alert: WishkrPostgreSQLDataChecksumsDisabled
+        expr: wishkr_postgresql_data_checksums_enabled{instance="wishkr-prod-mum-01"} < 1
+        for: 5m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: postgresql
+          team: wishkr-operations
+        annotations:
+          summary: "PostgreSQL data checksums are disabled on {{ $labels.instance }}"
+          description: "The production database no longer reports data checksums enabled. Verify the active data directory and deployment before continuing migration work."
+
+      - alert: WishkrPostgreSQLConnectionsHigh
+        expr: (wishkr_postgresql_connections{instance="wishkr-prod-mum-01"} / wishkr_postgresql_max_connections{instance="wishkr-prod-mum-01"}) > 0.8
+        for: 10m
+        keep_firing_for: 5m
+        labels:
+          severity: warning
+          component: postgresql
+          team: wishkr-operations
+        annotations:
+          summary: "PostgreSQL connection use is high on {{ $labels.instance }}"
+          description: "More than 80 percent of the configured PostgreSQL connection limit has been used for ten minutes. Check application pools, idle sessions, and blocked work."
+
+      - alert: WishkrRedisCollectionFailed
+        expr: wishkr_datastore_collection_success{instance="wishkr-prod-mum-01",datastore="redis"} < 1
+        for: 2m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: redis
+          team: wishkr-operations
+        annotations:
+          summary: "Redis health collection failed on {{ $labels.instance }}"
+          description: "The authenticated Redis health query failed or returned an unexpected result. Check the datastore exporter service and Redis container."
+
+      - alert: WishkrRedisNotReady
+        expr: wishkr_datastore_ready{instance="wishkr-prod-mum-01",datastore="redis"} < 1
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: redis
+          team: wishkr-operations
+        annotations:
+          summary: "Redis is not ready on {{ $labels.instance }}"
+          description: "Redis has failed its authenticated PING probe for one minute. Check the Redis container, persistence, memory limit, and disk state."
+
+      - alert: WishkrRedisLoadingPersistedData
+        expr: wishkr_redis_loading{instance="wishkr-prod-mum-01"} > 0
+        for: 5m
+        keep_firing_for: 5m
+        labels:
+          severity: warning
+          component: redis
+          team: wishkr-operations
+        annotations:
+          summary: "Redis is still loading persisted data on {{ $labels.instance }}"
+          description: "Redis has remained in its persisted-data loading state for five minutes. Check Redis logs, storage performance, dataset size, and startup progress."
+
+      - alert: WishkrRedisRDBSaveFailed
+        expr: wishkr_redis_rdb_last_bgsave_success{instance="wishkr-prod-mum-01"} < 1
+        for: 2m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: redis
+          team: wishkr-operations
+        annotations:
+          summary: "The last Redis RDB save failed on {{ $labels.instance }}"
+          description: "Redis reports that its most recent background RDB save failed. Check disk space, permissions, Redis logs, and backup status."
+
+      - alert: WishkrRedisAOFDisabled
+        expr: wishkr_redis_aof_enabled{instance="wishkr-prod-mum-01"} < 1
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: redis
+          team: wishkr-operations
+        annotations:
+          summary: "Redis append-only persistence is disabled on {{ $labels.instance }}"
+          description: "Redis no longer reports AOF persistence enabled. Verify the active configuration and deployment before allowing migration work to continue."
+
+      - alert: WishkrRedisAOFRewriteFailed
+        expr: wishkr_redis_aof_last_bgrewrite_success{instance="wishkr-prod-mum-01"} < 1
+        for: 2m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: redis
+          team: wishkr-operations
+        annotations:
+          summary: "The last Redis AOF rewrite failed on {{ $labels.instance }}"
+          description: "Redis reports that its most recent AOF background rewrite failed. Check disk space, permissions, Redis logs, and persistence state."
+
+      - alert: WishkrRedisAOFWriteFailed
+        expr: wishkr_redis_aof_last_write_success{instance="wishkr-prod-mum-01"} < 1
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: redis
+          team: wishkr-operations
+        annotations:
+          summary: "Redis AOF writes are failing on {{ $labels.instance }}"
+          description: "Redis reports an AOF write failure. Check disk space, filesystem errors, Redis logs, and persistence integrity immediately."

@@ -1,0 +1,111 @@
+groups:
+  - name: wishkr-nginx
+    interval: 1m
+    rules:
+      - alert: WishkrNginxMetricsMissing
+        expr: absent_over_time(wishkr_nginx_last_collection_timestamp_seconds{instance="wishkr-prod-mum-01"}[5m]) == 1
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: nginx
+          team: wishkr-operations
+        annotations:
+          summary: "Nginx metrics are missing from {{ $labels.instance }}"
+          description: "Grafana has received no Nginx collection timestamp for five minutes. Check Nginx, Alloy, and the wishkr-nginx-metrics timer."
+
+      - alert: WishkrNginxMetricsStale
+        expr: (time() - wishkr_nginx_last_collection_timestamp_seconds{instance="wishkr-prod-mum-01"}) > 300
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: nginx
+          team: wishkr-operations
+        annotations:
+          summary: "Nginx metrics are stale on {{ $labels.instance }}"
+          description: "The last Nginx export is more than five minutes old. Check the exporter service, timer, loopback status endpoint, and Alloy textfile collector."
+
+      - alert: WishkrNginxStatusCollectionFailed
+        expr: wishkr_nginx_status_collection_success{instance="wishkr-prod-mum-01"} < 1
+        for: 2m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: nginx
+          team: wishkr-operations
+        annotations:
+          summary: "Nginx aggregate-status collection failed on {{ $labels.instance }}"
+          description: "The loopback-only Nginx status endpoint could not be reached or parsed. Check nginx.service, the 127.0.0.1:8081 listener, and the exporter sandbox."
+
+      - alert: WishkrNginxMetricsLogCollectionFailed
+        expr: wishkr_nginx_metrics_log_collection_success{instance="wishkr-prod-mum-01"} < 1
+        for: 2m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: nginx
+          team: wishkr-operations
+        annotations:
+          summary: "Nginx status-only metrics-log collection failed on {{ $labels.instance }}"
+          description: "The timestamp/status-only Nginx metrics log is missing or malformed. Check the Nginx log format, log rotation, permissions, and exporter service."
+
+      - alert: WishkrNginxHTTP5xxRateHigh
+        expr: (wishkr_nginx_http_5xx_requests_5m{instance="wishkr-prod-mum-01"} >= 5) and ((wishkr_nginx_http_5xx_requests_5m{instance="wishkr-prod-mum-01"} / clamp_min(wishkr_nginx_http_requests_5m{instance="wishkr-prod-mum-01"}, 1)) > 0.05)
+        for: 5m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: nginx
+          team: wishkr-operations
+        annotations:
+          summary: "Nginx HTTP 5xx rate is high on {{ $labels.instance }}"
+          description: "At least five 5xx responses and more than a five-percent 5xx ratio were observed in the rolling five-minute window. Check Nginx, upstream health, application errors, and resource pressure."
+
+      - alert: WishkrNginxRequestVolumeHigh
+        expr: wishkr_nginx_http_requests_5m{instance="wishkr-prod-mum-01"} > 9000
+        for: 5m
+        keep_firing_for: 5m
+        labels:
+          severity: warning
+          component: nginx
+          team: wishkr-operations
+        annotations:
+          summary: "Nginx request volume is unusually high on {{ $labels.instance }}"
+          description: "More than 9,000 requests were recorded in five minutes, averaging over 30 requests per second. Correlate Cloudflare analytics, rate limits, endpoint behavior, and system load."
+
+      - alert: WishkrNginxRateLimitingHigh
+        expr: wishkr_nginx_http_429_requests_5m{instance="wishkr-prod-mum-01"} > 100
+        for: 5m
+        keep_firing_for: 5m
+        labels:
+          severity: warning
+          component: nginx
+          team: wishkr-operations
+        annotations:
+          summary: "Nginx rate limiting is unusually high on {{ $labels.instance }}"
+          description: "More than 100 HTTP 429 responses were recorded in five minutes. Check Cloudflare traffic, abusive sources, endpoint-specific limits, and legitimate client retries."
+
+      - alert: WishkrNginxClientAbortsHigh
+        expr: wishkr_nginx_http_499_requests_5m{instance="wishkr-prod-mum-01"} > 50
+        for: 5m
+        keep_firing_for: 5m
+        labels:
+          severity: warning
+          component: nginx
+          team: wishkr-operations
+        annotations:
+          summary: "Nginx client-aborted requests are high on {{ $labels.instance }}"
+          description: "More than 50 Nginx 499 responses were recorded in five minutes. Check latency, client timeouts, upstream saturation, and network conditions."
+
+      - alert: WishkrNginxActiveConnectionsHigh
+        expr: wishkr_nginx_connections_active{instance="wishkr-prod-mum-01"} > 200
+        for: 5m
+        keep_firing_for: 5m
+        labels:
+          severity: warning
+          component: nginx
+          team: wishkr-operations
+        annotations:
+          summary: "Nginx active connections are high on {{ $labels.instance }}"
+          description: "Nginx has held more than 200 active connections for five minutes. Check request volume, slow clients, upstream response times, and resource pressure."

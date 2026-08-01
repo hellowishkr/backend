@@ -1,0 +1,5 @@
+# Type Path                    Mode User Group Age  Argument
+d /var/log/wishkr              0750 root adm -    -
+d /var/log/wishkr-trivy        0750 root adm -    -
+e /var/log/wishkr              -    -    -   30d  -
+e /var/log/wishkr-trivy        -    -    -   90d  -

@@ -64,6 +64,9 @@ install -o root -g root -m 0644 \
     "$SCRIPT_DIR/cloudflare-realip.conf" \
     /etc/nginx/conf.d/cloudflare-realip.conf
 install -o root -g root -m 0644 \
+    "$SCRIPT_DIR/wishkr-status.conf" \
+    /etc/nginx/conf.d/wishkr-status.conf
+install -o root -g root -m 0644 \
     "$SCRIPT_DIR/wishkr-proxy.conf" \
     /etc/nginx/snippets/wishkr-proxy.conf
 install -o root -g root -m 0644 \
@@ -72,6 +75,21 @@ install -o root -g root -m 0644 \
 
 ln -sfn /etc/nginx/sites-available/wishkr-api /etc/nginx/sites-enabled/wishkr-api
 rm -f /etc/nginx/sites-enabled/default
+
+# Nginx otherwise creates new per-site logs under its root master process with
+# the host umask, which can leave them world-readable until the first rotation.
+# Preserve existing contents while enforcing the intended operator-only mode.
+for log_path in \
+    /var/log/nginx/wishkr-api-access.log \
+    /var/log/nginx/wishkr-api-error.log \
+    /var/log/nginx/wishkr-api-metrics.log; do
+  if [ ! -e "$log_path" ]; then
+    install -o root -g adm -m 0640 /dev/null "$log_path"
+  else
+    chown root:adm "$log_path"
+    chmod 0640 "$log_path"
+  fi
+done
 
 nginx -t
 systemctl enable --now nginx

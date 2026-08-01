@@ -1,0 +1,147 @@
+groups:
+  - name: wishkr-nvme
+    interval: 1m
+    rules:
+      - alert: WishkrNVMeMetricsMissing
+        expr: absent_over_time(wishkr_nvme_smart_last_collection_timestamp_seconds{instance="wishkr-prod-mum-01"}[15m]) == 1
+        for: 2m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: nvme
+          team: wishkr-operations
+        annotations:
+          summary: "NVMe SMART metrics are missing from {{ $labels.instance }}"
+          description: "Grafana has received no NVMe SMART collection timestamp for 15 minutes. Check the Alloy service and wishkr-nvme-smart-metrics timer."
+
+      - alert: WishkrNVMeMetricsStale
+        expr: (time() - wishkr_nvme_smart_last_collection_timestamp_seconds{instance="wishkr-prod-mum-01"}) > 900
+        for: 2m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: nvme
+          team: wishkr-operations
+        annotations:
+          summary: "NVMe SMART metrics are stale on {{ $labels.instance }}"
+          description: "The last successful NVMe SMART export is more than 15 minutes old. Check the systemd timer, exporter service, and Alloy textfile collector."
+
+      - alert: WishkrNVMeDeviceMissing
+        expr: wishkr_nvme_smart_devices_detected{instance="wishkr-prod-mum-01"} < 2
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: nvme
+          team: wishkr-operations
+        annotations:
+          summary: "An NVMe device is missing from {{ $labels.instance }}"
+          description: "Fewer than two NVMe namespace devices were detected. Check kernel logs, smartctl, mdadm RAID health, and OVHcloud hardware status immediately."
+
+      - alert: WishkrNVMeCollectionFailed
+        expr: wishkr_nvme_smart_collection_success{instance="wishkr-prod-mum-01"} < 1
+        for: 2m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: nvme
+          team: wishkr-operations
+        annotations:
+          summary: "SMART collection failed for NVMe {{ $labels.device }} on {{ $labels.instance }}"
+          description: "smartctl output could not be collected or parsed for this device. Check the exporter service, device node, permissions, and kernel logs."
+
+      - alert: WishkrNVMeSMARTHealthFailure
+        expr: wishkr_nvme_smart_passed{instance="wishkr-prod-mum-01"} < 1
+        for: 0m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: nvme
+          team: wishkr-operations
+        annotations:
+          summary: "NVMe {{ $labels.device }} failed SMART health on {{ $labels.instance }}"
+          description: "The NVMe controller reports a failed overall SMART status. Check smartctl, mdadm RAID health, kernel logs, backups, and OVHcloud hardware status immediately."
+
+      - alert: WishkrNVMeCriticalWarning
+        expr: wishkr_nvme_smart_critical_warning{instance="wishkr-prod-mum-01"} > 0
+        for: 0m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: nvme
+          team: wishkr-operations
+        annotations:
+          summary: "NVMe {{ $labels.device }} has a critical warning on {{ $labels.instance }}"
+          description: "The NVMe SMART critical-warning bitmask is nonzero. Inspect smartctl output, RAID health, kernel logs, backups, and OVHcloud hardware status immediately."
+
+      - alert: WishkrNVMeTemperatureHigh
+        expr: wishkr_nvme_smart_temperature_celsius{instance="wishkr-prod-mum-01"} > 70
+        for: 5m
+        keep_firing_for: 5m
+        labels:
+          severity: warning
+          component: nvme
+          team: wishkr-operations
+        annotations:
+          summary: "NVMe {{ $labels.device }} temperature is high on {{ $labels.instance }}"
+          description: "NVMe temperature has remained above 70 degrees Celsius for five minutes. Check server cooling, airflow, system load, and OVHcloud hardware telemetry."
+
+      - alert: WishkrNVMeSpareBelowThreshold
+        expr: wishkr_nvme_smart_available_spare_percent{instance="wishkr-prod-mum-01"} <= wishkr_nvme_smart_spare_threshold_percent{instance="wishkr-prod-mum-01"}
+        for: 5m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: nvme
+          team: wishkr-operations
+        annotations:
+          summary: "NVMe {{ $labels.device }} spare capacity is below threshold on {{ $labels.instance }}"
+          description: "Available NVMe spare capacity is at or below the controller warning threshold. Verify backups and arrange hardware replacement immediately."
+
+      - alert: WishkrNVMeEnduranceHigh
+        expr: wishkr_nvme_smart_percentage_used{instance="wishkr-prod-mum-01"} >= 80
+        for: 15m
+        keep_firing_for: 5m
+        labels:
+          severity: warning
+          component: nvme
+          team: wishkr-operations
+        annotations:
+          summary: "NVMe {{ $labels.device }} endurance consumption is high on {{ $labels.instance }}"
+          description: "The NVMe device reports at least 80 percent estimated endurance consumed. Plan replacement and confirm recent off-server backups."
+
+      - alert: WishkrNVMeMediaErrors
+        expr: wishkr_nvme_smart_media_errors_total{instance="wishkr-prod-mum-01"} > 0
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: critical
+          component: nvme
+          team: wishkr-operations
+        annotations:
+          summary: "NVMe {{ $labels.device }} reports media errors on {{ $labels.instance }}"
+          description: "The NVMe device reports one or more unrecoverable media or data-integrity errors. Verify RAID and backups, then investigate hardware replacement."
+
+      - alert: WishkrNVMeErrorLogEntries
+        expr: wishkr_nvme_smart_error_log_entries_total{instance="wishkr-prod-mum-01"} > 0
+        for: 5m
+        keep_firing_for: 5m
+        labels:
+          severity: warning
+          component: nvme
+          team: wishkr-operations
+        annotations:
+          summary: "NVMe {{ $labels.device }} has error-log entries on {{ $labels.instance }}"
+          description: "The NVMe error-information log is nonempty. Inspect the complete smartctl report and kernel logs and correlate with media errors or RAID events."
+
+      - alert: WishkrNVMeUnsafeShutdown
+        expr: increase(wishkr_nvme_smart_unsafe_shutdowns_total{instance="wishkr-prod-mum-01"}[15m]) > 0
+        for: 1m
+        keep_firing_for: 5m
+        labels:
+          severity: warning
+          component: nvme
+          team: wishkr-operations
+        annotations:
+          summary: "NVMe {{ $labels.device }} recorded an unsafe shutdown on {{ $labels.instance }}"
+          description: "The NVMe unsafe-shutdown counter increased during the last 15 minutes. Check power, kernel, shutdown, RAID, and OVHcloud intervention events."

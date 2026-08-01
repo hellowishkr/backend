@@ -7,7 +7,7 @@
    so nothing fired on 21 Jul).
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -17,17 +17,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.tools.tool_impl import occasions, reminders as reminders_tool
 from app.models import Contact, Occasion, Reminder, ReminderStatus, User
 from app.models.occasion import OccasionType
+from app.utils.timezones import today_for_user
 
 
 async def _seed_wedding(db: AsyncSession, phone: str, days_out: int) -> Occasion:
     user = User(id="usr_inc", phone=phone, name="Karan", city_raw="Pune")
     contact = Contact(id="con_inc", user_id=user.id, name="Swaraj", relationship_type="friend")
+    occasion_day = today_for_user(user) + timedelta(days=days_out)
     occ = Occasion(
         id="occ_inc",
         user_id=user.id,
         contact_id=contact.id,
         type=OccasionType.WEDDING,
-        date=datetime.now(timezone.utc) + timedelta(days=days_out),
+        # Occasion timestamps preserve calendar components. Build the fixture
+        # from the user's local calendar day so an exact "8 days out" does not
+        # become 7 days near the UTC/India date boundary.
+        date=datetime.combine(occasion_day, time.min, tzinfo=timezone.utc),
         recurring=False,
     )
     db.add_all([user, contact, occ])

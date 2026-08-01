@@ -1,0 +1,4 @@
+## Wishkr Grafana Alloy service settings. No secrets belong in this file.
+CONFIG_FILE="/etc/alloy/config.alloy"
+CUSTOM_ARGS="--server.http.listen-addr=127.0.0.1:12345 --server.http.enable-pprof=false --server.http.disable-support-bundle --disable-reporting"
+RESTART_ON_UPGRADE=true

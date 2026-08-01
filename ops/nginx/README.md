@@ -18,6 +18,11 @@ Cloudflare account credentials.
   Cloudflare range.
 - Access logs record `$uri`, never `$request_uri`, so query parameters such as
   Meta's webhook verification token are not retained.
+- Wishkr access, error, and monitoring logs are `root:adm 0640` from first
+  creation and rotate daily for 14 days under the Item 12 retention policy.
+- Monitoring uses a separate log containing only numeric timestamp and response
+  status plus an aggregate `stub_status` endpoint bound to `127.0.0.1:8081`.
+  The monitoring exporter cannot read the normal access or error logs.
 - `/internal/` is VPN-only. Webhooks retain application HMAC validation and are
   exempt from the low-volume login limiter.
 

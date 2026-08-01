@@ -115,8 +115,10 @@ compose=(
 )
 
 GIT_SHA="${git_sha}" "${compose[@]}" config --quiet
-GIT_SHA="${git_sha}" "${compose[@]}" build db backend
+GIT_SHA="${git_sha}" "${compose[@]}" build backend
 
+docker image inspect "wishkr-postgres:16.14-alpine3.24.1" >/dev/null \
+  || fail "reviewed PostgreSQL image is missing; database image changes require a separate maintenance action"
 wishkr-scan-image "wishkr-postgres:16.14-alpine3.24.1"
 wishkr-scan-image "wishkr-backend:${git_sha}"
 
@@ -131,7 +133,8 @@ active_compose=(
   -f "${CURRENT_LINK}/docker-compose.ovh.yml"
 )
 
-GIT_SHA="${git_sha}" "${active_compose[@]}" up -d --remove-orphans
+GIT_SHA="${git_sha}" "${active_compose[@]}" up -d --remove-orphans \
+  --wait --wait-timeout 180
 "${CURRENT_LINK}/ops/deployment/validate-runtime.sh"
 
 echo "PASS: OVH production release ${release_id} deployed and validated"

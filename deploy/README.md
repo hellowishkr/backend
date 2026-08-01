@@ -13,7 +13,8 @@ workflow is `.github/workflows/deploy-backend.yml`.
   closed.
 - SSH uses a pinned `known_hosts` entry rather than live `ssh-keyscan` trust.
 - A root-owned host helper validates the archive and checksum, builds and scans
-  images, activates an immutable release, and runs the runtime validator.
+  the application image, re-scans the reviewed database image, activates an
+  immutable release, waits for service health, and runs the runtime validator.
 - The workflow targets one OVH host and never contacts a Hetzner server.
 
 ### Required `production` environment secrets

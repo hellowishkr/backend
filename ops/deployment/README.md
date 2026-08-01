@@ -131,8 +131,11 @@ The runner uploads a Git archive to `/var/tmp` and invokes the root-owned
 `/usr/local/sbin/wishkr-deploy-release` helper. The helper accepts only the
 approved archive namespace, verifies its SHA-256 checksum and path layout,
 serializes deployments, renders Compose without printing the environment,
-builds and vulnerability-scans both local images, switches the immutable
-release symlink, and runs `validate-runtime.sh`.
+builds and vulnerability-scans the application image, re-scans the reviewed
+PostgreSQL image without rebuilding it, switches the immutable release symlink,
+waits for container health, and runs `validate-runtime.sh`. PostgreSQL image
+changes require a separate reviewed maintenance action so routine application
+deployments do not restart the database.
 
 Provision a dedicated CI WireGuard/SSH identity and a narrowly scoped sudo rule
 for the installed helper. Never reuse the personal administrator peer or SSH

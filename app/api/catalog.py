@@ -188,15 +188,12 @@ def serialize_product(
         # avoid buyers contacting vendors directly and bypassing Wishkr. Admin
         # callers opt in via include_vendor_name — they need to know the supplier.
         "vendor_name": (product.vendor.name if product.vendor else None) if include_vendor_name else None,
-        # A configured flat fee is the complete order shipping charge regardless
-        # of quantity. ``None`` means the storefront should use the legacy
-        # product base + per-extra-unit calculation.
+        # A configured vendor flat fee applies only below the ₹500 free-delivery
+        # threshold. Product-level and extra-item delivery fees are retired.
         "vendor_shipping_flat_fee_paise": (
             product.vendor.shipping_flat_fee_paise if product.vendor else None
         ),
-        "vendor_shipping_extra_item_fee_paise": (
-            product.vendor.shipping_extra_item_fee_paise if product.vendor else 0
-        ),
+        "vendor_shipping_extra_item_fee_paise": 0,
         "name": product.name,
         "description": product.description,
         "category": product.category,
@@ -221,8 +218,10 @@ def serialize_product(
         "inventory_quantity": getattr(product, "inventory_quantity", None),
         "gst_rate": _money(product.gst_rate),
         "hsn": product.hsn,
-        "shipping_included": product.shipping_included,
-        "shipping_fee_paise": product.shipping_fee_paise,
+        # Legacy fields remain in the response until older clients age out, but
+        # are normalized so no storefront can resurrect a product surcharge.
+        "shipping_included": True,
+        "shipping_fee_paise": None,
         "image_url": product.image_url,
         "video_url": product.video_url,
         "active": product.active,

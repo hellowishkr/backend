@@ -453,7 +453,7 @@ async def edit_order_items(
 
     vendor = priced_lines[0].product.vendor
     product_total_paise = sum(line.line_total_paise for line in priced_lines)
-    shipping_total_paise = compute_order_shipping_paise(priced_lines, vendor)
+    shipping_total_paise = compute_order_shipping_paise(product_total_paise, vendor)
     total_paise = product_total_paise + shipping_total_paise
     platform_amount_paise = round(product_total_paise * 0.10)
     vendor_amount_paise = total_paise - platform_amount_paise

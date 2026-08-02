@@ -308,6 +308,8 @@ def serialize_vendor(
 def apply_vendor_payload(vendor: Vendor, payload: VendorPayload) -> None:
     for key, value in payload.model_dump(exclude={"city_ids", "category_ids", "category"}).items():
         setattr(vendor, key, value)
+    # The order policy no longer charges per-extra-item delivery.
+    vendor.shipping_extra_item_fee_paise = 0
     # Primary category stays the source of truth for legacy filters: first of
     # the selected categories, falling back to an explicit `category` if given.
     primary = (payload.category_ids[0] if payload.category_ids else None) or payload.category
@@ -1047,8 +1049,10 @@ async def apply_product_payload(db: AsyncSession, product: Product, payload: Pro
         product.inventory_quantity = payload.inventory_quantity
     product.gst_rate = payload.gst_rate
     product.hsn = payload.hsn
-    product.shipping_included = payload.shipping_included
-    product.shipping_fee_paise = payload.shipping_fee_paise
+    # Delivery is priced once at order level. Accept legacy client fields for
+    # backwards compatibility, but never persist a product-level surcharge.
+    product.shipping_included = True
+    product.shipping_fee_paise = None
     product.image_url = payload.image_url
     product.video_url = payload.video_url
     product.in_stock = payload.in_stock and payload.inventory_quantity != 0

@@ -64,8 +64,6 @@ ALLOWED_FIELDS = {
     "inventory_quantity",
     "dispatch_lead_time_days",
     "delivery_pincodes",
-    "shipping_included",
-    "shipping_fee_paise",
     "ships_nationally",
     "supports_gift_message",
     "preparation_time",

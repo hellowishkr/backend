@@ -110,22 +110,42 @@ def test_list_allocation_reports_an_upstream_pricing_invariant() -> None:
         enforce_allocation_minimums([100, 0], [100, 100])
 
 
-async def test_vendor_flat_shipping_stays_59_rupees_for_100_items(session_factory) -> None:
+async def test_delivery_is_free_when_order_is_at_least_500_rupees(session_factory) -> None:
     async with session_factory() as db:
         await _seed(db)
         quote = await build_product_order_quote(db, [_item("prd_one", qty=100)])
 
     body = serialize_product_order_quote(quote)
-    assert quote.shipping_paise == 5900
-    assert quote.total_paise == 10_000_000 + 5900
+    assert quote.shipping_paise == 0
+    assert quote.total_paise == 10_000_000
     assert body["vendor"] == {"id": "ven_one", "name": "PyariSakhee"}
-    assert body["shipping"]["charge_type"] == "vendor_flat"
-    assert body["shipping"]["fee_paise"] == 5900
+    assert body["shipping"]["charge_type"] == "free"
+    assert body["shipping"]["fee_paise"] == 0
+    assert body["shipping"]["free_delivery_threshold_paise"] == 50_000
+    assert body["shipping"]["amount_until_free_delivery_paise"] == 0
     assert body["items"][0]["vendor_name"] == "PyariSakhee"
     assert body["items"][0]["earliest_delivery_date"]
     assert body["breakdown"]["total_paise"] == quote.total_paise
     assert body["breakdown"]["product_list_subtotal_paise"] == 12_500_000
     assert body["breakdown"]["discount_paise"] == 2_500_000
+
+
+async def test_vendor_flat_shipping_applies_below_500_rupees(session_factory) -> None:
+    async with session_factory() as db:
+        await _seed(db)
+        product = await db.get(Product, "prd_one")
+        assert product is not None
+        product.base_price_paise = 40_000
+        product.discounted_price_paise = 40_000
+        await db.commit()
+        quote = await build_product_order_quote(db, [_item("prd_one")])
+
+    body = serialize_product_order_quote(quote)
+    assert quote.product_subtotal_paise == 40_000
+    assert quote.shipping_paise == 5_900
+    assert quote.total_paise == 45_900
+    assert body["shipping"]["charge_type"] == "vendor_flat"
+    assert body["shipping"]["amount_until_free_delivery_paise"] == 10_000
 
 
 async def test_quote_line_breakdown_sums_exactly_to_backend_aggregate(session_factory) -> None:

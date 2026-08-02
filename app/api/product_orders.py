@@ -33,6 +33,11 @@ logger = logging.getLogger("wishkr.product_orders")
 # keystroke — while capping the amplification.
 _quote_rate_limiter = RateLimiter(max_requests=30, window_seconds=60, name="product_quote")
 
+# Delivery is an order-level promotion, never a product surcharge. A vendor may
+# configure one flat fee for smaller baskets; the fee is waived once the
+# charged merchandise subtotal reaches this threshold.
+FREE_DELIVERY_THRESHOLD_PAISE = 50_000
+
 
 def _client_ip(request: Request) -> str:
     forwarded_for = request.headers.get("x-forwarded-for")
@@ -306,12 +311,10 @@ async def price_line(db: AsyncSession, item: ProductOrderItemPayload) -> PricedL
         base_product_paise
         + extras_paise
     )
-    # The product's own shipping fee. Order-level shipping is charged once (the
-    # highest fee across lines, see create_product_order), so it is NOT baked
-    # into line_total_paise here — only the product portion is.
-    shipping_fee_paise = (
-        0 if product.shipping_included else int(product.shipping_fee_paise or 0)
-    )
+    # Product-level delivery fees are retired. Keep the snapshot field at zero
+    # for backwards-compatible order-line serialization; delivery is computed
+    # once from the order subtotal and the vendor's flat fee.
+    shipping_fee_paise = 0
     return PricedLine(
         product=product,
         variant=variant,
@@ -325,20 +328,16 @@ async def price_line(db: AsyncSession, item: ProductOrderItemPayload) -> PricedL
     )
 
 
-def compute_order_shipping_paise(priced_lines: list[PricedLine], vendor: Vendor) -> int:
-    """Return this single-vendor order's complete shipping charge.
+def compute_order_shipping_paise(product_subtotal_paise: int, vendor: Vendor) -> int:
+    """Return the single-vendor order's delivery charge.
 
-    A configured vendor flat fee overrides product and quantity-based shipping.
-    Otherwise, preserve the legacy highest-product-fee + extra-unit calculation.
+    Delivery is free at ₹500 or more. Below that threshold, only the vendor's
+    explicitly configured flat fee applies. Legacy per-product and extra-item
+    fees are intentionally ignored.
     """
-    flat_fee_paise = getattr(vendor, "shipping_flat_fee_paise", None)
-    if flat_fee_paise is not None:
-        return int(flat_fee_paise)
-
-    base = max((line.shipping_fee_paise for line in priced_lines), default=0)
-    total_units = sum(line.qty for line in priced_lines)
-    extra_units = max(0, total_units - 1)
-    return base + extra_units * (vendor.shipping_extra_item_fee_paise or 0)
+    if product_subtotal_paise >= FREE_DELIVERY_THRESHOLD_PAISE:
+        return 0
+    return int(getattr(vendor, "shipping_flat_fee_paise", None) or 0)
 
 
 def allocate_whole_rupee_total(total_paise: int, weights: list[int]) -> list[int]:
@@ -462,12 +461,12 @@ async def build_product_order_quote(
         line.base_unit_price_paise * line.qty for line in priced_lines
     )
     raw_product_total_paise = sum(line.line_total_paise for line in priced_lines)
-    shipping_paise = compute_order_shipping_paise(priced_lines, vendor)
     pricing = await get_storefront_pricing(db)
     product_subtotal_paise = pricing.charge_paise(
         base_product_total_paise,
         raw_product_total_paise,
     )
+    shipping_paise = compute_order_shipping_paise(product_subtotal_paise, vendor)
 
     charge_weights = [
         (
@@ -535,10 +534,8 @@ def serialize_product_order_quote(quote: ProductOrderQuote) -> dict:
     vendor = quote.vendor
     if quote.shipping_paise == 0:
         shipping_charge_type = "free"
-    elif getattr(vendor, "shipping_flat_fee_paise", None) is not None:
-        shipping_charge_type = "vendor_flat"
     else:
-        shipping_charge_type = "vendor_product_rule"
+        shipping_charge_type = "vendor_flat"
 
     return {
         "currency": "INR",
@@ -568,6 +565,11 @@ def serialize_product_order_quote(quote: ProductOrderQuote) -> dict:
             "vendor_name": vendor.name,
             "fee_paise": quote.shipping_paise,
             "charge_type": shipping_charge_type,
+            "free_delivery_threshold_paise": FREE_DELIVERY_THRESHOLD_PAISE,
+            "amount_until_free_delivery_paise": max(
+                0,
+                FREE_DELIVERY_THRESHOLD_PAISE - quote.product_subtotal_paise,
+            ),
             "applies_to_product_ids": [line.product.id for line in quote.priced_lines],
             "earliest_delivery_date": quote.earliest_delivery_date.isoformat(),
         },

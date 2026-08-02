@@ -84,8 +84,6 @@ class VendorPayload(BaseModel):
     bank_ifsc: str | None = None
     fulfillment_mode: str = "manual"
     delivery_arrangement: str = "self"  # self | wishkr
-    shipping_flat_fee_paise: int | None = Field(default=None, ge=0)
-    shipping_extra_item_fee_paise: int = Field(default=0, ge=0)
     delivery_policy: str | None = None
     return_policy: str | None = None
     cancellation_policy: str | None = None
@@ -230,8 +228,6 @@ class ProductPayload(BaseModel):
     inventory_quantity: int | None = Field(default=None, ge=0)
     gst_rate: Decimal | None = None
     hsn: str | None = None
-    shipping_included: bool = True
-    shipping_fee_paise: int | None = None
     image_url: str | None = None
     video_url: str | None = None
     active: bool = True
@@ -287,8 +283,6 @@ def serialize_vendor(
         "bank_ifsc": vendor.bank_ifsc if can_view_financials else None,
         "fulfillment_mode": vendor.fulfillment_mode,
         "delivery_arrangement": getattr(vendor, "delivery_arrangement", "self"),
-        "shipping_flat_fee_paise": getattr(vendor, "shipping_flat_fee_paise", None),
-        "shipping_extra_item_fee_paise": getattr(vendor, "shipping_extra_item_fee_paise", 0),
         "delivery_policy": vendor.delivery_policy,
         "return_policy": vendor.return_policy,
         "cancellation_policy": vendor.cancellation_policy,
@@ -308,7 +302,8 @@ def serialize_vendor(
 def apply_vendor_payload(vendor: Vendor, payload: VendorPayload) -> None:
     for key, value in payload.model_dump(exclude={"city_ids", "category_ids", "category"}).items():
         setattr(vendor, key, value)
-    # The order policy no longer charges per-extra-item delivery.
+    # Delivery is the Wishkr-wide ₹49/₹500 order rule, not vendor-specific.
+    vendor.shipping_flat_fee_paise = None
     vendor.shipping_extra_item_fee_paise = 0
     # Primary category stays the source of truth for legacy filters: first of
     # the selected categories, falling back to an explicit `category` if given.
@@ -1049,8 +1044,8 @@ async def apply_product_payload(db: AsyncSession, product: Product, payload: Pro
         product.inventory_quantity = payload.inventory_quantity
     product.gst_rate = payload.gst_rate
     product.hsn = payload.hsn
-    # Delivery is priced once at order level. Accept legacy client fields for
-    # backwards compatibility, but never persist a product-level surcharge.
+    # Delivery is priced once at order level. Legacy client shipping fields are
+    # ignored by the payload model and can never persist a product surcharge.
     product.shipping_included = True
     product.shipping_fee_paise = None
     product.image_url = payload.image_url

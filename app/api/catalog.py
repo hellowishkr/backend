@@ -188,11 +188,9 @@ def serialize_product(
         # avoid buyers contacting vendors directly and bypassing Wishkr. Admin
         # callers opt in via include_vendor_name — they need to know the supplier.
         "vendor_name": (product.vendor.name if product.vendor else None) if include_vendor_name else None,
-        # A configured vendor flat fee applies only below the ₹500 free-delivery
-        # threshold. Product-level and extra-item delivery fees are retired.
-        "vendor_shipping_flat_fee_paise": (
-            product.vendor.shipping_flat_fee_paise if product.vendor else None
-        ),
+        # Legacy fields are normalized so older carts cannot revive vendor,
+        # product, or quantity-specific delivery fees.
+        "vendor_shipping_flat_fee_paise": None,
         "vendor_shipping_extra_item_fee_paise": 0,
         "name": product.name,
         "description": product.description,

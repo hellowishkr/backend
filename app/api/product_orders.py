@@ -34,9 +34,10 @@ logger = logging.getLogger("wishkr.product_orders")
 _quote_rate_limiter = RateLimiter(max_requests=30, window_seconds=60, name="product_quote")
 
 # Delivery is an order-level promotion, never a product surcharge. A vendor may
-# configure one flat fee for smaller baskets; the fee is waived once the
-# charged merchandise subtotal reaches this threshold.
+# Wishkr owns the delivery rule: one standard fee for smaller baskets, waived
+# once the charged physical-product subtotal reaches this threshold.
 FREE_DELIVERY_THRESHOLD_PAISE = 50_000
+STANDARD_DELIVERY_FEE_PAISE = 4_900
 
 
 def _client_ip(request: Request) -> str:
@@ -313,7 +314,7 @@ async def price_line(db: AsyncSession, item: ProductOrderItemPayload) -> PricedL
     )
     # Product-level delivery fees are retired. Keep the snapshot field at zero
     # for backwards-compatible order-line serialization; delivery is computed
-    # once from the order subtotal and the vendor's flat fee.
+    # once from the order subtotal using the Wishkr-wide rule.
     shipping_fee_paise = 0
     return PricedLine(
         product=product,
@@ -328,16 +329,16 @@ async def price_line(db: AsyncSession, item: ProductOrderItemPayload) -> PricedL
     )
 
 
-def compute_order_shipping_paise(product_subtotal_paise: int, vendor: Vendor) -> int:
+def compute_order_shipping_paise(product_subtotal_paise: int) -> int:
     """Return the single-vendor order's delivery charge.
 
-    Delivery is free at ₹500 or more. Below that threshold, only the vendor's
-    explicitly configured flat fee applies. Legacy per-product and extra-item
-    fees are intentionally ignored.
+    Delivery is free at ₹500 or more. Below that threshold, Wishkr charges one
+    standard ₹49 order fee. Vendor, product, bouquet, quantity, and extra-item
+    settings never change it.
     """
     if product_subtotal_paise >= FREE_DELIVERY_THRESHOLD_PAISE:
         return 0
-    return int(getattr(vendor, "shipping_flat_fee_paise", None) or 0)
+    return STANDARD_DELIVERY_FEE_PAISE
 
 
 def allocate_whole_rupee_total(total_paise: int, weights: list[int]) -> list[int]:
@@ -466,7 +467,7 @@ async def build_product_order_quote(
         base_product_total_paise,
         raw_product_total_paise,
     )
-    shipping_paise = compute_order_shipping_paise(product_subtotal_paise, vendor)
+    shipping_paise = compute_order_shipping_paise(product_subtotal_paise)
 
     charge_weights = [
         (
@@ -535,7 +536,7 @@ def serialize_product_order_quote(quote: ProductOrderQuote) -> dict:
     if quote.shipping_paise == 0:
         shipping_charge_type = "free"
     else:
-        shipping_charge_type = "vendor_flat"
+        shipping_charge_type = "standard"
 
     return {
         "currency": "INR",

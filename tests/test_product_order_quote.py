@@ -130,7 +130,7 @@ async def test_delivery_is_free_when_order_is_at_least_500_rupees(session_factor
     assert body["breakdown"]["discount_paise"] == 2_500_000
 
 
-async def test_vendor_flat_shipping_applies_below_500_rupees(session_factory) -> None:
+async def test_standard_shipping_applies_below_500_rupees(session_factory) -> None:
     async with session_factory() as db:
         await _seed(db)
         product = await db.get(Product, "prd_one")
@@ -142,9 +142,9 @@ async def test_vendor_flat_shipping_applies_below_500_rupees(session_factory) ->
 
     body = serialize_product_order_quote(quote)
     assert quote.product_subtotal_paise == 40_000
-    assert quote.shipping_paise == 5_900
-    assert quote.total_paise == 45_900
-    assert body["shipping"]["charge_type"] == "vendor_flat"
+    assert quote.shipping_paise == 4_900
+    assert quote.total_paise == 44_900
+    assert body["shipping"]["charge_type"] == "standard"
     assert body["shipping"]["amount_until_free_delivery_paise"] == 10_000
 
 

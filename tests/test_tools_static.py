@@ -206,7 +206,12 @@ def test_static_prompt_token_estimate_budget():
     # Raised 2300 -> 2400 for the catalogue_options rule (show name/price/
     # browse_url only, never the vendor). Baseline was flush at 2300, so any
     # added line tripped this; the rule is a leak guard, not a nice-to-have.
-    assert est <= 2400, f"static prompt too large: ~{est} tokens"
+    # Raised 2400 -> 2500 for rule 14 (never promise work you can't finish this
+    # turn). The bot told a user "I'm looking for cricket bat options... I'll
+    # let you know what I find" and then never replied — it has no background
+    # jobs and the commerce tools are disabled in MVP. Honesty guard, not a
+    # nice-to-have. See the Shubhu/Nandakishor post-mortem.
+    assert est <= 2500, f"static prompt too large: ~{est} tokens"
 
 
 def test_tool_count_per_phase_expected():

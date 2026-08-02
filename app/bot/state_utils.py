@@ -30,6 +30,19 @@ logger = logging.getLogger("wishkr.state")
 
 ACTIVE_GIFT_CONTEXT_KEY = "active_gift_context"
 
+# `awaiting` marker for a half-finished occasion add. Set when the agent asks
+# for a missing name/occasion/date, cleared once the occasion is saved. Its
+# only job is to stop the deterministic router from hijacking the user's answer
+# (see action_router.try_handle_actions) — the agent still does the parsing.
+AWAITING_OCCASION_SLOTS = "occasion_slots"
+
+# Partial occasion facts gathered across turns, e.g. {"relationship": "brother"}
+# from "Brother" two turns before the name arrives. Read into the dynamic tail
+# so the agent can pass them to add_occasion.
+OCCASION_SLOTS_KEY = "occasion_slots"
+
+_OCCASION_SLOT_FIELDS = {"contact_name", "relationship", "occasion_type", "date_text"}
+
 _ACTIVE_GIFT_CONTEXT_FIELDS = {
     "version",
     "recipient_name",
@@ -319,6 +332,46 @@ async def get_budget(db: AsyncSession, phone: str) -> dict[str, Any] | None:
     state = await get_state(db, phone)
     val = state.get("budget")
     return val if isinstance(val, dict) else None
+
+
+async def get_occasion_slots(db: AsyncSession, phone: str) -> dict[str, Any]:
+    """Return partial occasion facts gathered so far (empty when none)."""
+    state = await get_state(db, phone)
+    slots = state.get(OCCASION_SLOTS_KEY)
+    return dict(slots) if isinstance(slots, dict) else {}
+
+
+async def remember_occasion_slots(
+    db: AsyncSession, phone: str, updates: dict[str, Any],
+) -> dict[str, Any]:
+    """Merge occasion slots and arm the `awaiting` marker. Returns merged slots.
+
+    Merge-only: a later turn that supplies a name must not wipe the relation
+    captured two turns earlier. Callers clear via `clear_occasion_slots` once
+    the occasion is actually saved.
+    """
+    merged = await get_occasion_slots(db, phone)
+    for key, value in (updates or {}).items():
+        if key not in _OCCASION_SLOT_FIELDS or value is None:
+            continue
+        if isinstance(value, str):
+            value = " ".join(value.strip().split())
+            if not value:
+                continue
+        merged[key] = value
+    if not merged:
+        return {}
+    await set_state(db, phone, OCCASION_SLOTS_KEY, merged)
+    await set_state(db, phone, "awaiting", AWAITING_OCCASION_SLOTS)
+    logger.info("[%s] occasion slots remembered: %s", phone, merged)
+    return merged
+
+
+async def clear_occasion_slots(db: AsyncSession, phone: str) -> None:
+    """Drop partial slots and the awaiting marker (occasion saved or abandoned)."""
+    await clear_state(db, phone, OCCASION_SLOTS_KEY)
+    if await get_awaiting(db, phone) == AWAITING_OCCASION_SLOTS:
+        await clear_state(db, phone, "awaiting")
 
 
 async def clear_state(db: AsyncSession, phone: str, key: str) -> None:

@@ -27,9 +27,11 @@ from app.bot.tools.tool_impl.helpers import (
 )
 from app.bot.state_utils import (
     ACTIVE_GIFT_CONTEXT_KEY,
+    clear_occasion_slots,
     clear_state,
     get_gift_need_profile,
     get_state,
+    remember_occasion_slots,
     update_active_gift_context,
 )
 
@@ -48,6 +50,12 @@ _GENERIC_RELATION_NAMES = {
     "mother",
     "sister",
     "wife",
+}
+
+_MONTH_NAMES = {
+    1: "January", 2: "February", 3: "March", 4: "April", 5: "May", 6: "June",
+    7: "July", 8: "August", 9: "September", 10: "October", 11: "November",
+    12: "December",
 }
 
 _AMBIGUOUS_RELATION_NAMES = {
@@ -90,6 +98,10 @@ async def _activate_saved_occasion(
     updates: dict,
 ) -> None:
     """Make a saved occasion the active recipient without touching gift plans."""
+    # The occasion is saved — the half-finished slot fill is done, so drop the
+    # `awaiting` marker. Leaving it armed would keep suppressing legitimate
+    # "my occasions" requests on later turns.
+    await clear_occasion_slots(db, phone)
     state = await get_state(db, phone)
     active = get_gift_need_profile(state)
     next_occasion_id = str(updates.get("occasion_id") or "").strip()
@@ -123,8 +135,19 @@ async def add_occasion(db: AsyncSession, phone: str, args: dict) -> dict:
     date_month = args.get("date_month")
 
     if not contact_name:
+        await remember_occasion_slots(db, phone, {
+            "occasion_type": occasion_type_str,
+            "relationship": args.get("relationship"),
+        })
         return {"error": "Contact name is required"}
     if _is_ambiguous_relation_name(contact_name):
+        # The agent is about to ask for the real name. Park what we already
+        # know ("brother", BIRTHDAY) so the reply carrying the name isn't
+        # hijacked by the router and the relation survives the round trip.
+        await remember_occasion_slots(db, phone, {
+            "relationship": args.get("relationship") or contact_name,
+            "occasion_type": occasion_type_str,
+        })
         return {
             "error": "specific_contact_name_required",
             "required_action": (
@@ -137,6 +160,11 @@ async def add_occasion(db: AsyncSession, phone: str, args: dict) -> dict:
             ),
         }
     if not date_day or not date_month:
+        await remember_occasion_slots(db, phone, {
+            "contact_name": contact_name,
+            "relationship": args.get("relationship"),
+            "occasion_type": occasion_type_str,
+        })
         return {"error": "Date (day and month) is required"}
 
     try:
@@ -167,6 +195,31 @@ async def add_occasion(db: AsyncSession, phone: str, args: dict) -> dict:
     except ValueError:
         return {"error": f"Invalid date: {date_day}/{date_month}"}
 
+    # "03/10/2000" is genuinely ambiguous (3 Oct or 10 Mar?) and a silently-wrong
+    # birthday misfires every reminder for that person for years. Ambiguity is a
+    # property of how the USER TYPED it, not of the parsed numbers — "3rd
+    # October" is unambiguous even though both parts are <= 12 — so the agent
+    # flags the numeric slash form via date_input_numeric and we confirm once.
+    if (
+        args.get("date_input_numeric")
+        and date_day <= 12
+        and date_month <= 12
+        and date_day != date_month
+        and not args.get("date_confirmed")
+    ):
+        return {
+            "error": "date_ambiguous",
+            "required_action": (
+                "Confirm the reading with the user, then call add_occasion again "
+                "with date_confirmed=true (swapping date_day/date_month if they "
+                "meant the other reading)."
+            ),
+            "message": (
+                f"Just to confirm — {occasion_date.strftime('%-d %B')}? "
+                f"(If you meant {date_month} {_MONTH_NAMES[date_day]}, tell me.)"
+            ),
+        }
+
     # User-local date comparison: at 4am IST on Apr 29 (UTC 22:30 Apr 28) the user
     # who types "Apr 28" means next year's Apr 28, not today's already-past
     # one. UTC ``now.date()`` would still be Apr 28 and we'd keep this year.
@@ -174,7 +227,18 @@ async def add_occasion(db: AsyncSession, phone: str, args: dict) -> dict:
         occasion_calendar_date(occasion_date) < today
         and (recurring or date_year is None)
     ):
-        occasion_date = datetime(year + 1, date_month, date_day, tzinfo=timezone.utc)
+        # Roll to the next FUTURE occurrence, not simply year+1: a birth year
+        # (2000) would otherwise land on 2001 and schedule reminders decades in
+        # the past.
+        # ponytail: the birth year itself is returned to the agent but not
+        # persisted — Contact has no birth_year column. Add one (+ migration)
+        # when age-aware gifting needs it beyond the current turn.
+        next_year = today.year if (date_month, date_day) >= (today.month, today.day) else today.year + 1
+        try:
+            occasion_date = datetime(next_year, date_month, date_day, tzinfo=timezone.utc)
+        except ValueError:
+            # 29 Feb in a non-leap target year — fall back to 28 Feb.
+            occasion_date = datetime(next_year, date_month, 28, tzinfo=timezone.utc)
     elif occasion_calendar_date(occasion_date) < today:
         return {
             "error": "date_in_past",
@@ -358,6 +422,13 @@ async def add_occasion(db: AsyncSession, phone: str, args: dict) -> dict:
         "contact_name": contact_name,
         "occasion": label,
         "date": occasion_date.strftime("%d %B %Y"),
+        # Age is the strongest signal for tailoring gift ideas; surface it for
+        # this turn when the user gave a birth year (not persisted — see above).
+        **(
+            {"birth_year": year, "age_turning": occasion_date.year - year}
+            if date_year is not None and occasion_type == OccasionType.BIRTHDAY
+            else {}
+        ),
         "recurring": recurring,
         "recipient_city": contact.city_raw,
         "reminders_scheduled": True,

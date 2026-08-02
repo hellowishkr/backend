@@ -36,6 +36,7 @@ from app.bot.language_map import (
 )
 from app.bot.messages import append_message
 from app.bot.state_utils import (
+    AWAITING_OCCASION_SLOTS,
     clear_state,
     get_awaiting,
     get_gift_need_profile,
@@ -393,6 +394,21 @@ async def try_handle_actions(
         return reply
 
     if intent_result.intent == "show_occasions" or _is_occasion_list_request(norm):
+        # The classifier only ever sees the bare message string — it has no
+        # history — so a reply to our own question ("Birthday", "Brother",
+        # "Nandkishor, birthday") gets labelled show_occasions and dumps the
+        # empty-list message instead of continuing the add flow. When we are
+        # mid-slot-fill, only an *unambiguous* list phrase may short-circuit;
+        # everything else falls through to the agent, which has the history.
+        # See the Shubhu/Nandakishor conversation post-mortem.
+        if await get_awaiting(db, phone) == AWAITING_OCCASION_SLOTS and (
+            norm not in _OCCASION_LIST_EXACT_PHRASES
+        ):
+            logger.info(
+                "[%s] router=my_occasions suppressed (awaiting occasion slots) text=%r",
+                phone, norm[:80],
+            )
+            return None
         result = await get_my_occasions(db, phone, {})
         reply = _format_my_occasions_reply(result)
         await append_message(db, phone, MessageRole.USER, content=text)

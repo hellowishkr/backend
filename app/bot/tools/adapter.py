@@ -885,6 +885,8 @@ async def add_occasion(
     date_day: int,
     date_month: int,
     date_year: int | None = None,
+    date_input_numeric: bool | None = None,
+    date_confirmed: bool | None = None,
     recurring: bool | None = None,
     custom_label: str | None = None,
     relationship: str | None = None,
@@ -905,6 +907,10 @@ async def add_occasion(
         args["custom_label"] = custom_label
     if date_year is not None:
         args["date_year"] = date_year
+    if date_input_numeric is not None:
+        args["date_input_numeric"] = date_input_numeric
+    if date_confirmed is not None:
+        args["date_confirmed"] = date_confirmed
     if recurring is not None:
         args["recurring"] = recurring
     if relationship:

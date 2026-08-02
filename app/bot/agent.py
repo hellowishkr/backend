@@ -915,9 +915,23 @@ async def _build_dynamic_tail(
             temp = json.loads(state.temp_data)
             if isinstance(temp, dict):
                 from app.bot.state_utils import (
+                    OCCASION_SLOTS_KEY,
                     active_gift_context_is_recent,
                     get_active_gift_context,
                 )
+                # Half-finished occasion add: facts the user gave over earlier
+                # turns ("Brother" before the name arrived). Surfacing them
+                # keeps the relation from being lost across the clarifying
+                # question — the trim window may have dropped the original.
+                slots = temp.get(OCCASION_SLOTS_KEY)
+                if isinstance(slots, dict) and slots:
+                    known = ", ".join(f"{k}={v}" for k, v in sorted(slots.items()))
+                    parts.append(
+                        f"Occasion in progress (already told to you): {known}. "
+                        "Treat the user's next reply as the missing piece of THIS "
+                        "occasion — do not start over and do not list saved "
+                        "occasions. Pass these values to add_occasion."
+                    )
                 gift_ctx = get_active_gift_context(temp)
                 if active_gift_context_is_recent(gift_ctx):
                     recipient = gift_ctx.get("recipient_name") or "the recipient"
@@ -1011,6 +1025,18 @@ def _intent_hint(result: IntentResult, session: Session) -> str:
                 "do?' — DO NOT greet them as if it's a new conversation."
             )
         snippet = last_q[:240]
+        if "?" not in last_q:
+            # Your last message was a STATEMENT, so "ok" is an acknowledgement,
+            # not an answer. "Proceed on that" makes the model reply with an
+            # empty pleasantry and drop the task. Push it to deliver instead.
+            return (
+                "\nUser intent: ACKNOWLEDGEMENT of your previous message:\n"
+                f"> {snippet}\n"
+                "They are waiting on YOU. If that message promised something, "
+                "deliver it now with a tool call. If you cannot, say so plainly "
+                "and give one concrete next step. Do NOT reply with a bare "
+                "'happy to help — what next?'."
+            )
         return (
             "\nUser intent: AFFIRMATIVE to your previous message:\n"
             f"> {snippet}\n"

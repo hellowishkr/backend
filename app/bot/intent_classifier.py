@@ -318,8 +318,13 @@ async def _gemini_classify(text: str) -> IntentResult:
         result = _parse_intent(resp.text or "")
         if result:
             return result
+        # An unparseable label is a real failure the fallback CAN fix, so raise
+        # rather than returning a low-confidence "other" that hides it. (A
+        # confidently *wrong* label is not fixable this way — both models get
+        # the same history-free prompt and would agree. That case is solved by
+        # conversation state, not a second opinion.)
         logger.warning("gemini classifier returned unexpected label: %r", resp.text)
-        return IntentResult("other", 0.3, "llm")
+        raise ValueError(f"unparseable intent label: {resp.text!r}")
     finally:
         # Log classifier usage asynchronously (fire and forget)
         latency_ms = (time.time() - start_time) * 1000

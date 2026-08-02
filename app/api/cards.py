@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import jwt
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.core.config import settings
 from app.utils.id_gen import generate_id
@@ -23,7 +23,9 @@ _cards_rate_limiter = RateLimiter(max_requests=6, window_seconds=600, name="card
 class CardsSsoTokenIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     email: EmailStr | None = None
-    phone: str | None = Field(default=None, max_length=30)
+    # Hubble's JWT SSO contract requires ``phoneNumber`` on every token.  Email
+    # is useful profile context, but it cannot replace the 10-digit phone.
+    phone: str = Field(min_length=10, max_length=10)
 
     @field_validator("name")
     @classmethod
@@ -32,19 +34,11 @@ class CardsSsoTokenIn(BaseModel):
 
     @field_validator("phone")
     @classmethod
-    def _clean_phone(cls, v: str | None) -> str | None:
-        if v is None or not v.strip():
-            return None
+    def _clean_phone(cls, v: str) -> str:
         cleaned = v.strip()
         if not _PHONE_RE.match(cleaned):
             raise ValueError("phone must be exactly 10 digits without country code")
         return cleaned
-
-    @model_validator(mode="after")
-    def _require_contact(self) -> "CardsSsoTokenIn":
-        if self.email is None and not self.phone:
-            raise ValueError("email or phone is required")
-        return self
 
 
 class CardsSsoTokenOut(BaseModel):
@@ -96,8 +90,7 @@ async def create_cards_sso_token(payload: CardsSsoTokenIn, request: Request) -> 
         }
         if payload.email is not None:
             claims["email"] = str(payload.email).lower()
-        if payload.phone is not None:
-            claims["phoneNumber"] = payload.phone
+        claims["phoneNumber"] = payload.phone
 
         try:
             token = jwt.encode(claims, private_key, algorithm="RS256")
@@ -108,10 +101,9 @@ async def create_cards_sso_token(payload: CardsSsoTokenIn, request: Request) -> 
         token = settings.hubble_sdk_mock_token.strip()
 
     logger.info(
-        "cards_sso_token_minted ip=%s has_email=%s has_phone=%s",
+        "cards_sso_token_minted ip=%s has_email=%s has_phone=true",
         ip,
         payload.email is not None,
-        payload.phone is not None,
     )
     return CardsSsoTokenOut(
         token=token,

@@ -35,7 +35,7 @@ def test_cards_sso_token_requires_sdk_config(monkeypatch):
 
     response = _client(monkeypatch).post(
         "/api/cards/sso-token",
-        json={"name": "Karan", "email": "karan@example.com"},
+        json={"name": "Karan", "phone": "9876543210"},
     )
 
     assert response.status_code == 503
@@ -84,12 +84,12 @@ def test_cards_sso_token_signs_minimal_claims(monkeypatch):
     assert claims["iat"] <= int(datetime.now(timezone.utc).timestamp())
 
 
-def test_cards_sso_token_requires_email_or_phone(monkeypatch):
+def test_cards_sso_token_requires_phone_even_when_email_is_present(monkeypatch):
     monkeypatch.setattr(settings, "hubble_sdk_enabled", True)
 
     response = _client(monkeypatch).post(
         "/api/cards/sso-token",
-        json={"name": "Karan"},
+        json={"name": "Karan", "email": "karan@example.com"},
     )
 
     assert response.status_code == 422
@@ -100,7 +100,7 @@ def test_cards_sso_token_rejects_country_code_phone(monkeypatch):
 
     response = _client(monkeypatch).post(
         "/api/cards/sso-token",
-        json={"name": "Karan", "phone": "+919876543210"},
+        json={"name": "Karan", "email": "karan@example.com", "phone": "+919876543210"},
     )
 
     assert response.status_code == 422
@@ -115,7 +115,7 @@ def test_cards_sso_token_can_use_mock_token_without_private_key(monkeypatch):
 
     response = _client(monkeypatch).post(
         "/api/cards/sso-token",
-        json={"name": "Karan", "email": "karan@example.com"},
+        json={"name": "Karan", "email": "karan@example.com", "phone": "9876543210"},
     )
 
     assert response.status_code == 200

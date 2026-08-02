@@ -6,8 +6,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import selectinload
 
-from app.api.admin_catalog import ProductPayload, VariantPayload, apply_product_payload
-from app.api.catalog import check_pincode
+from app.api.admin_catalog import (
+    ProductPayload,
+    VariantPayload,
+    apply_product_payload,
+    create_product_preview_token,
+)
+from app.api.catalog import _verify_preview_token, check_pincode
 from app.db.base import Base
 from app.models.product import Product, ProductAddon, ProductVariant
 from app.models.vendor import Vendor
@@ -195,6 +200,37 @@ def _preview_token(product_id: str, secret: str, expiry: int) -> str:
     payload_b64 = base64.urlsafe_b64encode(payload.encode()).decode().rstrip("=")
     sig = hmac.new(secret.encode(), payload_b64.encode(), "sha256").hexdigest()
     return f"{payload_b64}.{sig}"
+
+
+@pytest.mark.asyncio
+async def test_admin_mints_preview_token_with_backend_secret(
+    catalog_session_factory, monkeypatch
+):
+    from app.core.config import settings
+    from fastapi import HTTPException
+
+    monkeypatch.setattr(settings, "preview_signing_secret", "test-secret")
+
+    async with catalog_session_factory() as db:
+        await _create_vendor(db)
+        db.add(
+            Product(
+                id="prd_test",
+                vendor_id="ven_test",
+                name="Preview product",
+                base_price_paise=10000,
+                variants=[],
+                addons=[],
+            )
+        )
+        await db.commit()
+        result = await create_product_preview_token("prd_test", db)
+
+    assert result["expires_at"] > 0
+    _verify_preview_token(result["token"], "prd_test")
+    with pytest.raises(HTTPException) as exc_info:
+        _verify_preview_token(result["token"], "prd_other")
+    assert exc_info.value.status_code == 403
 
 
 @pytest.mark.asyncio

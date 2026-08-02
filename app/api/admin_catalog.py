@@ -11,7 +11,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.catalog import serialize_product
+from app.api.catalog import mint_preview_token, serialize_product
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.city import City
@@ -994,6 +994,17 @@ async def list_products(
         "page": page,
         "limit": limit,
     }
+
+
+@router.post("/products/{product_id}/preview-token", dependencies=[Depends(require_admin_token)])
+async def create_product_preview_token(
+    product_id: str, db: AsyncSession = Depends(get_db)
+) -> dict:
+    """Mint a read-only storefront preview token for one existing product."""
+    if await db.get(Product, product_id) is None:
+        raise HTTPException(status_code=404, detail="product not found")
+    token, expires_at = mint_preview_token(product_id)
+    return {"token": token, "expires_at": expires_at}
 
 
 @router.post("/products", dependencies=[Depends(require_admin_token)])

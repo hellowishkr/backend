@@ -74,6 +74,23 @@ logger = logging.getLogger("wishkr.catalog")
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 
+PRODUCT_PREVIEW_TTL_SECONDS = 15 * 60
+
+
+def mint_preview_token(product_id: str, *, now: int | None = None) -> tuple[str, int]:
+    """Mint a short-lived token using the verifier's own configured secret.
+
+    Keeping minting and verification in the backend removes the cross-service
+    secret drift that can otherwise make every admin preview link invalid.
+    """
+    secret = settings.preview_signing_secret
+    if not secret:
+        raise HTTPException(status_code=503, detail="preview is not configured")
+    expires_at = (int(time.time()) if now is None else now) + PRODUCT_PREVIEW_TTL_SECONDS
+    payload = base64.urlsafe_b64encode(f"{product_id}|{expires_at}".encode()).decode().rstrip("=")
+    signature = hmac.new(secret.encode(), payload.encode(), "sha256").hexdigest()
+    return f"{payload}.{signature}", expires_at
+
 
 def _money(value: Decimal | None) -> str | None:
     return str(value) if value is not None else None

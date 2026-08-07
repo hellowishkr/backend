@@ -116,7 +116,7 @@ class Settings(BaseSettings):
     # Fallback classifier when Gemini is unavailable (503/timeout).
     # DeepSeek is OpenAI-compatible — no extra package needed, just httpx.
     deepseek_api_key: str = ""
-    deepseek_classifier_model: str = "deepseek-chat"
+    deepseek_classifier_model: str = "deepseek-v4-flash"
     gemini_tool_mode: str = "AUTO"
 
     # Agent settings

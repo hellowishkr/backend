@@ -459,17 +459,18 @@ class TestMvpReminderOnly:
         text: str,
         monkeypatch,
     ):
-        from app.bot.action_router import try_handle_actions
-        from app.bot.intent_classifier import IntentResult
+        # The kill-switch lives in `try_handle_exact_phrases`, which
+        # `handle_message` calls FIRST — before the intent router and before
+        # `try_handle_actions`. Enforced in exactly one place.
+        from app.bot.action_router import try_handle_exact_phrases
 
         monkeypatch.setattr(settings, "mvp_reminder_only", True)
 
-        reply = await try_handle_actions(
+        reply = await try_handle_exact_phrases(
             db,
             "919876543210",
             text,
             user=None,
-            intent_result=IntentResult(intent="other", confidence=1.0, source="test"),
         )
 
         assert reply is not None

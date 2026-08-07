@@ -12,7 +12,7 @@ from app.core.config import settings
 settings.database_url = "sqlite:////tmp/wishkr_adk_test.db"
 
 from app.bot.agent import handle_message
-from app.bot.intent_classifier import IntentResult
+from app.bot.intent_router import RouteResult
 from app.models import User, WishlistItem
 from app.models.recipient_preference import PreferenceRequest
 from app.utils.id_gen import generate_id
@@ -89,8 +89,8 @@ async def test_budget_blocked_does_not_call_gemini(db: AsyncSession):
             mock_runner = AsyncMock()
             mock_get_runner.return_value = mock_runner
             with patch(
-                "app.bot.agent.classify_intent",
-                new=AsyncMock(return_value=IntentResult(intent="other", confidence=1.0, source="rule")),
+                "app.bot.agent.route_intent",
+                new=AsyncMock(return_value=RouteResult(intent="other", confidence=1.0, source="llm")),
             ):
                 with patch("app.bot.agent._save_message", new=AsyncMock()):
                     reply = await handle_message(db, phone, "suggest gifts for me")

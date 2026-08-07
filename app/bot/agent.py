@@ -18,6 +18,7 @@ import contextlib
 import hashlib
 import itertools
 import json
+from functools import lru_cache
 import logging
 import time
 from datetime import datetime, timedelta, timezone
@@ -38,11 +39,13 @@ from app.models import Contact, User, ConversationMessage, MessageRole, Occasion
 from app.models.conversation import ConversationState
 from app.bot.action_router import (
     try_handle_actions,
+    try_handle_exact_phrases,
     try_handle_product_urls_before_classifier,
 )
 from app.bot.whatsapp_templates import acquisition_greeting_for
 from app.bot.prompt import STATIC_SYSTEM_PROMPT
-from app.bot.intent_classifier import classify as classify_intent, IntentResult
+from app.bot.intent_classifier import IntentResult
+from app.bot.intent_router import RouteResult, route as route_intent
 from app.bot.language_map import active_gift_context_updates_from_text
 from app.bot.rate_limit import check_and_bump
 from app.bot.tools import set_context, reset_context
@@ -186,7 +189,9 @@ def _dispose_session_service(service: DatabaseSessionService | None) -> None:
 _session_service = _build_session_service()
 
 # Session limits
-MAX_SESSION_EVENTS = 12  # ~6 user/model exchanges — keeps token cost low
+MAX_SESSION_EVENTS = 20  # ~10 user/model exchanges — enough to keep a
+# multi-turn occasion add in view. At 12 the window dropped facts mid-flow and
+# the agent restarted questions it had already asked (2026-08 transcript).
 SUMMARY_TRIGGER_EVENTS = 18
 STALE_SESSION_SECONDS = 30 * 60  # 30 minutes
 
@@ -316,6 +321,7 @@ _BROWSE_TOOLS = _tools(
     "add_occasion",
     "edit_occasion",
     "delete_occasion",
+    "delete_all_occasions",
     "merge_occasions",
     "get_occasion_details",
     "suggest_gifts",
@@ -621,16 +627,73 @@ def _is_critical_turn(text: str, phase: str, cart_count: int) -> bool:
     return any(m in lower for m in critical_markers)
 
 
+@lru_cache(maxsize=256)
+def _routed_tool_names(named: tuple[str, ...]) -> frozenset[str]:
+    """Expand router-named tools with the ones a turn usually needs alongside.
+
+    Follows `depends_on` FORWARD only — what a named tool needs to do its job
+    (edit_occasion → get_my_occasions, to resolve the id first).
+
+    Deliberately not reverse-expanded. Pulling in every tool that depends on a
+    named one sounds helpful but inverts the goal: `get_my_occasions` is a
+    dependency of most occasion tools, so naming it dragged in 14 of 24
+    declarations and narrowed almost nothing. Forward-only keeps an occasion
+    save at 2 tools.
+
+    Registry-driven on purpose: a newly registered tool joins the right cluster
+    from its own metadata, with nothing to edit here.
+    """
+    from app.bot.tools.schemas import TOOL_SPECS
+
+    wanted: set[str] = set()
+    frontier = list(named)
+    while frontier:
+        name = frontier.pop()
+        if name in wanted:
+            continue
+        wanted.add(name)
+        spec = TOOL_SPECS.get(name)
+        if spec:
+            # Transitive: a dependency may have its own prerequisites.
+            frontier.extend(spec.depends_on)
+    return frozenset(wanted)
+
+
 def _select_tools_for_turn(
     phase: str,
     text: str,
-    intent_result: IntentResult,
+    intent_result: IntentResult | RouteResult,
 ) -> tuple[list, str]:
     """Conservative per-turn tool narrowing for lower prompt/tool token load."""
     tools = _PHASE_TOOLS[phase]
     if phase == "unregistered":
         return tools, "unregistered"
 
+    # Preferred path: the intent router named the tools it expects. Driven by
+    # the tool registry (unknown names are already dropped in intent_router),
+    # so registering a new tool makes it routable with no edit here.
+    #
+    # Related tools are pulled in alongside the named ones via `depends_on`:
+    # narrowing to exactly one tool would strand a turn that needs a lookup
+    # first (e.g. edit_occasion without get_my_occasions to find the id).
+    named = tuple(getattr(intent_result, "likely_tools", ()) or ())
+    if named:
+        wanted = _routed_tool_names(named)
+        selected = [tool for tool in tools if tool.name in wanted]
+        # A single-tool turn is legitimate and common — an occasion save is
+        # exactly one add_occasion. Only widen when the router named nothing
+        # this phase actually exposes (e.g. a checkout tool while purchases
+        # are disabled), where a narrowed set would strand the turn.
+        if selected:
+            return selected, "routed"
+        logger.info(
+            "routed tools %s are not exposed in phase — using full phase set",
+            list(named),
+        )
+        return tools, "routed_wide"
+
+    # Degraded path: the router was unavailable, so fall back to keyword
+    # signals. Intentionally kept for outages only — not the primary route.
     lower = (text or "").lower()
     wishlist_signal = "wishlist" in lower
     payment_signal = any(k in lower for k in ("payment", "pay ", "order", "checkout", "cart"))
@@ -1061,6 +1124,39 @@ def _intent_hint(result: IntentResult, session: Session) -> str:
             "offer next steps."
         )
     return ""
+
+
+def _route_hint(intent_result: IntentResult | RouteResult) -> str:
+    """Surface the intent router's reading of this turn to Gemini.
+
+    The router already parsed the message with history in view, so passing its
+    slots through saves Gemini re-deriving them — and, more importantly, keeps
+    multi-occasion messages intact ("Myra 7 Aug / Uttu 9 Aug" arrives as two
+    structured entries rather than one that gets half-read).
+
+    Advisory only: Gemini still owns the tool calls and can disagree. The
+    router sees a redacted, truncated history, so it can be wrong.
+    """
+    tools = tuple(getattr(intent_result, "likely_tools", ()) or ())
+    slots = getattr(intent_result, "slots", None) or {}
+    if not tools and not slots:
+        return ""
+
+    parts = ["\nIntent router (advisory — verify against the conversation):"]
+    if tools:
+        parts.append(f"- Likely tools: {', '.join(tools)}")
+    if slots:
+        try:
+            rendered = json.dumps(slots, ensure_ascii=False)[:600]
+        except (TypeError, ValueError):
+            rendered = str(slots)[:600]
+        parts.append(f"- Parsed details: {rendered}")
+        parts.append(
+            "  Use these values if they match what the user actually said. "
+            "If several occasions are listed, save EVERY one — call the tool "
+            "once per occasion. Ask only for details that are genuinely missing."
+        )
+    return "\n".join(parts)
 
 
 async def _load_user_context(
@@ -1593,12 +1689,29 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
             if safety is not None:
                 return safety
 
-        # --- Intent classifier (pre-flight) -----------------------------------
-        # Short-circuits cheap, deterministic cases without invoking the main LLM.
-        # Non-short-circuiting intents get passed to the main agent as hints.
-        intent_result = await classify_intent(text)
-        logger.info("[%s] intent=%s conf=%.2f src=%s",
-                    phone, intent_result.intent, intent_result.confidence, intent_result.source)
+        # Exact whole-message lookups ("menu", "cart", "my orders") are answered
+        # before the router runs. This is a lookup table, not intent inference —
+        # a message that is exactly "menu" has no other reading — so paying
+        # ~1.9s of DeepSeek to be told "other, no tools" is pure waste. Anything
+        # longer or ambiguous falls through to the router below.
+        exact_reply = await try_handle_exact_phrases(db, phone, text, user=user)
+        if exact_reply is not None:
+            return exact_reply
+
+        # --- Intent routing (pre-flight) --------------------------------------
+        # One history-aware LLM call decides what the user wants and which
+        # tools are likely needed. It reads the last few turns, so a reply to
+        # our own question ("Myra - birthday - 7th Aug") is understood as the
+        # ANSWER rather than mistaken for a new request — the failure that lost
+        # six occasions in the 2026-08 transcript.
+        #
+        # Fail-open: on timeout/error this returns `DEGRADED` (intent="other",
+        # no tools), which narrows nothing, so Gemini gets the full tool set
+        # plus full history and still handles the turn.
+        intent_result = await route_intent(db, phone, text)
+        logger.info("[%s] intent=%s conf=%.2f src=%s tools=%s",
+                    phone, intent_result.intent, intent_result.confidence,
+                    intent_result.source, list(intent_result.likely_tools))
 
         # Deterministic action router — handles menu, product gate, wishlist
         # link save, and "yes-while-awaiting-link" without ever calling the LLM.
@@ -1642,15 +1755,23 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
             # STATIC_SYSTEM_PROMPT byte-stable for Gemini implicit caching.
             dynamic_tail = await _build_dynamic_tail(db, phone, user, celebrant_occasion_id)
             intent_hint = _intent_hint(intent_result, session)
-            preface = f"[turn context]\n{dynamic_tail}{intent_hint}\n[/turn context]\n\n"
+            route_hint = _route_hint(intent_result)
+            preface = (
+                f"[turn context]\n{dynamic_tail}{intent_hint}{route_hint}\n"
+                f"[/turn context]\n\n"
+            )
 
             # Safe greeting short-circuit: exact greeting in brand-new sessions
             # only. If context is already active, continue with the normal flow.
             norm_text = (text or "").strip().lower()
             has_active_context = bool(celebrant_occasion_id) or (cart_count > 0)
+            # Not intent inference: an exact "hi"/"hello" opening a brand-new
+            # session with no active context has exactly one sensible reply, so
+            # we skip the LLM entirely. Deliberately does NOT consult the intent
+            # router — the router may legitimately label a bare "Hi" as `other`,
+            # and a cold-start greeting must not depend on a network call.
             if (
-                intent_result.intent == "greeting"
-                and _is_new_session
+                _is_new_session
                 and norm_text in _SAFE_GREETING_EXACTS
                 and not has_active_context
             ):

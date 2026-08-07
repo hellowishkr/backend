@@ -1,5 +1,6 @@
 """Tests for P0 LLM cost control implementation."""
 
+import asyncio
 import pytest
 from decimal import Decimal
 from datetime import datetime, timezone, timedelta
@@ -76,11 +77,34 @@ class TestLlmCostEstimator:
     def test_estimate_cost_deepseek(self):
         """Test cost calculation for DeepSeek fallback model."""
         cost = estimate_cost(
-            model="deepseek-chat",
+            model="deepseek-v4-flash",
             input_tokens=200,
             output_tokens=2,
         )
         assert cost > Decimal("0")
+
+    def test_deepseek_rates_match_the_published_price_list(self):
+        """Pin v4-flash rates: $0.14 in / $0.28 out per 1M.
+
+        Verified 2026-08-07 against api-docs.deepseek.com. These had silently
+        inherited `deepseek-chat` (v3) rates through a model rename, which
+        overstated cost ~2x — and they feed `budget_guard`'s daily cap, so
+        drift here quietly mis-enforces spend in whichever direction it is
+        wrong. Update this test and the table together, with a source.
+        """
+        from app.utils.llm_cost import MODEL_PRICING
+
+        rates = MODEL_PRICING["deepseek-v4-flash"]
+        assert rates["input_cost_per_1m"] == Decimal("0.14")
+        assert rates["output_cost_per_1m"] == Decimal("0.28")
+        assert rates["cache_hit_cost_per_1m"] == Decimal("0.0028")
+
+        # 1M in + 1M out should be exactly $0.42.
+        assert estimate_cost(
+            model="deepseek-v4-flash",
+            input_tokens=1_000_000,
+            output_tokens=1_000_000,
+        ) == Decimal("0.42")
 
     def test_estimate_cost_embedding(self):
         """Test cost for embedding model (very cheap)."""
@@ -97,7 +121,7 @@ class TestLlmCostEstimator:
     def test_get_model_provider(self):
         """Test provider lookup."""
         assert get_model_provider("gemini-2.5-flash") == "google_genai"
-        assert get_model_provider("deepseek-chat") == "deepseek"
+        assert get_model_provider("deepseek-v4-flash") == "deepseek"
         assert get_model_provider("unknown") is None
 
 
@@ -600,42 +624,47 @@ async def test_embedding_usage_event_recorded(db: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_classifier_logging_not_blocking(db: AsyncSession):
-    """Test that classifier logging is fire-and-forget and doesn't block."""
-    from app.bot.intent_classifier import classify
+async def test_intent_router_never_raises_when_the_api_fails(db: AsyncSession):
+    """Fail-open contract: a DeepSeek outage must not break a turn.
 
-    # Call classifier (this would normally fire off async logging tasks)
-    # We just verify it doesn't crash
-    with patch("app.bot.intent_classifier._rule_based", return_value=None):
-        # This will trigger the LLM fallback path, which logs asynchronously
-        # The test passes if it doesn't crash
-        result = await classify("test message")
-        assert result is not None
+    The router runs on the WhatsApp reply path. If it raised, every message
+    would fail while Gemini was perfectly healthy.
+    """
+    from app.bot import intent_router
+
+    async def _boom(*_a, **_kw):
+        raise RuntimeError("deepseek exploded")
+
+    with patch.object(intent_router, "_call_model", _boom):
+        result = await intent_router.route(db, "919876543210", "test message")
+
+    assert result.is_degraded
+    assert result.intent == "other"
+    assert result.likely_tools == ()
 
 
 @pytest.mark.asyncio
-async def test_deterministic_flows_skip_llm(db: AsyncSession):
-    """Test that deterministic flows are classified without calling main LLM.
+async def test_exact_phrases_skip_both_llms(db: AsyncSession):
+    """Common exact messages must cost nothing — no router, no main agent.
 
-    Regression test: ensure intent classifier catches low-cost intents (greetings,
-    menu requests, show_wishlist) without invoking the expensive main agent.
-    This is critical for staying under budget when users send common requests.
+    These are whole-message lookups, so neither an intent call nor a Gemini
+    call is justified. Regression guard on the cheapest path in the product.
     """
-    from app.bot.intent_classifier import _rule_based
+    from app.bot.action_router import try_handle_exact_phrases
+    from app.models import User
+    from app.utils.id_gen import generate_id
 
-    # These should all be caught by rule-based classifier (0ms, free)
-    test_cases = [
-        ("hi", "greeting"),
-        ("show my wishlist", "show_wishlist"),
-        ("menu", "menu_request"),
-        ("yes", "affirmative"),
-    ]
+    phone = "+919876543299"
+    db.add(User(id=generate_id("usr"), phone=phone, name="CostUser"))
+    await db.flush()
+    user = (
+        await db.execute(select(User).where(User.phone == phone))
+    ).scalar_one()
 
-    for text, expected_intent in test_cases:
-        result = _rule_based(text)
-        assert result is not None, f"Failed to classify '{text}' as {expected_intent}"
-        assert result.intent == expected_intent, f"Classified '{text}' as {result.intent}, not {expected_intent}"
-        assert result.source == "rule", f"'{text}' should use rule-based classifier (0 cost)"
+    for text in ("menu", "help", "my occasions", "cart"):
+        with patch("app.bot.action_router.append_message", new=AsyncMock()):
+            reply = await try_handle_exact_phrases(db, phone, text, user=user)
+        assert reply is not None, f"{text!r} must be answered without any LLM"
 
 
 class TestLlmUsageEventFields:
@@ -667,3 +696,75 @@ class TestLlmUsageEventFields:
 
         for field in required_fields:
             assert hasattr(LlmUsageEvent, field), f"LlmUsageEvent missing field: {field}"
+
+
+# --- Intent router spend must be visible to the budget guard ----------------
+
+
+@pytest.mark.asyncio
+async def test_intent_router_writes_a_usage_row(db: AsyncSession, monkeypatch):
+    """Routing spend MUST reach llm_usage_events.
+
+    budget_guard enforces the daily/monthly caps by SUMMING that table. The
+    router runs on nearly every turn with a far larger prompt than the old
+    classifier, so a missing row is spend the guard cannot see — it would
+    silently erode the very budget it exists to enforce.
+    """
+    from contextlib import asynccontextmanager
+
+    import app.db.session as db_session
+    from app.bot import intent_router
+
+    @asynccontextmanager
+    async def _session():
+        yield db
+
+    monkeypatch.setattr(db_session, "async_session", _session)
+
+    # Real usage payload shape, captured from the live DeepSeek API.
+    intent_router._log_usage(
+        {"prompt_tokens": 1394, "completion_tokens": 46}, 1832.0, success=True,
+    )
+    await asyncio.sleep(0.2)  # fire-and-forget task
+
+    rows = (
+        await db.execute(
+            select(LlmUsageEvent).where(LlmUsageEvent.purpose == "intent_router")
+        )
+    ).scalars().all()
+
+    assert len(rows) == 1
+    row = rows[0]
+    # Provider-REPORTED tokens, not a hardcoded estimate.
+    assert row.input_tokens == 1394
+    assert row.output_tokens == 46
+    assert row.estimated_cost_usd is not None
+    assert row.estimated_cost_usd > 0
+    assert row.latency_ms == 1832
+
+
+@pytest.mark.asyncio
+async def test_usage_logging_is_skipped_when_no_tokens_reported(
+    db: AsyncSession, monkeypatch,
+):
+    """No tokens reported → nothing spent → no row (and no zero-cost noise)."""
+    from contextlib import asynccontextmanager
+
+    import app.db.session as db_session
+    from app.bot import intent_router
+
+    @asynccontextmanager
+    async def _session():
+        yield db
+
+    monkeypatch.setattr(db_session, "async_session", _session)
+
+    intent_router._log_usage({}, 100.0, success=False)
+    await asyncio.sleep(0.2)
+
+    rows = (
+        await db.execute(
+            select(LlmUsageEvent).where(LlmUsageEvent.purpose == "intent_router")
+        )
+    ).scalars().all()
+    assert rows == []

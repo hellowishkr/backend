@@ -28,7 +28,7 @@ settings.database_url = "sqlite:////tmp/wishkr_swaraj_test.db"
 
 from app.bot.action_router import (  # noqa: E402
     _has_active_gift_for_friend_flow,
-    _is_occasion_list_request,
+    try_handle_exact_phrases,
     try_handle_product_urls_before_classifier,
     try_handle_actions,
 )
@@ -38,7 +38,7 @@ from app.bot.gift_taxonomy import (  # noqa: E402
     VIBE_TO_HUBBLE_BRANDS,
     all_vibe_ids,
 )
-from app.bot.intent_classifier import IntentResult, _rule_based  # noqa: E402
+from app.bot.intent_classifier import IntentResult  # noqa: E402
 from app.models import Contact, Occasion, OccasionType, User  # noqa: E402
 from app.utils.id_gen import generate_id  # noqa: E402
 
@@ -51,26 +51,76 @@ from app.utils.id_gen import generate_id  # noqa: E402
 @pytest.mark.parametrize(
     "text",
     [
-        "Can u recall whatever occasions I have told you till now",
-        "Can you recall whatever occasions I have told you till now",
-        "I want history of my occasions I have told you",
-        "history of my occasions",
+        "my occasions",
+        "show my occasions",
+        "list my occasions",
         "recall occasions",
         "recall the occasions",
-        # 2026-07-23 prod incident: these fell through to Gemini, which
-        # returned empty candidates twice — must stay deterministic.
-        "What are my upcoming ocassions?",
-        "What are my upcoming occasions?",
-        "upcoming occasions",
+        "history of my occasions",
+        "what occasions have i saved",
+        # Long-form entries that already sit in the exact-phrase table.
+        "Can u recall whatever occasions I have told you till now",
+        "I want history of my occasions I have told you",
     ],
 )
-def test_recall_variants_route_to_occasion_list(text: str) -> None:
-    """All of the user's natural ways to ask for saved occasions must
-    map to the deterministic show-occasions path."""
-    norm = " ".join(text.strip().lower().split())
-    assert _is_occasion_list_request(norm), (
-        f"Expected {text!r} to be detected as an occasion-list request"
+@pytest.mark.asyncio
+async def test_exact_recall_phrases_answer_without_an_llm(
+    db: AsyncSession, text: str,
+) -> None:
+    """Exact recall phrases stay on the zero-LLM lookup path.
+
+    These are whole-message matches, so no interpretation is needed and the
+    turn should cost nothing. Phrasings OUTSIDE this exact set (e.g. "can you
+    recall whatever occasions I have told you till now") are deliberately no
+    longer keyword-matched — see the test below.
+    """
+    phone = "+919000000021"
+    db.add(User(id=generate_id("usr"), phone=phone, name="Karan", city_raw="Pune"))
+    await db.commit()
+    user = (await db.execute(_user_select(phone))).scalar_one()
+
+    with patch("app.bot.action_router.append_message", new=AsyncMock()):
+        reply = await try_handle_exact_phrases(db, phone, text, user=user)
+
+    assert reply is not None, f"Expected {text!r} to be answered without an LLM"
+    assert "occasion" in reply.lower()
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "What are my upcoming ocassions?",
+        # The 2026-08 bug: a reply to our own question that merely CONTAINS
+        # "birthday" must never be treated as a list request.
+        "Myra - birthday - 7th Aug",
+        "Uttu, birthday, 9th Aug",
+    ],
+)
+@pytest.mark.asyncio
+async def test_conversational_phrasings_go_to_the_intent_router(
+    db: AsyncSession, text: str,
+) -> None:
+    """Anything not an exact match must fall through to be understood.
+
+    Previously these were keyword-matched, which is precisely how
+    "Myra - birthday - 7th Aug" — an ANSWER to the bot's own question — got
+    answered with "I don't have any occasions saved for you yet" while
+    occasions existed. The exact-phrase table must not guess; the intent
+    router reads these with conversation history.
+    """
+    phone = "+919000000022"
+    db.add(User(id=generate_id("usr"), phone=phone, name="Karan", city_raw="Pune"))
+    await db.commit()
+    user = (await db.execute(_user_select(phone))).scalar_one()
+
+    with patch("app.bot.action_router.append_message", new=AsyncMock()) as mock_append:
+        reply = await try_handle_exact_phrases(db, phone, text, user=user)
+
+    assert reply is None, (
+        f"Expected {text!r} to fall through to the intent router, "
+        f"got canned reply: {reply!r}"
     )
+    mock_append.assert_not_called()
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -82,23 +132,21 @@ def test_recall_variants_route_to_occasion_list(text: str) -> None:
 async def test_more_options_during_gift_flow_does_not_dump_menu(
     db: AsyncSession,
 ) -> None:
-    """The LLM classifier sometimes labels "Can you suggest me more option
-    like 10/15 options" as menu_request because of the word "options". The
-    router used to fire MENU_RESPONSE unconditionally on that label, which
-    blew away the recipient + interest + budget context. The current
-    behaviour MUST pass through to the main agent instead."""
+    """A long "...more options..." message must never dump the system menu.
+
+    It used to: an intent label of `menu_request` fired MENU_RESPONSE and blew
+    away the recipient + interest + budget context. No label can force that
+    now — only an EXACT whole-message match reaches the menu — so this message
+    passes through to the agent, which has the flow in view."""
     phone = "+919000000010"
     db.add(User(id=generate_id("usr"), phone=phone, name="Karan", city_raw="Pune"))
     await db.commit()
 
-    intent = IntentResult("menu_request", 0.75, "llm")
-
     with patch("app.bot.action_router.append_message", new=AsyncMock()) as mock_append:
-        reply = await try_handle_actions(
+        reply = await try_handle_exact_phrases(
             db, phone,
             "Can you suggest me more option like 10/15 options",
             user=(await db.get(User, (await db.execute(_user_select(phone))).scalar_one().id)),
-            intent_result=intent,
         )
 
     assert reply is None, (
@@ -125,11 +173,8 @@ async def test_exact_menu_still_returns_canned_menu(db: AsyncSession) -> None:
         await db.execute(_user_select(phone))
     ).scalar_one()
 
-    intent = IntentResult("menu_request", 1.0, "rule")
     with patch("app.bot.action_router.append_message", new=AsyncMock()):
-        reply = await try_handle_actions(
-            db, phone, "menu", user=user, intent_result=intent,
-        )
+        reply = await try_handle_exact_phrases(db, phone, "menu", user=user)
     assert reply == MENU_RESPONSE
 
 
@@ -161,8 +206,7 @@ async def test_product_gate_skipped_when_friend_birthday_within_window(
     db.add_all([user, contact, occ])
     await db.commit()
 
-    rule = _rule_based("Suggest me brands for headphones")
-    assert rule is not None and rule.intent == "product_question"
+    rule = IntentResult("product_question", 0.85, "llm")
 
     with patch("app.bot.action_router.append_message", new=AsyncMock()) as mock_append:
         reply = await try_handle_actions(
@@ -192,8 +236,7 @@ async def test_product_gate_still_fires_for_cold_user_no_recent_occasion(
     db.add(user)
     await db.commit()
 
-    rule = _rule_based("earbuds pls")
-    assert rule is not None and rule.intent == "product_question"
+    rule = IntentResult("product_question", 0.85, "llm")
 
     with patch("app.bot.action_router.append_message", new=AsyncMock()):
         with patch("app.bot.action_router.set_state", new=AsyncMock()):

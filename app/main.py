@@ -294,6 +294,10 @@ async def lifespan(app: FastAPI):
     # don't keep writing to a closing DB pool, then stop the scheduler.
     from app.webhooks.whatsapp import drain_active_tasks
     await drain_active_tasks()
+    # After in-flight turns are drained — the shared intent-router HTTP client
+    # is still in use until they finish.
+    from app.bot.intent_router import aclose as close_intent_router
+    await close_intent_router()
     if getattr(app.state, "scheduler_started", False):
         stop_scheduler()
     await _release_scheduler_lock(getattr(app.state, "scheduler_lock", None))

@@ -495,6 +495,14 @@ async def list_occasions(db: AsyncSession, phone: str, args: dict) -> dict:
             "contact_name": contact_name,
             "occasion": label,
             "date": nxt.strftime("%d %B %Y"),
+            # `date` is the NEXT occurrence, so a recurring 4 Aug birthday
+            # listed on 6 Aug correctly reads "2027" — which looks to the user
+            # like we saved the wrong year (2026-08 report). Send the recurring
+            # day/month too so the reply can name what they actually gave us.
+            **(
+                {"recurs_on": nxt.strftime("%d %B")}
+                if occ.recurring else {}
+            ),
             "recurring": occ.recurring,
         })
 
@@ -550,6 +558,13 @@ async def get_my_occasions(db: AsyncSession, phone: str, args: dict) -> dict:
             "type": occasion_type,
             "occasion": label,
             "date": nxt.strftime("%d %B %Y") if occ.date else "Unknown",
+            # See list_occasions: `date` is the next occurrence, which can be
+            # next year. `recurs_on` is the day/month the user actually gave.
+            **(
+                {"recurs_on": nxt.strftime("%d %B")}
+                if occ.recurring and occ.date else {}
+            ),
+            "recurring": occ.recurring,
         })
 
     return {"occasions": items, "total": len(items)}
@@ -1111,6 +1126,101 @@ async def delete_occasion(db: AsyncSession, phone: str, args: dict) -> dict:
     return {
         "success": True,
         "message": f"Deleted '{label}' and its reminders.",
+    }
+
+
+async def delete_all_occasions(db: AsyncSession, phone: str, args: dict) -> dict:
+    """Delete every saved occasion for this user (two-step, confirmed).
+
+    Exists because "delete all my reminders" previously mapped to no tool at
+    all: the agent improvised a confirmation and told the user everything was
+    deleted, with nothing verifying it (2026-08 transcript). A destructive bulk
+    action needs a real implementation and a real count to report.
+    """
+    user = await _get_user(db, phone)
+    if not user:
+        return _err("user_not_registered", _HINT_REGISTER)
+
+    occasions = (
+        await db.execute(
+            select(Occasion).where(
+                Occasion.user_id == user.id,
+                Occasion.deleted_at.is_(None),
+            )
+        )
+    ).scalars().all()
+
+    if not occasions:
+        return {
+            "deleted_count": 0,
+            "message": "You have no saved occasions to delete.",
+        }
+
+    # Unconfirmed: return what WOULD go, so the agent can ask with specifics
+    # rather than inventing a confirmation.
+    if not args.get("confirmed"):
+        preview = []
+        for occ in occasions:
+            label = occ.custom_label or occ.type.value.replace("_", " ").title()
+            whose = "You"
+            if occ.contact_id:
+                contact = await db.get(Contact, occ.contact_id)
+                whose = contact.name if contact else "Someone"
+            preview.append(f"{whose} — {label}")
+        return {
+            "confirmation_required": True,
+            "would_delete_count": len(occasions),
+            "would_delete": preview,
+            "required_action": (
+                "List these to the user and ask them to confirm. Only call "
+                "delete_all_occasions again with confirmed=true after they say yes."
+            ),
+            "message": (
+                f"This would delete {len(occasions)} occasion(s) and their "
+                f"reminders. It cannot be undone."
+            ),
+        }
+
+    deleted_count = 0
+    cancelled_reminders = 0
+    for occ in occasions:
+        reminder_count = await db.scalar(
+            select(func.count())
+            .select_from(Reminder)
+            .where(Reminder.occasion_id == occ.id)
+        )
+        # Same rule as delete_occasion: an occasion with invited friends is
+        # soft-deleted so the reminder links they already received keep
+        # resolving; everything else is removed outright.
+        has_friends = await db.scalar(
+            select(func.count())
+            .select_from(CelebrantFriend)
+            .join(
+                CelebrantOccasion,
+                CelebrantOccasion.id == CelebrantFriend.celebrant_occasion_id,
+            )
+            .where(CelebrantOccasion.occasion_id == occ.id)
+        )
+        await db.execute(sa_delete(Reminder).where(Reminder.occasion_id == occ.id))
+        if has_friends:
+            occ.deleted_at = datetime.now(timezone.utc)
+            db.add(occ)
+        else:
+            await db.delete(occ)
+        deleted_count += 1
+        cancelled_reminders += int(reminder_count or 0)
+
+    await db.flush()
+    await clear_occasion_slots(db, phone)
+
+    return {
+        "success": True,
+        "deleted_count": deleted_count,
+        "cancelled_reminders": cancelled_reminders,
+        "message": (
+            f"Deleted {deleted_count} occasion(s) and cancelled "
+            f"{cancelled_reminders} reminder(s)."
+        ),
     }
 
 

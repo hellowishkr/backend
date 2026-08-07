@@ -1285,6 +1285,38 @@ TOOL_DECLARATIONS: dict[str, FunctionDeclaration] = {
         ),
     ),
 
+    "delete_all_occasions": _decl(
+        "delete_all_occasions",
+        _contract(
+            when="Delete EVERY saved occasion for this user, after explicit confirmation.",
+            use_when=[
+                "User says 'delete all my occasions/reminders' or 'clear everything'.",
+                "User has been shown what will be deleted and has confirmed.",
+            ],
+            do_not=[
+                "User named a specific occasion; use delete_occasion.",
+                "User has not confirmed yet — list what would be deleted and ask first.",
+                "Never claim occasions were deleted without calling this tool.",
+            ],
+            important=[
+                "Destructive and not undoable. Call with confirmed=true ONLY after "
+                "the user has said yes to a clear question naming what is deleted.",
+                "Pending reminders are cancelled for every occasion removed.",
+                "Report the returned deleted_count — do not invent a number.",
+            ],
+            output="Count of occasions deleted and reminders cancelled.",
+        ),
+        _params(
+            {
+                "confirmed": _bool(
+                    "Set true ONLY after the user explicitly confirmed deleting "
+                    "all occasions. Calling without it returns what would be "
+                    "deleted so you can ask."
+                ),
+            },
+        ),
+    ),
+
     "merge_occasions": _decl(
         "merge_occasions",
         _contract(
@@ -2031,6 +2063,17 @@ _TOOL_CONTRACTS: dict[str, dict] = {
             "confirmation": ["delete_confirmed"],
         },
         "produces": ["deleted_occasion_id", "cancelled_reminders"],
+        "depends_on": ["get_my_occasions"],
+    },
+    "delete_all_occasions": {
+        "requires": [],
+        # Same key as delete_occasion: the check is a no-op because the tool
+        # body itself refuses to delete without `confirmed=true` and returns a
+        # preview instead. See tests/test_delete_all_occasions.py.
+        "conditional_requires": {
+            "confirmation": ["delete_confirmed"],
+        },
+        "produces": ["deleted_count", "cancelled_reminders"],
         "depends_on": ["get_my_occasions"],
     },
     "merge_occasions": {

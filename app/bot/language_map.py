@@ -17,12 +17,6 @@ AFFIRMATIVE_WORDS = frozenset({
     "correct", "right", "👍", "✅",
 })
 
-GREETING_WORDS = frozenset({
-    "hi", "hello", "hey", "hola", "yo", "ho", "hii", "hiii", "heyy",
-    "namaste", "namaskar", "salam", "salaam", "gm", "gn", "good morning",
-    "good evening", "good afternoon", "start", "/start",
-})
-
 MENU_WORDS = frozenset({"menu", "/menu", "help", "/help"})
 
 MENU_EXACT_PHRASES = frozenset({
@@ -92,20 +86,11 @@ SAVE_PHRASES = (
     "save",
 )
 
-PHYSICAL_PRODUCT_KEYWORDS = frozenset({
-    "earbud", "earbuds", "airpod", "airpods", "headphone", "headphones",
-    "earphone", "earphones", "speaker", "speakers",
-    "phone", "iphone", "smartphone", "mobile",
-    "laptop", "macbook", "tablet", "ipad",
-    "watch", "smartwatch",
-    "camera", "dslr",
-    "book", "books", "novel",
-    "shirt", "tshirt", "t-shirt", "jeans", "dress", "saree", "kurta", "shoes", "sneakers",
-    "perfume", "cologne", "lipstick", "makeup",
-    "chocolate", "chocolates", "cake", "flowers", "bouquet",
-    "toy", "toys",
-})
-
+# NOTE: `VIBE_KEYWORD_MAP` below is CATALOG SEARCH, not intent detection. It
+# maps free text to `gift_taxonomy` vibe ids for product ranking and is used
+# only by `services/gift_recommendation.py` and `services/gift_refinement.py`.
+# It reads like intent parsing because it is keyed on natural words; it is not.
+# Deleting it would silently degrade gift ranking to embeddings alone.
 VIBE_KEYWORD_MAP: dict[str, list[str]] = {
     "gym": ["gym_fitness"], "fitness": ["gym_fitness"], "workout": ["gym_fitness", "home_workout"],
     "yoga": ["yoga_meditation"], "meditation": ["yoga_meditation"],
@@ -169,41 +154,19 @@ def has_explicit_save_intent(text: str) -> bool:
     return any(phrase in lower for phrase in SAVE_PHRASES)
 
 
-def looks_like_occasion_list_request(norm: str) -> bool:
-    # Common misspellings — "ocassion" etc. must still match "occasion" checks.
-    norm = norm.replace("ocassion", "occasion").replace("occassion", "occasion")
-    if norm in OCCASION_LIST_EXACT_PHRASES:
-        return True
-    if "occasion" not in norm and "birthday" not in norm and "anniversary" not in norm:
-        return False
-    # "what are my (upcoming) occasions?" and friends — question-form asks
-    # about the caller's own occasions are list requests.
-    if re.search(r"\b(what|which)( all)? (are|r) (my|our) (upcoming |next |saved )?(occasion|birthday|anniversar)", norm):
-        return True
-    if norm.startswith("upcoming occasion") or norm in ("my upcoming occasions", "upcoming occasions"):
-        return True
-    own_scope = any(
-        phrase in norm
-        for phrase in (
-            "my occasion", "my saved occasion", "i have told you",
-            "i told you", "i have added", "i added", "i have saved",
-            "i saved", "saved for me", "told you", "whatever occasion",
-            "history of", "history of my", "what i have told", "what i told",
-        )
-    )
-    list_action = any(
-        word in norm.split()
-        for word in ("show", "list", "view", "see", "recall", "remember", "history")
-    ) or norm.startswith(("what occasion", "which birthday", "which anniversar"))
-    return own_scope and list_action
-
-
-def contains_product_keyword(norm: str) -> bool:
-    tokens = re.findall(r"[a-z\-]+", norm)
-    if any(t in PHYSICAL_PRODUCT_KEYWORDS for t in tokens):
-        return True
-    compact = re.sub(r"[^a-z]", "", norm)
-    return any(len(kw) >= 5 and kw in compact for kw in PHYSICAL_PRODUCT_KEYWORDS)
+# REMOVED: `looks_like_occasion_list_request` and `contains_product_keyword`.
+#
+# Both inferred intent from substrings and word lists. That is how the message
+# "Myra - birthday - 7th Aug" — the user ANSWERING our own question — was read
+# as a request to list occasions and answered "I don't have any occasions saved
+# for you yet", silently dropping six occasions (2026-08 transcript). No keyword
+# table can tell an answer from a question, because the difference is in the
+# conversation, not the words.
+#
+# Intent now belongs to `app/bot/intent_router.py`, which reads recent turns.
+# The exact-phrase frozensets above survive for zero-LLM whole-message lookups
+# only (see `action_router.try_handle_exact_phrases`) — extend the router's
+# prompt, not these lists.
 
 
 def resolve_vibe_keywords(texts: Iterable[str], known_vibes: set[str]) -> set[str]:

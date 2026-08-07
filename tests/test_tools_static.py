@@ -161,8 +161,11 @@ def test_pick_phase_browse_default():
         ("unregistered", 1, 3),
         ("friend", 9, 13),
         # Checkout is now a SUPERSET of browse + clear_cart (see Gap G7 fix).
-        ("checkout", 20, 25),
-        ("browse", 20, 24),
+        # +1 on both bands for `delete_all_occasions` (2026-08): "delete all my
+        # reminders" previously mapped to no tool, so the agent invented a
+        # confirmation. Deliberate addition, not creep.
+        ("checkout", 20, 26),
+        ("browse", 20, 25),
     ],
 )
 def test_phase_tool_surface_within_bounds(phase, expected_min, expected_max):
@@ -219,8 +222,9 @@ def test_tool_count_per_phase_expected():
     assert counts == {
         "unregistered": 2,
         "friend": 12,
-        "checkout": 25,
-        "browse": 24,
+        # +1 each for `delete_all_occasions` (2026-08).
+        "checkout": 26,
+        "browse": 25,
     }
 
 
@@ -472,42 +476,33 @@ def test_generate_content_config_is_explicit():
     assert cfg.max_output_tokens is not None and cfg.max_output_tokens > 0
 
 
-def test_intent_classifier_uses_fast_model_setting():
-    """The cheap preflight classifier must not consume the main agent model.
+def test_intent_router_uses_its_own_cheap_model():
+    """Routing must not consume the main agent model.
 
-    Main bot turns need stronger tool-selection/reasoning, while classifier
-    turns are narrow label selection. Keep the model split explicit.
-
-    The classifier was refactored to a Gemini-primary / DeepSeek-fallback
-    architecture. The fast model must appear in _gemini_classify (primary),
-    and _llm_classify must delegate to _gemini_classify first.
+    Main turns need strong tool-selection and reasoning; routing is a narrow
+    structured-extraction task. Keep the split explicit so a config change
+    cannot quietly put the expensive model on every inbound message.
     """
-    from app.bot import intent_classifier
+    from app.bot import intent_router
     from app.core.config import settings
 
-    # Fast model used in the Gemini-primary path.
-    gemini_src = inspect.getsource(intent_classifier._gemini_classify)
-    assert "model=settings.gemini_fast_model" in gemini_src, (
-        "_gemini_classify must use settings.gemini_fast_model, not a hard-coded string"
-    )
-
-    # _llm_classify must call _gemini_classify as its primary path.
-    llm_src = inspect.getsource(intent_classifier._llm_classify)
-    assert "_gemini_classify" in llm_src, (
-        "_llm_classify must delegate to _gemini_classify as primary"
-    )
-
-    # DeepSeek fallback must be gated on deepseek_api_key being set.
-    assert "_deepseek_classify" in llm_src, (
-        "_llm_classify must have a DeepSeek fallback branch"
-    )
-    assert "deepseek_api_key" in llm_src, (
-        "DeepSeek fallback must be gated on settings.deepseek_api_key"
-    )
-
-    # Model identity checks.
-    assert settings.gemini_fast_model == "gemini-2.5-flash-lite"
+    assert settings.deepseek_classifier_model
+    assert settings.deepseek_classifier_model != settings.gemini_model
     assert settings.gemini_model != settings.gemini_fast_model
+
+    # The router must be bounded by a wall-clock budget, not just per-socket
+    # timeouts: httpx applies its timeout to connect/read/write separately, so
+    # an unreachable endpoint burns several multiples of it on the reply path.
+    assert intent_router._TOTAL_BUDGET_SECONDS <= 5.0
+
+
+def test_intent_router_fails_open_not_closed():
+    """A routing outage must degrade, never narrow Gemini's tools to nothing."""
+    from app.bot.intent_router import DEGRADED
+
+    assert DEGRADED.is_degraded
+    assert DEGRADED.likely_tools == ()
+    assert DEGRADED.intent == "other"
 
 
 def test_timeout_is_generous_enough_for_tool_chains():

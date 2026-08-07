@@ -40,6 +40,7 @@ from app.bot.tools.tool_impl.occasions import (
     get_monthly_spend,
     edit_occasion,
     delete_occasion,
+    delete_all_occasions,
     merge_occasions,
 )
 
@@ -148,7 +149,8 @@ __all__ = [
     # occasions
     "add_occasion", "list_occasions", "get_my_occasions", "get_occasion_details",
     "get_upcoming_digest", "snooze_occasion", "skip_occasion_this_year",
-    "get_monthly_spend", "edit_occasion", "delete_occasion", "merge_occasions",
+    "get_monthly_spend", "edit_occasion", "delete_occasion", "delete_all_occasions",
+    "merge_occasions",
     # gifting
     "search_brands", "get_brand_details", "check_occasion_gifts",
     "log_external_purchase", "log_my_gift", "get_past_gifts_for_contact",

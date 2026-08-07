@@ -151,6 +151,7 @@ FUNCTION_MAP: dict[str, Callable] = {
     "create_friend_gift_order": functions.create_friend_gift_order,
     "edit_occasion": functions.edit_occasion,
     "delete_occasion": functions.delete_occasion,
+    "delete_all_occasions": functions.delete_all_occasions,
     "merge_occasions": functions.merge_occasions,
     "add_to_cart": functions.add_to_cart,
     "view_cart": functions.view_cart,
@@ -1305,6 +1306,11 @@ async def delete_occasion(occasion_id: str) -> dict:
     return await execute_tool("delete_occasion", {"occasion_id": occasion_id})
 
 
+async def delete_all_occasions(confirmed: bool = False) -> dict:
+    """ADK wrapper for delete_all_occasions."""
+    return await execute_tool("delete_all_occasions", {"confirmed": confirmed})
+
+
 async def merge_occasions(
     keep_occasion_id: str,
     merge_occasion_id: str,
@@ -1597,6 +1603,7 @@ ALL_TOOLS: list[SchemaFunctionTool] = [
     _make_tool(create_friend_gift_order),
     _make_tool(edit_occasion),
     _make_tool(delete_occasion),
+    _make_tool(delete_all_occasions),
     _make_tool(merge_occasions),
     _make_tool(add_to_cart),
     _make_tool(view_cart),

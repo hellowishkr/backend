@@ -22,6 +22,7 @@ from app.models import (
     Vendor,
     CelebrantOccasion,
     CelebrantFriend,
+    Purchase,
 )
 from app.models.recipient_preference import PreferenceRequest
 
@@ -45,7 +46,48 @@ _TABLES = [
     Product.__table__,
     CelebrantOccasion.__table__,
     CelebrantFriend.__table__,
+    # Occasion.purchases is a lazy relationship, so deleting an occasion makes
+    # SQLAlchemy read this table even when no purchase exists.
+    Purchase.__table__,
 ]
+
+
+@pytest.fixture(autouse=True)
+def _no_live_intent_router(monkeypatch):
+    """Keep the intent router off the network in tests.
+
+    The router calls DeepSeek on every turn, so without this the suite makes
+    real HTTP calls: slow, flaky, costly, and dependent on someone else's
+    uptime. Tests that care about routing patch `route` themselves; everything
+    else gets the degraded result, which is exactly what production falls back
+    to when DeepSeek is unavailable.
+    """
+    import sys
+
+    from app.bot import intent_router
+
+    async def _degraded(_db, _phone, _text):
+        return intent_router.DEGRADED
+
+    monkeypatch.setattr(intent_router, "route", _degraded)
+    # Belt and braces: `_call_model` is the only place that touches the
+    # network, so stubbing it means even a module that captured `route` before
+    # this fixture ran (or one imported later) cannot reach DeepSeek.
+    async def _no_network(*_a, **_kw):
+        raise AssertionError(
+            "intent_router tried to call DeepSeek during a test — "
+            "patch `route` in the test if routing behaviour is under test"
+        )
+
+    monkeypatch.setattr(intent_router, "_call_model", _no_network)
+
+    # Patch the agent's re-exported alias only if the module is ALREADY
+    # imported. Importing app.bot.agent here would build its ADK session
+    # service, which needs a live Postgres — tests that never touch the agent
+    # must not require one.
+    agent_module = sys.modules.get("app.bot.agent")
+    if agent_module is not None:
+        monkeypatch.setattr(agent_module, "route_intent", _degraded, raising=False)
 
 
 @pytest.fixture

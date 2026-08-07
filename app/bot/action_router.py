@@ -30,8 +30,8 @@ from app.bot.language_map import (
     MENU_EXACT_PHRASES,
     MENU_WORDS,
     OCCASION_LIST_EXACT_PHRASES,
+    SHOW_WISHLIST_PHRASES,
     has_explicit_save_intent,
-    looks_like_occasion_list_request,
     normalize_text,
 )
 from app.bot.messages import append_message
@@ -117,6 +117,23 @@ def _normalize_text(text: str) -> str:
     return normalize_text(text)
 
 
+def _is_purchase_request(norm: str) -> bool:
+    """True when the message asks to buy/order/pay.
+
+    Stays pattern-based on purpose. This gates a kill-switch, so it must fire
+    on phrasings no model has seen and must not depend on a network call that
+    can fail open — the opposite of the understanding paths, which delegate to
+    the intent router.
+    """
+    return (
+        any(pattern.search(norm) for pattern in _PURCHASE_REQUEST_PATTERNS)
+        or any(phrase in norm for phrase in _PURCHASE_REQUEST_PHRASES)
+        or norm in _PURCHASE_REQUEST_EXACTS
+        or norm in _ORDERS_PHRASES
+        or norm in _PAYMENT_STATUS_PHRASES
+    )
+
+
 async def _active_gift_profile(db: AsyncSession, phone: str):
     state = await get_state(db, phone)
     profile = get_gift_need_profile(state)
@@ -171,11 +188,6 @@ async def _has_active_gift_for_friend_flow(
     return False
 
 
-def _is_occasion_list_request(norm: str) -> bool:
-    """True for explicit requests to list the caller's saved occasions."""
-    return looks_like_occasion_list_request(norm)
-
-
 def _format_my_occasions_reply(payload: dict) -> str:
     occasions = payload.get("occasions") or []
     if not occasions:
@@ -196,6 +208,15 @@ def _format_my_occasions_reply(payload: dict) -> str:
         bits.append(f"- {occasion}")
         if date:
             bits.append(f"- {date}")
+        # `date` is the NEXT occurrence, so a recurring occasion whose day has
+        # already passed shows next year — a birthday saved as "4th Aug" came
+        # back as "04 August 2027" and read like a mis-save (2026-08 report).
+        # Naming the recurrence makes the year obviously intentional.
+        # No "is it this year?" comparison: the stored date is user-local while
+        # `now` is UTC, so around new year that check is off by one.
+        recurs_on = item.get("recurs_on")
+        if recurs_on:
+            bits.append(f"(every {recurs_on})")
         lines.append(f"{i}. {' '.join(bits)}")
     return "\n".join(lines)
 
@@ -320,54 +341,47 @@ async def try_handle_product_urls_before_classifier(
     )
 
 
-async def try_handle_actions(
+async def try_handle_exact_phrases(
     db: AsyncSession,
     phone: str,
     text: str,
     *,
     user: User | None,
-    intent_result: IntentResult,
 ) -> str | None:
-    """If this turn is handled without the main LLM, return the reply; else None."""
+    """Answer whole-message exact matches without any LLM. Else return None.
+
+    This is a lookup table, NOT intent inference: every branch fires only on
+    `norm == <phrase>` (or a phrase set), never on a substring or keyword. A
+    message that is exactly "menu" has one sensible reply, so spending an
+    intent-router round-trip to be told "other, no tools" is pure waste.
+
+    Anything longer, ambiguous, or conversational returns None and goes to the
+    intent router, which reads it with history. Do NOT add fuzzy matching here
+    — that is what the router is for.
+    """
     norm = _normalize_text(text)
 
     profile = await _active_gift_profile(db, phone)
     active_gift_flow = bool(profile and profile.is_gift_for_friend)
 
-    if settings.mvp_reminder_only and (
-        any(pattern.search(norm) for pattern in _PURCHASE_REQUEST_PATTERNS)
-        or any(phrase in norm for phrase in _PURCHASE_REQUEST_PHRASES)
-        or norm in _PURCHASE_REQUEST_EXACTS
-        or norm in _ORDERS_PHRASES
-        or norm in _PAYMENT_STATUS_PHRASES
-    ):
+    # Purchase kill-switch (policy, not understanding). Stays pattern-based on
+    # purpose: when purchases are disabled this must fire even on phrasings the
+    # router has never seen, and failing open here would let a blocked flow
+    # through.
+    if settings.mvp_reminder_only and _is_purchase_request(norm):
         await append_message(db, phone, MessageRole.USER, content=text)
         await append_message(db, phone, MessageRole.MODEL, content=PURCHASE_DISABLED_RESPONSE)
         logger.info("[%s] router=mvp_purchase_disabled", phone)
         return PURCHASE_DISABLED_RESPONSE
 
-    if norm in _HELP_PHRASES or (norm == "options" and not active_gift_flow):
-        await append_message(db, phone, MessageRole.USER, content=text)
-        await append_message(db, phone, MessageRole.MODEL, content=MENU_RESPONSE)
-        logger.info("[%s] router=help_menu", phone)
-        return MENU_RESPONSE
-
-    if intent_result.intent == "menu_request" and user and user.name:
-        # LLM classifier sometimes maps mid-flow phrases like "suggest me 10
-        # more options" / "any options for gaming?" to menu_request because
-        # of the word "options". Cold-dumping MENU_RESPONSE in that case
-        # blows away the gift flow (recipient, occasion, interest, budget)
-        # the user just established. Only fire the canned menu for tight
-        # menu-like phrases; otherwise pass through to the main agent.
-        if norm in _MENU_EXACT_PHRASES and not (active_gift_flow and "option" in norm):
+    if norm in _HELP_PHRASES or norm in _MENU_EXACT_PHRASES:
+        # "options" mid-gift-flow means "more gift options", not the system
+        # menu — let the agent keep the flow instead of cold-dumping the menu.
+        if not (active_gift_flow and "option" in norm):
             await append_message(db, phone, MessageRole.USER, content=text)
             await append_message(db, phone, MessageRole.MODEL, content=MENU_RESPONSE)
-            logger.info("[%s] router=menu", phone)
+            logger.info("[%s] router=help_menu", phone)
             return MENU_RESPONSE
-        logger.info(
-            "[%s] router=menu_request_passthrough text=%r — letting agent continue active flow",
-            phone, norm[:80],
-        )
 
     if norm in _ORDERS_PHRASES or norm in _PAYMENT_STATUS_PHRASES:
         result = await list_orders(db, phone, {})
@@ -385,7 +399,7 @@ async def try_handle_actions(
         logger.info("[%s] router=cart_summary count=%d", phone, len(result.get("cart") or []))
         return reply
 
-    if intent_result.intent == "show_wishlist":
+    if norm in SHOW_WISHLIST_PHRASES:
         items = await list_wishlist_items(db, phone)
         reply = format_wishlist([(it.title, it.url) for it in items])
         await append_message(db, phone, MessageRole.USER, content=text)
@@ -393,22 +407,7 @@ async def try_handle_actions(
         logger.info("[%s] router=show_wishlist count=%d", phone, len(items))
         return reply
 
-    if intent_result.intent == "show_occasions" or _is_occasion_list_request(norm):
-        # The classifier only ever sees the bare message string — it has no
-        # history — so a reply to our own question ("Birthday", "Brother",
-        # "Nandkishor, birthday") gets labelled show_occasions and dumps the
-        # empty-list message instead of continuing the add flow. When we are
-        # mid-slot-fill, only an *unambiguous* list phrase may short-circuit;
-        # everything else falls through to the agent, which has the history.
-        # See the Shubhu/Nandakishor conversation post-mortem.
-        if await get_awaiting(db, phone) == AWAITING_OCCASION_SLOTS and (
-            norm not in _OCCASION_LIST_EXACT_PHRASES
-        ):
-            logger.info(
-                "[%s] router=my_occasions suppressed (awaiting occasion slots) text=%r",
-                phone, norm[:80],
-            )
-            return None
+    if norm in _OCCASION_LIST_EXACT_PHRASES:
         result = await get_my_occasions(db, phone, {})
         reply = _format_my_occasions_reply(result)
         await append_message(db, phone, MessageRole.USER, content=text)
@@ -419,6 +418,28 @@ async def try_handle_actions(
         )
         return reply
 
+    return None
+
+
+async def try_handle_actions(
+    db: AsyncSession,
+    phone: str,
+    text: str,
+    *,
+    user: User | None,
+    intent_result: IntentResult,
+) -> str | None:
+    """Deterministic, non-understanding routes. Returns a reply or None.
+
+    Intent-label-driven branches used to live here (show_occasions, menu_request,
+    show_wishlist). They were removed: the classifier that fed them had no
+    conversation history, so a reply to our own question was routinely
+    mislabelled and answered with a canned string — the 2026-08 bug where six
+    occasions were silently dropped. Understanding now belongs to
+    `intent_router`, which reads the conversation; what remains here is exact
+    lookups (see `try_handle_exact_phrases`) and state-machine handling that
+    does not require interpreting language.
+    """
     remove_url, remove_item_id = _extract_wishlist_remove_target(text)
     if remove_url or remove_item_id:
         await append_message(db, phone, MessageRole.USER, content=text)

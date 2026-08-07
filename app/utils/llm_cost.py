@@ -37,12 +37,16 @@ MODEL_PRICING = {
         "output_cost_per_1m": Decimal("0"),
         "cache_hit_cost_per_1m": Decimal("0"),
     },
-    # DeepSeek Chat v3 (fallback classifier)
-    "deepseek-chat": {
+    # DeepSeek v4-flash — intent router.
+    # Verified 2026-08-07 against api-docs.deepseek.com/quick_start/pricing.
+    # These had been carried over unchanged from `deepseek-chat` (v3) when the
+    # model id was renamed, which overstated input ~2x and output ~4x. They
+    # feed `budget_guard`'s daily cap, so a wrong rate skews spend enforcement.
+    "deepseek-v4-flash": {
         "provider": "deepseek",
-        "input_cost_per_1m": Decimal("0.27"),
-        "output_cost_per_1m": Decimal("1.10"),
-        "cache_hit_cost_per_1m": Decimal("0.07"),
+        "input_cost_per_1m": Decimal("0.14"),
+        "output_cost_per_1m": Decimal("0.28"),
+        "cache_hit_cost_per_1m": Decimal("0.0028"),
     },
 }
 

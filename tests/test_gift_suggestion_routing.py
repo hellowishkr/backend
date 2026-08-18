@@ -48,6 +48,24 @@ def test_routed_gift_ask_narrows_tools():
     assert "suggest_gifts" in {t.name for t in selected}
 
 
+def test_routed_friend_gift_ask_keeps_context_lookup_available():
+    selected, subflow = agent._select_tools_for_turn(
+        "friend",
+        "help me continue this gift plan",
+        RouteResult(
+            intent="suggest_gift",
+            confidence=0.9,
+            source="llm",
+            likely_tools=("suggest_gifts",),
+        ),
+    )
+
+    assert subflow == "routed"
+    assert {"suggest_gifts", "get_celebrant_context"} <= {
+        tool.name for tool in selected
+    }
+
+
 def test_routed_occasion_save_narrows_hard():
     """The most common turn in the product must be the cheapest.
 
@@ -75,6 +93,15 @@ def test_keyword_backstop_still_works_when_router_is_down():
     selected, subflow = _select_degraded("suggest a gift for my sister")
     assert subflow == "product_discovery"
     assert len(selected) < len(agent._PHASE_TOOLS["browse"])
+
+
+def test_friend_keyword_backstop_keeps_context_lookup_available():
+    selected, subflow = agent._select_tools_for_turn(
+        "friend", "suggest a birthday gift", DEGRADED,
+    )
+
+    assert subflow == "product_discovery"
+    assert "get_celebrant_context" in {tool.name for tool in selected}
 
 
 def test_bare_gift_ask_when_router_is_down_falls_back_to_default():

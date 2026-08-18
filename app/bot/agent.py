@@ -35,7 +35,17 @@ from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models import Contact, User, ConversationMessage, MessageRole, Occasion, LlmUsageEvent, CampaignContext
+from app.models import (
+    CampaignContext,
+    CelebrantFriend,
+    CelebrantOccasion,
+    Contact,
+    ConversationMessage,
+    LlmUsageEvent,
+    MessageRole,
+    Occasion,
+    User,
+)
 from app.models.conversation import ConversationState
 from app.bot.action_router import (
     try_handle_actions,
@@ -659,6 +669,20 @@ def _routed_tool_names(named: tuple[str, ...]) -> frozenset[str]:
     return frozenset(wanted)
 
 
+def _ensure_friend_context_tool(phase: str, selected: list) -> list:
+    """Keep the friend-context source of truth available on narrowed turns.
+
+    A friend-phase prompt explicitly requires ``get_celebrant_context`` before
+    generic gifting. Tool narrowing previously removed that tool from gift
+    discovery turns, leaving the model unable to follow its instruction.
+    """
+    if phase != "friend" or any(
+        tool.name == "get_celebrant_context" for tool in selected
+    ):
+        return selected
+    return [*selected, TOOL_BY_NAME["get_celebrant_context"]]
+
+
 def _select_tools_for_turn(
     phase: str,
     text: str,
@@ -685,7 +709,7 @@ def _select_tools_for_turn(
         # this phase actually exposes (e.g. a checkout tool while purchases
         # are disabled), where a narrowed set would strand the turn.
         if selected:
-            return selected, "routed"
+            return _ensure_friend_context_tool(phase, selected), "routed"
         logger.info(
             "routed tools %s are not exposed in phase — using full phase set",
             list(named),
@@ -741,7 +765,7 @@ def _select_tools_for_turn(
             selected.append(TOOL_BY_NAME[name])
     if len(selected) < 3:
         return tools, "default"
-    return selected, subflow
+    return _ensure_friend_context_tool(phase, selected), subflow
 
 
 # ─────────────────────────────────────────────────────────
@@ -1182,7 +1206,46 @@ async def _load_user_context(
         try:
             temp = json.loads(state.temp_data)
             if isinstance(temp, dict):
-                celebrant_occasion_id = temp.get("celebrant_occasion_id")
+                raw_celebrant_context = temp.get("celebrant_occasion_id")
+                if (
+                    isinstance(raw_celebrant_context, str)
+                    and raw_celebrant_context.strip()
+                ):
+                    candidate_id = raw_celebrant_context.strip()
+                    # Persistent reminder context must not outlive its source
+                    # row or the caller's invitation. Otherwise every future
+                    # message is forced into the friend phase and a normal
+                    # gift-planning reply can surface "reminder no longer
+                    # active" months after the reminder was removed.
+                    valid_context_id = await db.scalar(
+                        select(CelebrantOccasion.id)
+                        .join(Occasion, Occasion.id == CelebrantOccasion.occasion_id)
+                        .join(
+                            CelebrantFriend,
+                            CelebrantFriend.celebrant_occasion_id
+                            == CelebrantOccasion.id,
+                        )
+                        .where(
+                            CelebrantOccasion.id == candidate_id,
+                            CelebrantFriend.phone == phone,
+                        )
+                    )
+                    if valid_context_id:
+                        celebrant_occasion_id = valid_context_id
+
+                if (
+                    "celebrant_occasion_id" in temp
+                    and celebrant_occasion_id is None
+                ):
+                    temp.pop("celebrant_occasion_id", None)
+                    state.temp_data = json.dumps(temp) if temp else None
+                    db.add(state)
+                    await db.flush()
+                    logger.info(
+                        "[%s] cleared stale or unauthorized friend context",
+                        mask_phone(phone),
+                        extra={"type": "stale_friend_context_cleared"},
+                    )
                 cart = temp.get("cart_items") or []
                 if isinstance(cart, list):
                     created_raw = temp.get("cart_created_at")

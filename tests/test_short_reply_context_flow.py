@@ -26,7 +26,15 @@ from app.bot.canned_responses import WISHLIST_ADDED_RESPONSE, WISHLIST_AFFIRMATI
 from app.bot.intent_classifier import IntentResult
 from app.bot.state_utils import get_state, set_state
 from app.db.base import Base
-from app.models import ConversationState, User, WishlistItem
+from app.models import (
+    CelebrantFriend,
+    CelebrantOccasion,
+    ConversationState,
+    Occasion,
+    OccasionType,
+    User,
+    WishlistItem,
+)
 
 
 T = TypeVar("T")
@@ -37,6 +45,9 @@ def _run_db(fn: Callable[[object], Awaitable[T]]) -> T:
         engine = create_async_engine("sqlite+aiosqlite:///:memory:")
         tables = [
             User.__table__,
+            Occasion.__table__,
+            CelebrantOccasion.__table__,
+            CelebrantFriend.__table__,
             ConversationState.__table__,
             WishlistItem.__table__,
         ]
@@ -162,7 +173,30 @@ def test_load_user_context_preserves_short_checkout_and_friend_context():
     async def scenario(db):
         phone = "919777777777"
         user = User(id="usr_context", phone=phone, name="Buyer")
-        db.add(user)
+        owner = User(id="usr_context_owner", phone="919777777778", name="Owner")
+        occasion = Occasion(
+            id="occ_friend_context",
+            user_id=owner.id,
+            contact_id=None,
+            type=OccasionType.BIRTHDAY,
+            date=datetime(2026, 9, 1, tzinfo=timezone.utc),
+            recurring=True,
+            # Owner-facing deletion must not invalidate an already-sent
+            # friend reminder; the retained rows intentionally still resolve.
+            deleted_at=datetime.now(timezone.utc),
+        )
+        celebrant = CelebrantOccasion(
+            id="cel_friend_context",
+            occasion_id=occasion.id,
+        )
+        friend = CelebrantFriend(
+            id="cfr_friend_context",
+            celebrant_occasion_id=celebrant.id,
+            phone=phone,
+            user_id=user.id,
+            name="Buyer",
+        )
+        db.add_all([user, owner, occasion, celebrant, friend])
         db.add(ConversationState(
             phone=phone,
             temp_data=json.dumps({
@@ -184,3 +218,39 @@ def test_load_user_context_preserves_short_checkout_and_friend_context():
     assert celebrant_occasion_id == "cel_friend_context"
     assert cart_count == 2
     assert agent._pick_phase(user, celebrant_occasion_id, cart_count) == "friend"
+
+
+def test_stale_reminder_context_does_not_trap_continue_gift_plan():
+    """The reported Alisha/Karan flow must return to normal gift planning."""
+
+    async def scenario(db):
+        phone = "919777777779"
+        user = User(id="usr_alisha", phone=phone, name="Alisha")
+        db.add(user)
+        db.add(ConversationState(
+            phone=phone,
+            temp_data=json.dumps({
+                "celebrant_occasion_id": "cel_deleted_old_reminder",
+                "budget": {
+                    "min": 1000,
+                    "max": 3000,
+                    "unlimited": False,
+                },
+            }),
+        ))
+        await db.flush()
+
+        loaded = await agent._load_user_context(db, phone)
+        state = await get_state(db, phone)
+        return loaded, state
+
+    (user, celebrant_occasion_id, cart_count), state = _run_db(scenario)
+
+    assert user is not None
+    assert user.name == "Alisha"
+    assert celebrant_occasion_id is None
+    assert cart_count == 0
+    assert agent._pick_phase(user, celebrant_occasion_id, cart_count) == "browse"
+    assert "celebrant_occasion_id" not in state
+    assert state["budget"]["min"] == 1000
+    assert state["budget"]["max"] == 3000

@@ -2,9 +2,13 @@ FROM python:3.11-slim@sha256:db3ff2e1800a8581e2c48a27c3995339d47bdf046da21c7627a
 
 WORKDIR /app
 
-# Keep the production image minimal. All pinned Python dependencies publish
-# wheels for Linux amd64, so compilers and development headers are unnecessary.
+# Keep the production image minimal. Apply Debian security updates because a
+# pinned upstream image can temporarily lag fixable packages in the Debian
+# repository; the production Trivy gate rejects fixable HIGH/CRITICAL findings.
+# All pinned Python dependencies publish wheels for Linux amd64, so compilers
+# and development headers are unnecessary.
 RUN apt-get update && \
+    apt-get upgrade -y && \
     apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/*
 

@@ -33,18 +33,36 @@ def test_multi_day_lead_time_adds_correct_days() -> None:
     assert (result - now.date()).days == 3 + SAFETY_BUFFER_DAYS
 
 
-def test_same_day_before_cutoff_still_buffered() -> None:
+def test_same_day_before_cutoff_allows_today() -> None:
     vendor = _vendor(lead_hours=0, cutoff_hour=14)
-    now = datetime(2026, 6, 21, 10, 0, tzinfo=timezone.utc)
+    # 04:30 UTC is 10:00 in India.
+    now = datetime(2026, 6, 21, 4, 30, tzinfo=timezone.utc)
     result = earliest_delivery_date(vendor, now=now)
-    assert (result - now.date()).days == SAFETY_BUFFER_DAYS
+    assert result == now.date()
 
 
-def test_same_day_after_cutoff_buffered() -> None:
+def test_same_day_after_cutoff_starts_tomorrow() -> None:
     vendor = _vendor(lead_hours=0, cutoff_hour=14)
-    now = datetime(2026, 6, 21, 16, 0, tzinfo=timezone.utc)
+    # 10:30 UTC is 16:00 in India.
+    now = datetime(2026, 6, 21, 10, 30, tzinfo=timezone.utc)
     result = earliest_delivery_date(vendor, now=now)
-    assert (result - now.date()).days == 1 + SAFETY_BUFFER_DAYS
+    assert (result - now.date()).days == 1
+
+
+def test_sub_day_lead_before_cutoff_allows_today() -> None:
+    vendor = _vendor(lead_hours=4, cutoff_hour=18)
+    # 06:30 UTC is 12:00 in India.
+    now = datetime(2026, 6, 21, 6, 30, tzinfo=timezone.utc)
+    result = earliest_delivery_date(vendor, now=now)
+    assert result == now.date()
+
+
+def test_sub_day_lead_after_cutoff_starts_tomorrow() -> None:
+    vendor = _vendor(lead_hours=4, cutoff_hour=18)
+    # 13:30 UTC is 19:00 in India.
+    now = datetime(2026, 6, 21, 13, 30, tzinfo=timezone.utc)
+    result = earliest_delivery_date(vendor, now=now)
+    assert (result - now.date()).days == 1
 
 
 def test_product_lead_time_overrides_unset_vendor_default() -> None:

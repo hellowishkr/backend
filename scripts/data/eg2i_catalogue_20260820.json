@@ -1,0 +1,2776 @@
+{
+  "schema_version": 1,
+  "catalogue_date": "2026-08-20",
+  "source_files": [
+    "product.xlsx",
+    "rakhi.xlsx"
+  ],
+  "expected_products": 150,
+  "vendor": {
+    "id": "ven_eg2i",
+    "display_name": "EG2I",
+    "company_name": "Nandini Goon",
+    "company_address": "Ground Floor, Golders Green Complex, VIP Road, Kaikhali, North 24 Parganas, West Bengal 700052",
+    "primary_category": "Flowers",
+    "poc_name": "Ashis G",
+    "poc_email": "orders@eg2i.com",
+    "phone": "9339511236"
+  },
+  "products": [
+    {
+      "sku": "EG2i2535",
+      "name": "Mixed Flowers with Glass Vase and Blueberry Cake",
+      "description": "By combining a delicious blueberry cake with a mixed flower bouquet, you'll create a thoughtful and visually stunning gift that's sure to make any celebration or special occasion extra memorable.Buy or Send this exclusive flowers and cake combo for Birthday , Anniversary, Mothers day, Valentines day or any others Occassion online and get it same day, next day, Midnight or any others day delivery.\nProduct contains: \n8pcs Pink Seasonal Flowers with greenary in Glass Vase.\n500gm Round shape Blueberry Cake.\nFree knife.\nFree Message Card.",
+      "category": "Flowers",
+      "occasions": [
+        "birthday",
+        "anniversary",
+        "valentines-day",
+        "mothers-day"
+      ],
+      "price_paise": 169900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2282_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2282_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2282_3.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "EG2i2744",
+      "name": "Gulab Jamun Cake for Celebration",
+      "description": "Send Cakes online is perfect gifts for any occasions.When It comes with Blueberry its a like heaven.This juicy tangy and vibrant berry complements the richness of a Gulabjamuncake in the best way possible.It has been prepared by expert hands who know best the job that they do. This cake is a must have at every celebration and can now be added to any gift that you buy from us.Order this cake online and we will send the gift to your dear one any time any where just one click.\n Products Contain :::: \n Cake Flavour - Vanila\n Shape - Round \n Type of Cake - Cream Cake\n Serves- Min 4-8 People\n In Box - Cake with Candles & Knife \n Free Personalized Message Card.",
+      "category": "Cakes",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2532_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2532_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2532_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2532_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2532_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": ""
+    },
+    {
+      "sku": "EG2i2745",
+      "name": "Festive Chocolate Gift Hamper",
+      "description": "Delight your loved ones with our Dairy Milk & Five Star Chocolate Gift Basket, a perfect combination of everyone's favorite chocolates beautifully arranged in an elegant gift basket. Filled with delicious Cadbury Dairy Milk and Cadbury Five Star chocolates, this premium chocolate hamper is an ideal gift for birthdays, anniversaries, congratulations, thank-you gifts, festivals, and other special occasions.\nProduct Details:\n10pcs Cadburry dairy Milk Chocolates 13gm each;\n10pcs Cadburry Five Star Chocolates;\nin a Basket;\nFree Greeting Card.\nFree Personalised Message.",
+      "category": "Chocolates",
+      "occasions": [
+        "birthday",
+        "congratulations",
+        "thank-you"
+      ],
+      "price_paise": 139900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2533_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2533_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2533_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2533_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2533_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": ""
+    },
+    {
+      "sku": "EG2i2746",
+      "name": "Premium Luxury Gift Basket",
+      "description": "Make every celebration extra special with our Ferrero Rocher Chocolate Hamper. This premium Ferrero Rocher chocolates beautifully arranged in an Designed with premium packaging and an elegant presentation, this Ferrero Rocher gift basket is ideal for gifting family, friends, colleagues, and loved ones. Order this luxury chocolate hamper online and enjoy fresh, beautifully packed gifts with same-day and midnight delivery across India\nProduct Details:\n24pcs Ferrero Rocher Chocolates;\n16pcs Ferrero Rocher Chocolates;\n4pcs Ferrero Rocher (2qnty);\nin a Basket;\nFree Greeting Card.\nFree Personalised Message.",
+      "category": "Chocolates",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 499900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2534_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2534_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2534_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2534_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2534_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "EG2i2747",
+      "name": "Elegant Chocolate Gift Hamper",
+      "description": "Shop premium chocolate hamper gift baskets filled with assorted chocolates, cookies, and snacks. Perfect for birthdays, anniversaries, fathersday, Mothers day, Diwali, Rakhi, corporate gifting, and festive celebrations.\nProduct Details:\nCadbury Celebrations Assorted Chocolates Box 144gms;\nReal Juice Tetra Pack 1 Litre;\n5 Nestle Munch Bar 30gms each;\n 2 Britannia Little Hearts Pack 75gms each;\n Panchrattan Namkeen 200gms;\n All in one Namkeen 200gms;\n Sunfeat Bourbon Buiscuits 111gms ;\n Packed in a Basket tied with Pink Ribbon;\n in a Basket;\nFree Greeting Card.\nFree Personalised Message.",
+      "category": "Chocolates",
+      "occasions": [
+        "birthday",
+        "mothers-day",
+        "diwali",
+        "rakhi",
+        "corporate"
+      ],
+      "price_paise": 299900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2535_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2535_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2535_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2535_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2535_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": ""
+    },
+    {
+      "sku": "EG2i2748",
+      "name": "Premium Chocolate Gift Hamper",
+      "description": "Crafted with a variety of popular chocolates and premium snacks, this gift basket combines taste, quality, and attractive presentation. Its elegant packaging makes it an ideal choice for festive gifting during Birthday, Anniversary, Diwali, Raksha Bandhan, Christmas, New Year, Valentine's Day, Mother's Day, Father's Day, and more. Send your warm wishes with a gift that everyone will enjoy.\nProduct Details:\nCadbury Celebration Assorted Chocolates box 144gms \nAlpenliebe Cream fills Toffee Packet 144gms\nAlpenliebe Eclairs Toffee Packet 136gms\nAloo Bhujia Packet 220gms\nDal Bhiji Namkeen 200gms\nBritannia Chocolate cake 110gms\nBritannia Strawberry cake 110gms\nReal juice 1litre\n3 Britnnia Bourbon Buiscuit 100gms each\nAll In A Basket.\nFree Greeting Card.\nFree Personalised Message.",
+      "category": "Cakes",
+      "occasions": [
+        "birthday",
+        "anniversary",
+        "valentines-day",
+        "mothers-day",
+        "fathers-day",
+        "diwali",
+        "rakhi",
+        "christmas",
+        "new-year"
+      ],
+      "price_paise": 259900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2536_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2536_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2536_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2536_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2536_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": ""
+    },
+    {
+      "sku": "EG2i2749",
+      "name": "Exclusive Gift Hamper",
+      "description": "Whether you're looking for a thoughtful festive gift or a corporate gift basket, this ready-to-gift hamper is an excellent choice. Its attractive presentation and premium-quality snacks make it ideal for Diwali, Raksha Bandhan, Christmas, New Year, Mother's Day, Father's Day, and other special occasions.\nProduct Details:\nDal Bhiji Namkeen 200gms \nPanchrattan Namkeen 200gms\nAll in one namkeen 200gms\nAloo Bhujia 220gms\n6 Brittannia Bourbon Buiscuits 100gms (each)\n2 Brittannia Cakes 110gms (each)\nDal Bhiji Namkeen 200gms \nPanchrattan Namkeen 200gms\nAll in one namkeen 200gms\nAloo Bhujia 220gms\n6 Brittannia Bourbon Buiscuits 100gms (each)\n2 Brittannia Cakes 110gms (each) \nAll In A Basket.\nFree Greeting Card.\nFree Personalised Message.",
+      "category": "Hampers",
+      "occasions": [
+        "mothers-day",
+        "fathers-day",
+        "diwali",
+        "rakhi",
+        "christmas",
+        "new-year",
+        "corporate"
+      ],
+      "price_paise": 399900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2537_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2537_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2537_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2537_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2537_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": ""
+    },
+    {
+      "sku": "EG2i2750",
+      "name": "Exotic Hamper For All",
+      "description": "Whether you're looking for a thoughtful festive gift or a corporate gift basket, this ready-to-gift hamper is an excellent choice. Its attractive presentation and premium-quality snacks make it ideal for Diwali, Raksha Bandhan, Christmas, New Year, Mother's Day, Father's Day, and other special occasions.\nProduct Details:\n4 Packs of Brittannia Little Hearts 75gms each \n2 Real Juice Tetra Pack 1litre each\n2 Brittannia Cakes 110gms each \n2 Sunfeat Bourbon Buiscuits 111gms each\nAlpenlibe Cream Fills Toffee Packet 144gms \nAlpenlibe Eclairs Toffee Pack 136gms \n2 Cadbury Dairy Milk Silk 150gms each \nAlloo Bhujia Namkeen Packet 220gms\nDal Bhiji Namkeen Packet 200gms\nAll In A Basket.\nFree Greeting Card.\nFree Personalised Message.",
+      "category": "Chocolates",
+      "occasions": [
+        "mothers-day",
+        "fathers-day",
+        "diwali",
+        "rakhi",
+        "christmas",
+        "new-year",
+        "corporate"
+      ],
+      "price_paise": 359900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2538_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2538_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2538_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2538_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2538_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": ""
+    },
+    {
+      "sku": "EG2i2751",
+      "name": "Roses with Premium Chocolates",
+      "description": "Surprise your loved ones with fresh flowers, delicious chocolates, and beautifully arranged gift baskets. Perfect for birthdays, anniversaries, Valentine's Day, Raksha Bandhan, Mother's Day, and every special occasion. Enjoy same-day, midnight, and express delivery across India.\nProduct Details:\n 1 PcsCadbury Celebrations Assorted Chocolate Gift Pack, 139gm\n 5 Pcs Cadbury DairyMilk Silk Bubbly Chocolate-46gm\n 1 Pcs Kitkat Delight Rich wafer bar-50gm\n 1 Pcs Kitkat Delight dark wafer chocolate-50gm\n 1 Pcs Kitkat 4 Fingers Choco coated wafer bar-38gm\n 2 Pcs Cadbury gems mini treat pack-117.55gm\n 3 Pcs Kinder joy-20gm\n 2 Pcs Cadbury Dairy milk silk Fruit & Nut milk chocolate-51gm\n 3 Pcs Snicker peanut nougat & caranel chocolate-40gm\n 2 Pcs Cadbury dairy milk silk oreo chocolate bar-58.5gm\n 1 Pcs Hershey whole almonds milk chocolate bar-90gm\n 2 Pcs Cadbury bournville fruit & nut dark chocolate bar-75gm\n 4 Red Rose with white gypso fillers\n in a basket\nFree Greeting Card.\nFree Personalised Message.",
+      "category": "Flowers",
+      "occasions": [
+        "birthday",
+        "valentines-day",
+        "mothers-day",
+        "rakhi"
+      ],
+      "price_paise": 1299900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2539_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2539_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2539_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2539_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2539_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "EG2i2752",
+      "name": "Yellow Rose Luxury Gift Hamper",
+      "description": "Brighten someone's day with our Premium Yellow Roses Ferrero Rocher & Cadbury Silk Gift Basket. This elegant hamper features fresh yellow roses premium Ferrero Rocher chocolates smooth Cadbury Silk bars and stylish gift packaging. It's the perfect gift for birthdays friendship congratulations anniversaries thank-you gestures and festive celebrations. Expertly handcrafted for a luxurious presentation this flower and chocolate basket is available with same-day express and midnight delivery across India. Surprise your loved ones with a thoughtful gift that combines fresh blooms and irresistible chocolates.\nProduct Details:\n2 Dairy Milk silk 80gms Approx 4pcs Ferrero Rocher Chocolate.\n5 Yellow Roses with Green fillers\nRound vase with Blue Paper wrapped with White Ribbon bow.\nFree Greeting Card.\nFree 1pc Rakhi with Roli-chawal.\nFree Personalised Message.",
+      "category": "Flowers",
+      "occasions": [
+        "birthday",
+        "rakhi",
+        "congratulations",
+        "thank-you"
+      ],
+      "price_paise": 529900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2540_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2540_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2540_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2540_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2540_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "EG2i2753",
+      "name": "Orchid Chocolaty Surprise",
+      "description": "Celebrate every special occasion with our Premium Blue Orchid & Cadbury Dairy Milk Chocolate Gift Hamper. This elegant gift features stunning fresh blue orchids paired with delicious Cadbury Dairy Milk chocolates, beautifully arranged in a premium gift basket. Ideal for birthdays, anniversaries, congratulations, thank-you gifts, corporate gifting, and festive celebrations, this luxurious hamper is designed to leave a lasting impression. Enjoy fresh flowers, premium chocolates, elegant packaging, and reliable same-day and midnight delivery across India.\nProduct Details:\nCadbury Dairy Milk Chocolate Bar: 5 Pcs 13.2gm each\nBlue orchid: 5 \nBlue Paper wrapping Blue Ribbon bow. \nFree Personalised Message.",
+      "category": "Flowers",
+      "occasions": [
+        "birthday",
+        "congratulations",
+        "thank-you",
+        "corporate"
+      ],
+      "price_paise": 129900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2541_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2541_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2541_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2541_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2541_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "EG2i2754",
+      "name": "Rose Chocolate Bliss Hamper",
+      "description": "Express your love with our Premium Roses & Chocolate Gift Hamper, featuring fresh handpicked roses paired with premium chocolates in an elegant gift basket. Perfect for birthdays, anniversaries, Valentine's Day, weddings, congratulations, and romantic surprises. Beautifully arranged with premium packaging, this luxurious flower and chocolate gift creates unforgettable memories. Enjoy same-day, express, and midnight delivery across India for a seamless gifting experience.\nProduct Details:\n2 Dairy Milk silk 80gms Approx\n2 Cadbury Bournville 80gms Approx\n5 Yellow Rose \n5 White Rose\nRound vase with Pink Paper White Ribbon\nFree Personalised Message.",
+      "category": "Flowers",
+      "occasions": [
+        "birthday",
+        "wedding",
+        "valentines-day",
+        "congratulations"
+      ],
+      "price_paise": 529900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2542_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2542_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2542_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2542_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2542_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "EG2i2755",
+      "name": "Elegant flowers Chocolate Hamper",
+      "description": "Express your love with our Premium Roses & Chocolate Gift Hamper, featuring fresh handpicked roses paired with premium chocolates in an elegant gift basket. Perfect for birthdays, anniversaries, Valentine's Day, weddings, congratulations, and romantic surprises. Beautifully arranged with premium packaging, this luxurious flower and chocolate gift creates unforgettable memories. Enjoy same-day, express, and midnight delivery across India for a seamless gifting experience.\nProduct Details:\n2 Dairy Milk Silk 80gms Approx\n5 Yellow Rose, 5 Pink carnation\nRound vase with Pink Paper White Ribbon\nFree Personalised Message.",
+      "category": "Flowers",
+      "occasions": [
+        "birthday",
+        "wedding",
+        "valentines-day",
+        "congratulations"
+      ],
+      "price_paise": 399900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2543_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2543_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2543_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2543_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2543_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "EG2i2732",
+      "name": "Flower Basket with Ferrero Rocher Gift Combo",
+      "description": "Surprise your loved ones with this luxurious Flower Basket with Ferrero Rocher Chocolate Gift Combo, a perfect blend of elegance and indulgence. This beautiful arrangement features fresh, handpicked flowers artistically placed in a stylish basket, paired with premium Ferrero Rocher chocolates to add a rich and delightful touch.\nProduct Description :\nRound Handle Basket of 15pcs Red Roses with Greenary and Red ribbon bow.\n16pcs ferrero Rocher Chocolate Box.\nFree Personalise Message was added in Your Gift Hamper.(if you have any Message)\nN.B.: Flowers and Flowers color May be vary on availablity we will do as available.",
+      "category": "Flowers",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 339900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2520_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2520_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2520_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2520_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2520_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2733",
+      "name": "Healthy Delight Flowers and Fruit",
+      "description": "Send a healthy and beautiful surprise with this elegant Fresh Flowers & Fresh Fruit Basket, perfect for gifting across India. This thoughtfully curated combo features a vibrant arrangement of handpicked fresh flowers paired with a selection of premium, seasonal fruits, making it an ideal gift for both celebrations and wellness.\nProduct Description :\nBasket of Fresh Flowers and Fresh Fruit.\n15pcs Pink and Yellow Roses, 3Purple Orchid, 1seam Blue Charsanthemum.\n6pcs banana, 250gm Green Grapes, 2pcs Apple, 2pcs Pomegrante, 2pcs pear.\nFree Personalise Message for your MoM which was added in Your Gift Hamper.\nN.B.: Flowers and Flowers color also Fresh Fruit May be vary on availablity we will do as available.",
+      "category": "Flowers",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 589900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2521_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2521_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2521_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2521_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2521_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2734",
+      "name": "Premium Flowers and Fruit Gift Combo",
+      "description": "Send a healthy and beautiful surprise with this elegant Fresh Flowers & Fresh Fruit Basket, perfect for gifting across India. This thoughtfully curated combo features a vibrant arrangement of handpicked fresh flowers paired with a selection of premium, seasonal fruits, making it an ideal gift for both celebrations and wellness.\n Product Description :\n Hand bunch of 10pcs Red Roses Celophane wrapping and Red Ribbon bow.\n 3kg Mixed Seasonal Fresh Fruit Basket.(Seasonal Fresh Fruit)\n 750gm Mixed Dry Fruit Box.(Kaju , Kismis,Almond)\n Free Personalise Message for your Gift Hamper.(if you have any gift Message)\n N.B.: Flowers and Flowers color also Fresh Fruit May be vary on availablity we will do as available.",
+      "category": "Flowers",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 649900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2522_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2522_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2522_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2522_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2522_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2735",
+      "name": "Fresh Flowers and Fruit Hamper",
+      "description": "Send a healthy and beautiful surprise with this elegant Fresh Flowers & Fresh Fruit Basket, perfect for gifting across India. This thoughtfully curated combo features a vibrant arrangement of handpicked fresh flowers paired with a selection of premium, seasonal fruits, making it an ideal gift for both celebrations and wellness.\n Product Description :\n Round Handle Basket of 20pcs Mixed Roses and Ribbon bow.\n 3kg Mixed Seasonal Fresh Fruit Basket.\n Free Personalise Message for your Gift Hamper.(if you have any gift Message)\n N.B.: Flowers and Flowers color also Fresh Fruit May be vary on availablity we will do as available.",
+      "category": "Flowers",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 449900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2523_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2523_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2523_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2523_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2523_5.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2736",
+      "name": "Sweet Blossoms Combo",
+      "description": "Whether you want to surprise your loved ones or send warm wishes from afar, this combo is an ideal choice. The freshness of handpicked flowers combined with the rich taste of classic Indian mithai makes it a thoughtful and memorable gift.\n Product Description :\n Hand bbunch of 6pcs Red and White/Pink Roses Brwon non Woven Paper wrapping and Pink Ribbon bow.\n 1kg Gulab Jamun. (Best Sweet shop in local area)\n Free Occasion Greeting Card.\n Free Personalise Message for your Gift Hamper.(if you have any gift Message)\n N.B.: Flowers and Flowers color May be vary on availablity we will do as available.",
+      "category": "Flowers",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 199900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2524_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2524_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2524_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2524_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2524_5.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2737",
+      "name": "Flowers with Mithai Box",
+      "description": "Whether you want to surprise your loved ones or send warm wishes from afar, this combo is an ideal choice. The freshness of handpicked flowers combined with the rich taste of classic Indian mithai makes it a thoughtful and memorable gift.\n Product Description :\n One Side bunch of 12pcs Pink and White Roses Brown non Woven Paper wrapping and Blue Ribbon bow.\n 500gm Motichoor Laddu(Best Sweet shop in local area)\n Free Occasion Greeting Card.\n Free Personalise Message for your Gift Hamper.(if you have any gift Message)\n N.B.: Flowers and Flowers color May be vary on availablity we will do as available.",
+      "category": "Flowers",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 199900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2525_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2525_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2525_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2525_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2525_5.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2738",
+      "name": "Flowers in Bowl",
+      "description": "Whether you want to surprise your loved ones or send warm wishes to her/his perfect occassion, send this exclusive glass bowl/vase arrangement of Mixed flowers.\n Product Description :\n Round bunch of 20pcs Mixed Flowers like Roses and Carnation.\n In A Glass Bowl/Vase\n Free Personalise Message for your Gift Hamper.(if you have any gift Message).\n N.B.: Flowers and Flowers color May be vary on availablity we will do as available.",
+      "category": "Flowers",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 149900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2526_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2526_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2526_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2526_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2526_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2739",
+      "name": "Luxury Mixed Roses Vase",
+      "description": "Whether you want to surprise your loved ones or send warm wishes to her/his perfect occassion, send this exclusive glass vase arrangement of Mixed Roses.\n Product Description :\n Round bunch of 20pcs Mixed Roses.\n In A Glass Vase\n Free Personalise Message for your Gift Hamper.(if you have any gift Message)\n N.B.: Flowers and Flowers color May be vary on availablity we will do as available.",
+      "category": "Flowers",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 149900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2527_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2527_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2527_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2527_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2527_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2740",
+      "name": "Timeless Flowers Arrangement",
+      "description": "Whether you want to surprise your loved ones or send warm wishes to her/his perfect occassion, send this exclusive glass vase arrangement of Red Roses and Purple Orchid.\n Product Description :\n Round Arrangement of 10pcs Red Roses and 5 steam Purple Orchid.\n In A Glass Vase\n Free Personalise Message for your Gift Hamper.(if you have any gift Message)\n N.B.: Flowers and Flowers color May be vary on availablity we will do as available.",
+      "category": "Flowers",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 139900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2528_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2528_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2528_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2528_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2528_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2741",
+      "name": "Rosy Paradise",
+      "description": "Whether you want to surprise your loved ones or send warm wishes to her/his perfect occassion, send this exclusive Bouquet of Mixed Roses.\n Product Description :\n Round Bouquet of 8pcs Mixed Roses With Black Non woven Paper wrapping and Pink Ribbon bow.\n Free Personalise Message for your Gift Hamper.(if you have any gift Message)\n N.B.: Flowers and Flowers color May be vary on availablity we will do as available.",
+      "category": "Flowers",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 74900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2529_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2529_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2529_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2529_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2529_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2742",
+      "name": "Blueberry Glaze Cake",
+      "description": "Send Cakes online is perfect gifts for any occasions.When It comes with Blueberry its a like heaven.This juicy tangy and vibrant berry complements the richness of a Blueberrycake in the best way possible.It has been prepared by expert hands who know best the job that they do. This cake is a must have at every celebration and can now be added to any gift that you buy from us.Order this cake online and we will send the gift to your dear one any time any where just one click. \n Products Contain :::: \n Cake Flavour - Blueberry\n Shape - Round \n Type of Cake - Cream Cake\n Serves- Min 4-8 People\n In Box - Cake with Candles & Knife \nFree Personalized Message Card.",
+      "category": "Cakes",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2530_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2530_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2530_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2530_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2530_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": ""
+    },
+    {
+      "sku": "EG2i2743",
+      "name": "Laddu Cake For Celebrate",
+      "description": "Send Cakes online is perfect gifts for any occasions.When It comes with Blueberry its a like heaven.This juicy tangy and vibrant berry complements the richness of a ladducake in the best way possible.It has been prepared by expert hands who know best the job that they do. This cake is a must have at every celebration and can now be added to any gift that you buy from us.Order this cake online and we will send the gift to your dear one any time any where just one click.\n Products Contain :::: \n Cake Flavour - Vanila\n Shape - Round \n Type of Cake - Cream Cake\n Serves- Min 4-8 People\n In Box - Cake with Candles & Knife \n Free Personalized Message Card.",
+      "category": "Cakes",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2531_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2531_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2531_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2531_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2531_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": ""
+    },
+    {
+      "sku": "1530",
+      "name": "Red Rose Bunch with Red paper wrapping",
+      "description": "Red Rose is the perfect gift for love.When word not spoke to your love one than Red Rose share your feeling to your love one.send this Red Rose bunch to india any time anywhere just one click away.. \n  Products Contain :::: \n12 Red Roses with greenary.\nRed paper wrapping with red Ribbon bow.",
+      "category": "Flowers",
+      "occasions": [
+        "just-because"
+      ],
+      "price_paise": 79900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_1137_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_1137_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_1137_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_1137_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_1137_1.jpg"
+      ],
+      "source_catalogue": "Main catalogue",
+      "seasonal": false,
+      "qa_flags": "Non-standard SKU format"
+    },
+    {
+      "sku": "20190601",
+      "name": "Money Plant with rakhi",
+      "description": "Send Rakhi with Plants to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \nMoney Plant with Pot.\nRakhi with Roli Chawal.\nPersonalised Message Card.\n Pot wrapped with Jute.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_210_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190602",
+      "name": "Good Luck Plant For Rakhi",
+      "description": "Send Rakhi with Plants to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n2 layer good Luck Plant.\nRakhi with Roli Chawal.\nPersonalised Message Card.\nSmall Pot for Plant",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 79900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_212_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190603",
+      "name": "Jade Plant for Rakhi",
+      "description": "Send Rakhi with Plants to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \nJade Plant.\nRakhi with Roli Chawal.\nPersonalised Message Card.\nSmall Pot for Plant",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 89900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_218_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190604",
+      "name": "Super sister good Luck Plant",
+      "description": "Send Rakhi with Plants to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n2 layer good Luck Plant with \"SIS\" written Pot.\nRakhi with Roli Chawal.\nPersonalised Message Card.\nPot wrapped with \"SIS\" written.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 139900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_219_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190605",
+      "name": "Super Brother Good Luck Plant",
+      "description": "Send Rakhi with Plants to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n2 layer good Luck Plant with \"BRO\" written Pot.\nRakhi with Roli Chawal.\nPersonalised Message Card.\nPot wrapped with \"BRO\" written.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 139900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_220_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190606",
+      "name": "Rocher with Rakhi",
+      "description": "Send Rakhi with chocolates to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n16pcs Rocher Box\nRakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Chocolates",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 144900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_221_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190607",
+      "name": "Rocher boquet with Rakhi",
+      "description": "Send Rakhi with chocolates to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n8pcs Rocher Boquet with Crape or non woven Paper wrapping with Matching Ribbon.\nRakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Chocolates",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 129900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_222_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190608",
+      "name": "Two Tier Chcolaty Gifts for Rakhi",
+      "description": "Send Rakhi with chocolates to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n34pcs Mixed Chocolate in Two Tier Arrangement.\nRakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Chocolates",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 153900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_223_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190609",
+      "name": "Dairy Milk Chcolate Two Tier for Rakhi",
+      "description": "Send Rakhi with chocolates to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n34pcs Cadbuarry Dairy Milk Chocolate in Two Tier Arrangement.\nRakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Chocolates",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 153900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_211_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190610",
+      "name": "Rakhi for All",
+      "description": "Send Rakhi with chocolates to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n4pcs Cadbuarry Dairy Milk, 4pcs Kit-kat,4pcs Five Star Chocolate.\n 3pcs Teddy bear each 6inch.\nBasket with Paper wrapping with Ribbon Bow \nRakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Chocolates",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 159900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_224_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190611",
+      "name": "16 Love with Boquet",
+      "description": "Send Rakhi with chocolates to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n16pcs Ferrero Rocher Boquet.\nRed Crape or Non Woven Paper Wrapping\nMatching Ribbon Bow \nRakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Chocolates",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 189900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_225_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190612",
+      "name": "Dairy Milk Chcolate Boquet for Rakhi",
+      "description": "Send Rakhi with chocolates to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n6pcs Cadburry Dairy Milk Boquet each 13.2gm\nwhite and Yellow Crape or Non Woven Paper Wrapping\nMatching Ribbon Bow \nRakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Chocolates",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 79900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_226_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190613",
+      "name": "Almond With Rakhi",
+      "description": "Send Rakhi with chocolates to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \nAlmond 50gm\n2pcs Rakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Chocolates",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 49900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_227_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190614",
+      "name": "Orchid with Rakhi",
+      "description": "Send Rakhi with Flowers to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n3steams of Orchids with Jute wrapping\nand matching Ribbon Bow. \n2pcs Rakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 79900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_214_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190615",
+      "name": "Yellow Blooms with Rakhi",
+      "description": "Send Rakhi with Flowers to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n8Yellow Rose Yellow Crape or Non Woven Paper Wrapping\nand Yellow Ribbon Bow. \n2pcs Rakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 74900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_216_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190616",
+      "name": "Red Blooms with Rakhi",
+      "description": "Send Rakhi with Flowers to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n8Red Rose Red Crape or Non Woven Paper Wrapping\nand Red Ribbon Bow. \n2pcs Rakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 74900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_217_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190617",
+      "name": "Sweet in Rakhi",
+      "description": "Send Rakhi with Sweets to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n500gm Mixed Sweet. \n2pcs Rakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 139900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_213_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190618",
+      "name": "Jamun with Rakhi",
+      "description": "Send Rakhi with Sweets to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n1kg Gulab Jamun Sweet. \n2pcs Rakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 179900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_228_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "20190619",
+      "name": "Rasgulla with Rakhi",
+      "description": "Send Rakhi with Sweets to all over India just one click www.eg2i.com your favourite online shopping destination.\n Product Contains: \n1kg Rasgulla Sweet. \n2pcs Rakhi with Roli Chawal.\nPersonalised Message Card.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 179900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_229_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Non-standard SKU format; EG2I website mentioned in copy; Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "EG2i2299",
+      "name": "Rakhi Chocolate Cake",
+      "description": "Send This exclusive Rakhi with cake Gifts to you brother any where in India.\nProduct contains: \nChocolate Rakhi design Cake.\nDefalt Weight:500gm \nFree 1pc Rakhi-Roli-Chawal and Candle-knife.\nN.B.: Rakhi Design May be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2002_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2300",
+      "name": "Rakhi chocolate Cake with Gems",
+      "description": "Send This exclusive Rakhi with cake Gifts to you brother any where in India.\nProduct contains: \nChocolate Rakhi design Cake.\nDefalt Weight:500gm \nFree 1pc Rakhi-Roli-Chawal and Candle-knife.\nN.B.: Rakhi Design May be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 109900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2011_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2011_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2301",
+      "name": "Rakhi chocolate Cake with Greetings Card",
+      "description": "Send This exclusive Rakhi with cake Gifts to you brother any where in India.\nProduct contains: \nChocolate Rakhi design Cake with Rakhi Message.\nDefalt Weight:500gm \nFree 1pc Rakhi-Roli-Chawal and Candle-knife.\nN.B.: Rakhi Design May be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 109900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2012_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2012_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2302",
+      "name": "Vanila Rakhi Cake",
+      "description": "Send This exclusive Rakhi with cake Gifts to you brother any where in India.\nProduct contains: \nVanila Rakhi design Cake with Rakhi Message.\nDefalt Weight:500gm \nFree 1pc Rakhi-Roli-Chawal and Candle-knife.\nN.B.: Rakhi Design May be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 89900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2013_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2303",
+      "name": "Chocolate Rose Rakhi Cake",
+      "description": "Send This exclusive Rakhi with cake Gifts to you brother any where in India.\nProduct contains: \nChocolate Rakhi design Cake.\nDefalt Weight:500gm \nFree 2pcs Rakhi-Roli-Chawal and Candle-knife.\n Rakhi Greeting Card.\nN.B.: Rakhi Design May be vary.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2014_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2304",
+      "name": "Chocolate with Green Rose Rakhi Cake",
+      "description": "Send This exclusive Rakhi with cake Gifts to you brother any where in India.\nProduct contains: \nChocolate Rakhi design Cake with Fondant Rakhi.\nDefalt Weight:500gm \nFree 2pcs Rakhi-Roli-Chawal and Candle-knife.\n Rakhi Greeting Card.\nN.B.: Rakhi Design May be vary.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 119900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2015_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2305",
+      "name": "Red Velvet Rakhi Cake",
+      "description": "Send This exclusive Rakhi with cake Gifts to you brother any where in India.\nProduct contains: \nRed Velvet Rakhi design Cake with Fondant Rakhi.\nDefalt Weight:500gm \nFree 2pcs Rakhi-Roli-Chawal and Candle-knife.\n Rakhi Greeting Card.\nN.B.: Rakhi Design May be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 129900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2016_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2306",
+      "name": "Vanila Almond Rakhi Cake",
+      "description": "Send This exclusive Rakhi with cake Gifts to you brother any where in India.\nProduct contains: \nVanila Rakhi design Cake with Almond and Rakhi Message.\nDefalt Weight:500gm \nFree 2pcs Rakhi-Roli-Chawal and Candle-knife.\n Rakhi Greeting Card.\nN.B.: Rakhi Design May be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2017_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2307",
+      "name": "Pineapple Rakhi cake",
+      "description": "Send This exclusive Rakhi with cake Gifts to you brother any where in India.\nProduct contains: \nPineapple Cake.\nDefalt Weight:500gm \nFree 2pcs Rakhi-Roli-Chawal and Candle-knife.\nRakhi Greeting Card\nN.B.: Rakhi Design May be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 119900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2018_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2308",
+      "name": "Black Forest Rakhi Cake",
+      "description": "Send This exclusive Rakhi with cake Gifts to you brother any where in India.\nProduct contains: \nBlack Forest Cake.\nDefalt Weight:500gm \nFree 2pcs Rakhi-Roli-Chawal and Candle-knife.\nRakhi Greeting Card.\nN.B.: Rakhi Design May be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2019_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2309",
+      "name": "OM Rakhi With Roli-Chawal",
+      "description": "Send This exclusive \"OM\" Rakhi to you brother any where in India.\nProduct contains: \n1pc OM Rakhi.\nFree Roli-Chawal.\nN.B.: Rakhi Design May be vary.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 19900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2004_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2310",
+      "name": "Radha Krishna Rakhi",
+      "description": "Send This exclusive \"Radha-krishna\" Rakhi to you brother any where in India.\nProduct contains: \n1pc \"RADHA-KRISHNA\" Rakhi.\nFree Roli-Chawal.\nN.B.: Rakhi Design May be vary.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 39900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2005_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2005_2_thumb.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2311",
+      "name": "Normal Rakhi",
+      "description": "Send This exclusive Rakhi to you brother any where in India.\nProduct contains: \n1pc Rakhi.\nFree Roli-Chawal.\nN.B.: Rakhi Design May be vary.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 9900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2006_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2312",
+      "name": "Rakhi Thali with Rakhi",
+      "description": "Send This exclusive Rakhi Gifts to you brother any where in India.\nProduct contains: \n1pc Rakhi Thali Size= 12cm .\n4pcs Rakhi with Free Roli-Chawal.\nN.B.: Rakhi Design May be vary.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 62500,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2007_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Duplicate product title; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2313",
+      "name": "Rakhi Thali with Peacock Rakhi",
+      "description": "Send This exclusive Rakhi Gifts to you brother any where in India.\nProduct contains: \n1pc Rakhi Thali Size= 12cm .\n1pc Peacock Rakhi with Free Roli-Chawal.\nN.B.: Rakhi Design May be vary.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 69900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2008_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2008_3_thumb.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2314",
+      "name": "Rakhi Thali with Rakhi",
+      "description": "Send This exclusive Rakhi Gifts to you brother any where in India.\nProduct contains: \n1pc Rakhi Thali Size= 12cm.\n2pcs Rakhi with Free Roli-Chawal.\nN.B.: Rakhi Design May be vary.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 69900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2009_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Duplicate product title; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2315",
+      "name": "Krishna Rakhi",
+      "description": "Send This exclusive Rakhi Gifts to you brother any where in India.\nProduct contains: \n1pc Krishna Rakhi Thali Size= 12cm.\nFree Roli-Chawal.\nN.B.: Rakhi Design May be vary.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 19900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2010_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2316",
+      "name": "Milk cake with Kisses Chocolates for Rakhi",
+      "description": "Kolkata's Sweet is a special for everyone and when we send this special sweets on this Rakhi its yummy, love your brothers. Send this exclusive Milk cake Sweets to India through us.\nProduct Contains: \n250gm Milk Cake.(default:250gm)\n100gm hershey Kisses Chocolates Pack.\n4pcs Rakhi Free Roli-Chawal\nShipping Instruction: Need 3-4 Working days for delivery. same day dispatch if get Orders before 1pm(IST)",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2030_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "EG2i2317",
+      "name": "Chocolate Oreo Cake for Rakhi",
+      "description": "Send this Exclusive Oreo Chocolate Cake on this Rakhi. Same day, Midnigt delivery available anywhere In India.\nProduct Details:: \nChocolate Oreo Cake 500gm.\nFree Candle n Knife.\nFree 2pcs Rakhi with Roli-chawal.\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2043_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2318",
+      "name": "Pineapple Cake with Oreo Biscuit for Rakhi",
+      "description": "Send this Exclusive Pineapple Cake on this Rakhi. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nPineapple Cake 500gm.\n4pkt Cadburry Oreo Biscuite (each 43.75gm).\nFree Candle n Knife.\nFree 4pcs Rakhi with Roli-chawal.\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 109900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2046_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2319",
+      "name": "KitKat Chocolate Cake",
+      "description": "Send this Exclusive Kit-Kat Chocolate Cake on this Rakhi. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nKit-Kat Chocolate Cake 500gm.\nFree Candle n Knife.\nFree 2pcs Rakhi with Roli-chawal.\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 109900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2047_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2047_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2320",
+      "name": "Pineapple Cake with Good Luck Plant with Rakhi",
+      "description": "Send this cake and Plants on this Rakhi. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nPineapple Cake 500gm.\nTwo layer Lucky Bamboo with Vase.\nRakhi Greeting Card.\nFree Candle n Knife.\nFree 2pcs Rakhi with Roli-chawal.\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 149900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2048_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2321",
+      "name": "Milk Cake with Silk For Rakhi",
+      "description": "Send this Milk cake and Cadburry Silk Chocolates on this Rakhi. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nMilk Cake 500gm.\n2pcs cadburry Silk Chocolates.\nFree 2pcs Rakhi with Roli-chawal.\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 119900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2044_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2322",
+      "name": "Kaju Barfi for Rakhi",
+      "description": "Send Kaju Barfi online on this Rakhi. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nKaju Barfi 500gm.\nFree 2pcs Rakhi with Roli-chawal.\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.",
+      "category": "Hampers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 142500,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2049_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2323",
+      "name": "Yellow Roses For Rakhi",
+      "description": "On this Rakhi, send Flowers with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \n15 Yellow Roses One side Basket.\nBasket decorated with Oasis, Green Bottom with decena.\nFree 2pcs rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 94900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2045_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2045_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2324",
+      "name": "Mixed Flowers for Rakhi",
+      "description": "On this Rakhi, send Flowers with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \n5 yellow Gerbera, 3 Pink roses, 3White Carnation.\nCellophane wrapping with local Greenary.\nFree 2pcs rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 59900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2050_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2050_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2325",
+      "name": "Red and Pink/Peach Roses Bouquet for Rakhi",
+      "description": "On this Rakhi, send Flowers with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \n25 Red and Peach/Pink Roses hand Bouquet.\nCellophane wrapping with Gypsy.\nFree 2pcs rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 119900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2051_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2051_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2326",
+      "name": "Lilies and Yellow Roses for Rakhi",
+      "description": "On this Rakhi, send Flowers with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \n20Yellow Roses with 3 Steam White Asoiatic Lilies hand Bouquet.\nCellophane wrapping with Gypsy and yellow Ribbon bow.\nFree 2pcs rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 159900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2052_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2052_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2327",
+      "name": "Pink roses and White Gerbera Bouquet for Rakhi",
+      "description": "On this Rakhi, send Flowers with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of 20Pink Roses with 10 White Gerbera.\nPink non woven paper wrapping with Gypsy and Pink and White Ribbon bow.\nFree 2pcs rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 159900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2053_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2053_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2328",
+      "name": "Pink and White Roses Bouquet",
+      "description": "On this Rakhi, send Flowers with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 12Pink and White Roses.\nWhite and Pink non woven paper wrapping with Local Greenary and Pink and White Ribbon bow.\nFree 2pcs rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 82500,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2054_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2054_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2329",
+      "name": "Mixed Roses Bouquet for rakhi",
+      "description": "On this Rakhi, send Flowers with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 50Mixed Roses.\ncellophane wrapping with Local Greenary and Red Ribbon bow.\nFree 2pcs rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 199900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2055_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2055_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2330",
+      "name": "Red and Yellow Roses Bouquet For Rakhi",
+      "description": "On this Rakhi, send Flowers with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 25pcs Red and Yellow Roses.\ncellophane wrapping with Local Greenary and Red Ribbon bow.\nFree 2pcs rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 119900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2056_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2056_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2331",
+      "name": "Red, Pink, Yellow, White Roses Bouquet for Rakhi",
+      "description": "On this Rakhi, send Flowers with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 20pcs Red, Pink, White and Yellow Roses.\ncellophane wrapping with Local Greenary and Red Ribbon bow.\nFree 2pcs rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 92500,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2057_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2057_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2537",
+      "name": "Blue Orchid with Rakhi Roli Chawal",
+      "description": "Hand bouquets can be a lovely and thoughtful gift for Rakhi, expressing love and appreciation in a beautiful way. Here are some ideas for hand bouquets that would make great Rakhi gifts. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne Side Bouquet of 6steam blue Orchid.\nBlue Non Woven paper wrapping with White Ribbon bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 119900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2284_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2284_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2284_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2284_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2538",
+      "name": "Purple Orchid with Rakhi Roli Chawal",
+      "description": "Hand bouquets can be a lovely and thoughtful gift for Rakhi, expressing love and appreciation in a beautiful way. Here are some ideas for hand bouquets that would make great Rakhi gifts. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne Side Bouquet of 6steam purple Orchid.\nBlue and White Non Woven paper wrapping with Blue Ribbon bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 119900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2285_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2285_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2285_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2285_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2539",
+      "name": "Roses and Lilies with Rakhi Roli Chawal",
+      "description": "Hand bouquets can be a lovely and thoughtful gift for Rakhi, expressing love and appreciation in a beautiful way. Here are some ideas for hand bouquets that would make great Rakhi gifts. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne Side Bouquet of yellow Roses and Lilies.\nPink Non Woven paper wrapping with Pink Ribbon bow.\n20 yellow Roses, 4steam White Lilies.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 219900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2286_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2286_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2286_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2540",
+      "name": "Gerbera and Lilies with Rakhi Roli Chawal",
+      "description": "Hand bouquets can be a lovely and thoughtful gift for Rakhi, expressing love and appreciation in a beautiful way. Here are some ideas for hand bouquets that would make great Rakhi gifts. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne Side Bouquet of yellow Gerbera and Lilies.\nPink Non Woven paper wrapping with Pink Ribbon bow.\n5 yellow Gerbera, 2steam yellow Lilies.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 109900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2287_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2287_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2287_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2287_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2541",
+      "name": "Blue Orchid in Glass Bowl with Rakhi Roli Chawal",
+      "description": "Hand bouquets can be a lovely and thoughtful gift for Rakhi, expressing love and appreciation in a beautiful way. Here are some ideas for hand bouquets that would make great Rakhi gifts. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound Glass vase arrangement of blue Orchid.\n6Steam Blue Orchid.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 139900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2288_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2288_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2288_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2288_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2542",
+      "name": "Lilies and Roses Glass Vase with Rakhi Roli Chawal",
+      "description": "Hand bouquets can be a lovely and thoughtful gift for Rakhi, expressing love and appreciation in a beautiful way. Here are some ideas for hand bouquets that would make great Rakhi gifts. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nGlass vase arrangement of Roses and Lilies.\n6Steam Pink and Red Roses, 3steam pink Asiatic Lilies.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 159900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2289_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2289_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2289_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2543",
+      "name": "Mixed Flowers Hand Bouquet with Rakhi Roli Chawal",
+      "description": "Hand bouquets can be a lovely and thoughtful gift for Rakhi, expressing love and appreciation in a beautiful way. Here are some ideas for hand bouquets that would make great Rakhi gifts. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side bouquet of Roses, carnation , chrysanthimum and Lilies.\n5Steam Pink Roses, 1steam pink Asiatic Lilies, 2stick White chrysanthimum, 5 pink carnation with Gypsy.\nPink paper wrapping with Pink/ White Net and Pink ribbon bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 159900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2290_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2290_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2290_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2544",
+      "name": "Gerbera, Roses and carnation bouquet with Rakhi Roli Chawal",
+      "description": "Hand bouquets can be a lovely and thoughtful gift for Rakhi, expressing love and appreciation in a beautiful way. Here are some ideas for hand bouquets that would make great Rakhi gifts. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound bouquet of Roses, Carnation and Gerbera.\n5Steam Red Roses, 5stick White Gerbera, 5 pink carnation, 5 Red Carnation with Gypsy.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 129900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2291_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2291_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2291_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2545",
+      "name": "Mixed Seasonal Flowers in Glass Vase with Rakhi Roli Chawal",
+      "description": "Hand bouquets can be a lovely and thoughtful gift for Rakhi, expressing love and appreciation in a beautiful way. Here are some ideas for hand bouquets that would make great Rakhi gifts. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound Glass Vase Arrangement of Roses, Gerbera and Lilies.\n10Steam Yellow and Purple Roses, 5stick Pink Gerbera, 3stick white Asiatic Lilies with Gypsy.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 209900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2292_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2292_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2546",
+      "name": "Pink Roses with Rakhi Roli Chawal",
+      "description": "Hand bouquets can be a lovely and thoughtful gift for Rakhi, expressing love and appreciation in a beautiful way. Here are some ideas for hand bouquets that would make great Rakhi gifts. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side bouquet of Roses.\n8Pink Roses with Gypsy.\nwhite and Brown Paper wrapping Pink ribbon bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2293_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2293_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2547",
+      "name": "Yellow Roses with Rakhi Roli Chawal",
+      "description": "Hand bouquets can be a lovely and thoughtful gift for Rakhi, expressing love and appreciation in a beautiful way. Here are some ideas for hand bouquets that would make great Rakhi gifts. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side bouquet of Roses.\n7Yellow Roses with Greenary.\nwhite Paper wrapping yellow ribbon bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 89900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2294_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2294_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2294_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2548",
+      "name": "Mixed Seasonal Flowers and Strawberry cake with Rakhi Roli Chawal",
+      "description": "Combining flowers with a cake makes for a delightful and memorable Rakhi gift. Here are some ideas for flower and cake combinations that would be perfect for Rakhi. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound Glass vase Arrangement of seasonal flowers and Cake.\n15 Pink Seasonal flowers like 5roses, 5 carnation , 5 gerbera with Greenary in a Glass Vase.\n500gm Strawberry cake Free Knife.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 199900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2295_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2295_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2295_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2549",
+      "name": "Doremon Cake with Chota bhem Rakhi",
+      "description": "Cake gifts are a sweet and delightful way to celebrate Rakhi. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nDoremon Chocolate Cake 1kg.\nFree Candle n Knife.\n1pc Chota-bhem Rakhi with Roli-chawal.\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 209900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2297_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2297_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2550",
+      "name": "Rocher cake with Rakhi Roli Chawal",
+      "description": "Cake gifts are a sweet and delightful way to celebrate Rakhi. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nFerrero Rocher Chocolate Cake .\nFree Candle n Knife.\nFree 2pcs Rakhi with Roli-chawal.\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.",
+      "category": "Cakes",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 149900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2298_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2298_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2551",
+      "name": "Mixed Chocolate in Basket with Rakhi Roli Chawal",
+      "description": "Chocolate gifts are a delightful way to celebrate Rakhi. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nMixed Chocolate in a tray with Rakhi.\n5pcs dairy Milk, 5pcs Kit-kat, 5pcs Five star in a tray with Red paper decorated.\nFree 2pcs Rakhi with Roli-chawal.\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.",
+      "category": "Chocolates",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 149900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2296_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2296_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2296_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2296_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2296_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2552",
+      "name": "Floral Rakhi Delight",
+      "description": "Combining flowers with gifts for Rakhi can make the celebration even more memorable. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nGlass Vase Arrangement with White Flowers.\n10White Roses, 5 White gerbera, 2steam White Asiatic Lilies with Gypsy.\nGlass Vase.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 209900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2299_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2299_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2299_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Duplicate product title; Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2553",
+      "name": "Floral Rakhi Delight",
+      "description": "Combining flowers with gifts for Rakhi can make the celebration even more memorable. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nHand Bunch of White lilies Flowers.\n6White Asiatic Lilies with Gypsy.\nBrown paper wrapping with White ribbon bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 209900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2300_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2300_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2300_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2300_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Duplicate product title; Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2554",
+      "name": "Bloom and Bond",
+      "description": "Combining flowers with gifts for Rakhi can make the celebration even more memorable. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nGlass Vase Arrangment of Roses, Gerbera and Lilies Flowers.\n6Pink Roses, 6 White Roses, 6 Pink Gerbera, 3steam pink Asiatic Lilies with Greenary.\nGlass Vase.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 249900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2301_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2301_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2301_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2555",
+      "name": "Floral Rakhi Love",
+      "description": "Combining flowers with gifts for Rakhi can make the celebration even more memorable. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nGlass Vase Arrangment of Roses, Gerbera and Lilies Flowers.\n6Yellow Gerbera, 6 White Roses, 2steam white Asiatic Lilies with Greenary.\nGlass Vase.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 199900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2302_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2302_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2302_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Duplicate product title; Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2556",
+      "name": "Raksha Blooms",
+      "description": "Combining flowers with gifts for Rakhi can make the celebration even more memorable. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nGlass Vase Arrangment of Gerbera Flowers.\n20 Mixed Gerbera with Greenary.\nGlass Vase.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 139900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2303_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2303_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2303_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2557",
+      "name": "Blossom Blessings",
+      "description": "Combining flowers with gifts for Rakhi can make the celebration even more memorable. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nGlass Vase Arrangment of Lilies Flowers.\n6Steam Oriental white Lilies with Greenary.\nGlass Vase.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 309900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2304_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2304_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2304_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2558",
+      "name": "Sisterly Sprouts",
+      "description": "Combining flowers with gifts for Rakhi can make the celebration even more memorable. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side bunch of White Roses Flowers.\n10pcs white Roses with Gypsy.\nWhite Paper white ribbon bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2305_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2305_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2559",
+      "name": "Petals of Protection",
+      "description": "Combining flowers with gifts for Rakhi can make the celebration even more memorable. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound bunch of White Lilies and Yellow Roses Flowers.\n10pcs Yellow Roses and 4White Asiatic Lilies with Gypsy andArica Pulm.\nWhite Paper Yellow ribbon bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 209900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2306_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2306_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2306_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2560",
+      "name": "Floral Rakhi Love",
+      "description": "Combining flowers with gifts for Rakhi can make the celebration even more memorable. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nGlass VAse Arrangment of Roses Flowers.\n15pcs Yellow Roses and 15pcs Pink Roses.\nGlass Vase.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 199900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2307_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2307_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Duplicate product title; Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2561",
+      "name": "Petal and Thread",
+      "description": "Combining flowers with gifts for Rakhi can make the celebration even more memorable. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound Bunch of gerbera Flowers.\n10pcs Red Gerbera with Greenary and Gypsy.\nYellow and Red Paper wrapping with Yellow Ribbon bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2308_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2308_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2308_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2562",
+      "name": "Floral Affection",
+      "description": "Celebrate the bond of love with a stunning bouquet of fresh Flowers. This delightful combination brings together the beauty of flowers making it a perfect gift to show your affection on Raksha Bandhan. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side Bunch of Roses Flowers.\n12pcs Pink and White Roses.\nBrown Paper and Blue ribbon bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2309_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2309_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2309_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2563",
+      "name": "Petal Promise",
+      "description": "Celebrate the bond of love with a stunning bouquet of fresh Flowers. This delightful combination brings together the beauty of flowers making it a perfect gift to show your affection on Raksha Bandhan. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side Bunch of Roses Flowers.\n6pcs Yellow Roses.\nBrown and White Paper and Brown ribbon bow.\n16pcs Ferrero Rocher Chocolate Box.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 209900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2310_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2310_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2564",
+      "name": "Rakhi Radiant Blooms",
+      "description": "Celebrate the bond of love with a stunning bouquet of fresh Flowers. This delightful combination brings together the beauty of flowers making it a perfect gift to show your affection on Raksha Bandhan. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side Glass vase Arrangement of Yellow Roses and White Lilies Flowers.\n20pcs Yellow Roses, 3 steam White Lilies.\nGlass Vase with Oasis.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 289900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2311_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2311_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2565",
+      "name": "Petal Harmony",
+      "description": "Celebrate the bond of love with a stunning bouquet of fresh Flowers. This delightful combination brings together the beauty of flowers making it a perfect gift to show your affection on Raksha Bandhan. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side Bunch of Yellow Roses Flowers.\n10pcs Yellow Roses.\nWhite PAper wraaping Black Ribbon bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 89900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2312_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2312_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2566",
+      "name": "Blooming Bonds",
+      "description": "Celebrate the bond of love with a stunning bouquet of fresh Flowers. This delightful combination brings together the beauty of flowers making it a perfect gift to show your affection on Raksha Bandhan. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side Bunch of Orchid Flowers.\n6pcs Blue Orchid.\nBlue Paper wraaping Blue Ribbon bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2313_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2313_2.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2567",
+      "name": "Floral Cake Delight for Rakhi",
+      "description": "For Rakhi, a festival celebrating the bond between siblings, a flowers and cake gift combo can be a wonderful way to show love and appreciation. Send this Flowers and combo Gifts anywhere in India, same day midnight delivery available.\nProduct Details:: \nRoses bunch with Chocolate Cake.\nOne side bunch of 10pcs Mixed Roses with Gypsy.\nBlue Paper wrapping Pink Ribbon bow.\n500gm Chocolate Truffle Cake.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nFree Knife\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 159900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2314_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2314_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2314_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2568",
+      "name": "Blossom Bakes for Rakhi",
+      "description": "For Rakhi, a festival celebrating the bond between siblings, a flowers and cake gift combo can be a wonderful way to show love and appreciation. Send this Flowers and combo Gifts anywhere in India, same day midnight delivery available.\nProduct Details:: \nRoses bunch with Vanila Cake.\nOne side bunch of 12pcs White and Yellow Roses with Gypsy.\nWhite Paper wrapping brown Ribbon bow.\n500gm Vanila Cake.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nFree Knife\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 179900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2315_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2315_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2315_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2569",
+      "name": "Sweet Floral Duo for Rakhi",
+      "description": "For Rakhi, a festival celebrating the bond between siblings, a flowers and cake gift combo can be a wonderful way to show love and appreciation. Send this Flowers and combo Gifts anywhere in India, same day midnight delivery available.\nProduct Details:: \nMixed Gerbera bunch with Chocolate Fresh Fruit Cake.\nOne side bunch of 15pcs Mixed Gerbera with Gypsy.\nBrown Paper wrapping Pink Ribbon bow.\n500gm Chocolate Fresh Fruit Cake.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nFree Knife\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 179900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2316_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2316_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2316_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2570",
+      "name": "Flowers and Cake Surprise for Rakhi",
+      "description": "For Rakhi, a festival celebrating the bond between siblings, a flowers and cake gift combo can be a wonderful way to show love and appreciation. Send this Flowers and combo Gifts anywhere in India, same day midnight delivery available.\nProduct Details:: \nMixed Roses bunch with Black Forest Cake.\nRound bunch of 15pcs Pink and Yellow Roses with Gypsy.\nCellophane wrapping with Pink Ribbon bow.\n500gm Black Forest Cake.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nFree Knife\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 169900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2317_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2317_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2317_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Duplicate product title; Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2571",
+      "name": "Petals and Cakes for Rakhi",
+      "description": "For Rakhi, a festival celebrating the bond between siblings, a flowers and cake gift combo can be a wonderful way to show love and appreciation. Send this Flowers and combo Gifts anywhere in India, same day midnight delivery available.\nProduct Details:: \nOne Side Bunch of Gerbera with Mango Cake.\nOne side bunch of 3pcs Yellow Gerbera with Gypsy.\nwhite Paper wrapping with White Ribbon bow.\n500gm Mango Cake.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nFree Knife\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 149900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2318_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2318_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2318_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2318_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2572",
+      "name": "Floral Sweet Treats for Rakhi",
+      "description": "A single red rose symbolizing love and affection, paired with a vanila cake a simple yet elegant gift same day midnight delivery anywhere in india.\nProduct Details:: \nOne Side Bunch of Rose with vanila Cake.\nOne side bunch of 1pc Red Rose with Gypsy.\nYellow Paper wrapping with Red Ribbon bow.\n500gm Vanila Cake.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nFree Knife\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 129900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2319_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2319_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2319_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2573",
+      "name": "Flowers and Cake Surprise for Rakhi",
+      "description": "A single Red Rose symbolizing love and affection, paired with a Red Velvet cake a simple yet elegant gift same day midnight delivery anywhere in india.\nProduct Details:: \nOne Side Bunch of Rose with Red Velvet Cake.\nOne side bunch of 1pc Red Rose with Gypsy.\nbrown Paper wrapping with Red Ribbon bow.\n500gm Red Velvet Cake.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nFree Knife\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 129900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2320_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2320_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2320_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Duplicate product title; Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2574",
+      "name": "Rakhi Radiance Bouquet",
+      "description": "A vibrant bouquet of mixed flowers including roses, Gerbera, and Carnation, symbolizing the radiant bond between siblings. This colorful arrangement brings joy and happiness to the festive occasion.send this Bouquet with rakhi to your sibling anywhere in india\nProduct Details:: \nOne Side Bunch of Rose, gerbera and carnation.\nOne side bunch of 4pcs Red Rose,4pcs Pink gerbera and 4pcs Whiet carnation with Gypsy.\nPink and Red Paper wrapping with Red Ribbon bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 89900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2321_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2321_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2321_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2575",
+      "name": "Bond of Love Blooms for Rakhi",
+      "description": "A lively mix of oriental Lilies, embodying the spirit of friendship and joy. This bouquet is perfect for celebrating the happy moments and cherished memories of Rakhi.send this Bouquet with rakhi to your sibling anywhere in india\nProduct Details:: \nOne Side Bunch of Lilies.\nOne side bunch of 6oriental Lilies with Gypsy.\nNaatural Jute and Pink Paper wrapping with white raffia bow.\nFree 2pcs Rakhi with Roli-Chawal\nFree Personalised Message Card.\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 359900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2322_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2322_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2618",
+      "name": "Red Roses with Rakhi",
+      "description": "On this Rakhi, Send Roses with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of 10pcs Red Roses.\nBlack non woven paper wrapping with Gypsy and White Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 89900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2406_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2406_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2406_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2406_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2406_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2619",
+      "name": "Exotica Blomming with Rakhi",
+      "description": "On this Rakhi, Send Roses and orchid bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of 6pcs White Roses and 2purple Orchids.\nBlack and White non woven paper wrapping with Gypsy and Black Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 109900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2407_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2407_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2407_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2407_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2620",
+      "name": "Blooming Paradise with Rakhi",
+      "description": "On this Rakhi, Send Roses and orchid bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of 6pcs White Roses and 2blue Orchids.\nBlue and White non woven paper wrapping with Gypsy and white Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 109900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2408_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2408_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2408_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2408_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2621",
+      "name": "Gerberas Glory For Rakhi",
+      "description": "On this Rakhi, Send gebera's bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 10pcs Red and Yellow Gerbera.\nRed and Black non woven paper wrapping with Gypsy and Red and Yellow Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2409_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2409_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2409_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2409_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2409_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2622",
+      "name": "Rosy Rakhi Bond",
+      "description": "On this Rakhi, Send Roses bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of 6pcs Mixed Roses.\nWhite non woven paper wrapping with Greenary and Red and Yellow Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 79900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2410_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2410_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2410_3.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2623",
+      "name": "Raksha Rose",
+      "description": "On this Rakhi, Send Roses bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of 6pcs Red Roses.\nPink non woven paper wrapping with Greenary and Red Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 79900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2411_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2411_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2411_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2411_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2624",
+      "name": "Rakhi Bloom",
+      "description": "On this Rakhi, Send Roses bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of 6pcs Red Roses.\nBlue non woven paper wrapping with Greenary and Pink Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 79900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2412_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2412_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2412_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2412_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2625",
+      "name": "Petal Profasion",
+      "description": "On this Rakhi, Send Carnation bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 7pcs Pink Carnation.\nPink non woven paper wrapping with Greenary and Pink Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 89900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2413_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2413_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2413_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2413_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2626",
+      "name": "Bandhan Blossoms",
+      "description": "On this Rakhi, Send Gerbera's bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of 8pcs Mixed Gerbera.\nWhite non woven paper wrapping with Greenary and Red-Yellow Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 79900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2414_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2414_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2414_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2414_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2627",
+      "name": "Rakhi Rose Delight",
+      "description": "On this Rakhi, Send Roses bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 10pcs Red Roses.\nWhite non woven paper wrapping with Greenary and red Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2415_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2415_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2415_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2415_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2628",
+      "name": "Floral Thread",
+      "description": "On this Rakhi, Send Chocolates bouquet with rakhi to your lovable Brothers/Sister anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of 8pcs Red Roses, And 5pcs dairy Milk chocolates each 13gm.\nPink non woven paper wrapping with Greenary and Red Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 119900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2416_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2416_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2416_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2416_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2629",
+      "name": "Petal Promly",
+      "description": "On this Rakhi, Send Roses bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 10pcs Mixed Roses.\nRed non woven paper wrapping with Greenary and red and yellow Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 99900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2417_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2417_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2417_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2417_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2630",
+      "name": "Roshan Bandhan",
+      "description": "On this Rakhi, Send Roses bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 8pcs yellow Roses.\nYellow non woven paper wrapping with Greenary and yellow Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 79900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2418_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2418_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2418_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2418_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2418_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2631",
+      "name": "Gulabo Bandhan",
+      "description": "On this Rakhi, Send Roses bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 8pcs Pink Roses.\nPink non woven paper wrapping with Greenary and pink Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 79900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2419_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2419_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2419_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2419_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2632",
+      "name": "Blush of Bonding",
+      "description": "On this Rakhi, Send Chocolates bouquet with rakhi to your lovable Brothers/Sister anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of 7pcs Red Roses, And 5pcs Kit-kat chocolates.\nRed and Pink non woven paper wrapping with Grypsy and White Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 109900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2420_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2420_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2420_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2420_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2420_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2633",
+      "name": "Bandhan Bloom",
+      "description": "On this Rakhi, Send Roses bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 7pcs yellow Roses.\nWhite non woven paper wrapping with Greenary and yellow Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 74900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2421_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2421_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2421_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2421_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2421_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2634",
+      "name": "Rose Ties",
+      "description": "On this Rakhi, Send Roses bouquet with rakhi to your lovable Brothers anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 7pcs Red Roses.\nWhite non woven paper wrapping with Greenary and Red Ribbon bow.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not availabel than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 74900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2422_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2422_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2422_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2422_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2422_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2635",
+      "name": "Sweet Bond Delight",
+      "description": "Celebrate the unbreakable bond of love and protection this Raksha Bandhan with our Combo anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of 7pcs Red Roses and 500gm Truffle Cake.\nWhite non woven paper wrapping with Greenary and Red Ribbon bow.\n500gm Chocolate Truffle Cake. \nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 159900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2423_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2423_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2423_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2421_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2421_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_1797_1.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2636",
+      "name": "Cherished Moments Combo",
+      "description": "Celebrate the unbreakable bond of love and protection this Raksha Bandhan with our Combo anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of 7pcs Yellow Roses and 500gm Black Forest Cake.\nWhite non woven paper wrapping with Greenary and Red Ribbon bow.\n500gm Black Forest Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 159900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2424_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2424_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2424_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2421_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2637",
+      "name": "Rosy Rakhi Bliss",
+      "description": "Celebrate the unbreakable bond of love and protection this Raksha Bandhan with our Combo anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 12pcs Mixed Roses and 500gm Black Forest Cake.\nWhite celophane wrapping with Greenary and Pink Ribbon bow.\n500gm Black Forest Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 169900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2425_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2425_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2425_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2425_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2638",
+      "name": "Rakhi Radiance Duo",
+      "description": "Celebrate the unbreakable bond of love and protection this Raksha Bandhan with our Combo anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 12pcs Pink Roses and 500gm Black Forest Cake.\nWhite Non Woven paper wrapping with Greenary and Brown Ribbon bow.\n500gm Black Forest Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 179900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2426_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2426_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2426_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2426_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2426_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2639",
+      "name": "Sweet Symphony Combo",
+      "description": "Celebrate the unbreakable bond of love and protection this Raksha Bandhan with our Combo anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 10pcs Red Roses and 500gm Black Forest Cake.\nWhite and Red Non Woven paper wrapping with Greenary and Red Ribbon bow.\n500gm Black Forest Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 159900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2427_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2427_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2427_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2427_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2640",
+      "name": "Blossom and Bites",
+      "description": "Celebrate the unbreakable bond of love and protection this Raksha Bandhan with our Combo anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound hand bouquet of 10pcs Red Roses and 500gm Gems Black Forest Cake.\nBlack Non Woven paper wrapping with Greenary and White Ribbon bow.\n500gm Gems Black Forest Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 159900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2428_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2428_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2428_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2428_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation"
+    },
+    {
+      "sku": "EG2i2641",
+      "name": "Rakhi Treat",
+      "description": "Celebrate the unbreakable bond of love and protection this Raksha Bandhan with our Combo anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of 6pcs Pink Roses and 500gm Truffle Cake.\nPink Non Woven paper wrapping with Greenary and Pink Ribbon bow.\n500gm Chocolate Truffle Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 144900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2429_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2429_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2429_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2429_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2429_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2642",
+      "name": "Moments of Feeling",
+      "description": "Celebrate the unbreakable bond of love and protection this Raksha Bandhan with our Combo anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nRound Glass Vase Round Arrangement and 500gm Black Forest Cake.\nGlass Vase arrangement of 6 Red Roses, 4 White Roses, 4 yellow Gerbera with Greenary.\n500gm Black Forest Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 199900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2430_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2430_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2430_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2430_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2430_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2643",
+      "name": "Floral Wishes and Kisses",
+      "description": "Celebrate the unbreakable bond of love and protection this Raksha Bandhan with our Combo anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of Red Roses and 500gm Chocolate Oreo Cake.\nWhite and Black Non woven paper wrapping of 10 Red Roses with Greenary and Red Ribbon bow.\n500gm Chocolate Oreo Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 169900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2431_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2431_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2431_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2431_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2431_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2644",
+      "name": "Rosy Rakhi Blossoms",
+      "description": "Celebrate the unbreakable bond of love and protection this Raksha Bandhan with our Combo anywhere in India. Same day, Midnight delivery available anywhere In India.\nProduct Details:: \nOne side hand bouquet of Mixed Roses and 500gm Black Forest Cake.\nRound celophane wrapping of 18 Mixed Roses with Greenary and Red Ribbon bow.\n500gm Black Forest Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 179900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2432_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2432_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2432_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2432_4.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Delivery claim needs pincode validation; Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2645",
+      "name": "Sweet Ties",
+      "description": "Celebrate the sweet bond of Raksha Bandhan with our Rakhi Bliss Combo — a thoughtful gift set that combines beauty, taste, and tradition.Whether you're near or far from your sibling, send your heartfelt wishes wrapped in love and sweetness with this all-in-one gift set.\nProduct Details:: \nOne side hand bouquet of Single Rose and 500gm Oreo Chocolate Cake.\nSingle Red Rose Bouquet wrapped in premium black and white paper, symbolizing love and respect.\n500gm Oreo Chocolate Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 149900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2433_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2433_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2433_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2433_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2433_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2433_6.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2646",
+      "name": "Raksha Delight",
+      "description": "Make this Raksha Bandhan extra special with our Rakhi Elegance Combo, a heartwarming gift set that blends tradition with indulgence.Send love across miles or just across the room with this thoughtful and delightful gift set that captures the spirit of sibling love.\nProduct Details:: \nRound hand bouquet of Red Roses and 500gm Oreo Chocolate Cake.\nRound Bouquet of 6pcs Red Rose Bouquet wrapped in Red Paper wraaping with red Ribbon bow.\n500gm Oreo Chocolate Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal — a complete Raksha Bandhan kit for a meaningful celebration\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 159900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2434_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2434_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2434_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2434_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2434_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2647",
+      "name": "Rakhi Rishtey Treat",
+      "description": "Celebrate the sacred bond of Raksha Bandhan with elegance and health in mind through our Rakhi Combo. This exquisite hamper combines the freshness of flowers, the sweetness of cake, and the purity of traditional rituals.This combo is the perfect way to send warm wishes and make your sibling feel cherished, even from afar.\nProduct Details:: \nRound handle basket of Red Roses and 500gm Fresh Fruit Cake.\nRound Handle Basket of 15pcs Red Rose with Greenary.\n500gm Fresh Fruit Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal — a complete Raksha Bandhan kit for a meaningful celebration\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 219900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2435_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2435_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2435_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2435_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2435_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2435_6.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2648",
+      "name": "Tied with Treats",
+      "description": "Celebrate the cherished festival of Raksha Bandhan with our Rakhi Combo, a thoughtful pairing of elegance and indulgence.Perfect for surprising your brother or sister with a heartfelt gesture that brings smiles, love, and sweet memories.\nProduct Details:: \nOne side Bouquet of Red Roses and 500gm Chocolate Oreo Cake.\nOne side bouquet of 6pcs Red Rose with Greenary.\n500gm Chocolate Oreo Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal — a complete Raksha Bandhan kit.\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 167500,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2436_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2436_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2436_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2436_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2436_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2436_6.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2649",
+      "name": "Bro-Sis Bloom",
+      "description": "Bring colors, sweetness, and sibling love together this Raksha Bandhan with our Rakhi Rainbow Combo. Thoughtfully curated to spread festive cheer, this combo is the perfect balance of beauty, flavor, and tradition.\nProduct Details:: \nRound Bouquet of Mixed Roses and 500gm Chocolate Oreo Cake.\nRound bouquet of 12pcs Mixed Rose with Greenary celophane wrapping red ribbon bow.\n500gm Chocolate Oreo Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal — a complete Raksha Bandhan kit.\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value.",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 179900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2437_1.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2437_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2437_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2437_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2437_5.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    },
+    {
+      "sku": "EG2i2650",
+      "name": "Blooms of Bond",
+      "description": "Make your Raksha Bandhan celebrations sweeter and more meaningful with our Rakhi Combo. A timeless pairing of fresh flowers and delectable cake, paired with a Rakhi to complete the festive ritual.\nProduct Details:: \nOne side Bouquet of Red Roses and 500gm Butterscotch Cake.\nOne side bouquet of 6pcs Red Rose with Greenary White Paper wrapping and red ribbon bow.\n500gm Butterscotch Cake. \nFree Knife.\nFree 1pc Rakhi with Roli-Chawal — a complete Raksha Bandhan kit.\nFree Personalised Message Card.(if you have any message)\nN.B.: Rakhi and Greeting Card design may be vary.Also we will Try Exact flowers if not available than we can use others flowers but same value",
+      "category": "Flowers",
+      "occasions": [
+        "rakhi"
+      ],
+      "price_paise": 149900,
+      "images": [
+        "https://www.eg2i.com/uploads/product_image/product_2438_.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2438_2.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2438_3.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2438_4.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2438_5.jpg",
+        "https://www.eg2i.com/uploads/product_image/product_2438_6.jpg"
+      ],
+      "source_catalogue": "Rakhi catalogue",
+      "seasonal": true,
+      "qa_flags": "Substitution wording needs review"
+    }
+  ]
+}

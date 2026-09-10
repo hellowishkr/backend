@@ -9,6 +9,10 @@ from app.bot.state_utils import get_gift_need_profile, get_state, update_active_
 from app.bot.tools.tool_impl.helpers import _HINT_REGISTER, _err, _get_user
 from app.models import GiftType, Order, OrderStatus, Purchase, PurchaseStatus, Vendor
 from app.models.gift_catalog import GiftCatalogItem
+from app.services.delivery_estimate import (
+    express_delivery_available_today,
+    supports_express_delivery,
+)
 from app.utils.id_gen import generate_id
 
 
@@ -73,6 +77,8 @@ async def _resolve_marketplace_candidate(
                 cancellation_policy=vendor.cancellation_policy,
                 lead_time_hours=vendor.delivery_lead_time_hours,
                 same_day_cutoff_hour=vendor.same_day_cutoff_hour,
+                express_delivery=supports_express_delivery(vendor),
+                express_delivery_available_today=express_delivery_available_today(vendor),
                 provider_health="healthy",
                 reliability_score=float(vendor.reliability_score or 0.5),
             ),
@@ -115,6 +121,8 @@ async def select_gift_candidate(db: AsyncSession, phone: str, args: dict) -> dic
         "candidate_id": candidate.item_id,
         "name": candidate.name,
         "fulfillment_mode": candidate.policy.fulfillment_mode,
+        "express_delivery": candidate.policy.express_delivery,
+        "express_delivery_available_today": candidate.policy.express_delivery_available_today,
         "price_min": candidate.price_min,
         "price_max": candidate.price_max,
         "message": f"Selected {candidate.name}.",
@@ -124,8 +132,12 @@ async def select_gift_candidate(db: AsyncSession, phone: str, args: dict) -> dic
 async def create_checkout(db: AsyncSession, phone: str, args: dict) -> dict:
     """Create checkout for the selected marketplace candidate."""
     profile = get_gift_need_profile(await get_state(db, phone))
-    provider_id = (args.get("provider_id") or "").strip() or (profile.selected_provider_id if profile else None)
-    candidate_id = (args.get("candidate_id") or "").strip() or (profile.selected_candidate_id if profile else None)
+    provider_id = (args.get("provider_id") or "").strip() or (
+        profile.selected_provider_id if profile else None
+    )
+    candidate_id = (args.get("candidate_id") or "").strip() or (
+        profile.selected_candidate_id if profile else None
+    )
     try:
         amount = int(args.get("amount") or 0)
     except (TypeError, ValueError):
@@ -200,6 +212,8 @@ async def create_checkout(db: AsyncSession, phone: str, args: dict) -> dict:
                 "delivery_policy": candidate.policy.delivery_policy,
                 "return_policy": candidate.policy.return_policy,
                 "cancellation_policy": candidate.policy.cancellation_policy,
+                "express_delivery": candidate.policy.express_delivery,
+                "express_delivery_available_today": candidate.policy.express_delivery_available_today,
             },
         )
         db.add(order)

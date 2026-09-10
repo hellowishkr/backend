@@ -106,11 +106,9 @@ class GiftRecommendationRequest:
 def _constraint_values(constraints: dict | None) -> list[str]:
     if not isinstance(constraints, dict):
         return []
-    return normalize_match_values([
-        str(value)
-        for value in constraints.values()
-        if value is not None and str(value).strip()
-    ])
+    return normalize_match_values(
+        [str(value) for value in constraints.values() if value is not None and str(value).strip()]
+    )
 
 
 def _candidate_text(candidate: GiftCandidate) -> str:
@@ -243,9 +241,7 @@ async def resolve_vibes_for_request(
         from app.bot.vibe_embedder import resolve as _embed_resolve
 
         query_text = " ".join(
-            str(bit)
-            for bit in [request.recipient_vibe, " ".join(raw_vibes)]
-            if bit
+            str(bit) for bit in [request.recipient_vibe, " ".join(raw_vibes)] if bit
         ).strip()
         if query_text:
             try:
@@ -343,14 +339,16 @@ def _idea_suggestions(
             if key in seen:
                 continue
             seen.add(key)
-            out.append({
-                "name": idea["name"],
-                "vibes": [vibe],
-                "why": idea["why"],
-                "already_taken": False,
-                "budget_hint": idea["budget_hint"],
-                "availability": "general_idea",
-            })
+            out.append(
+                {
+                    "name": idea["name"],
+                    "vibes": [vibe],
+                    "why": idea["why"],
+                    "already_taken": False,
+                    "budget_hint": idea["budget_hint"],
+                    "availability": "general_idea",
+                }
+            )
             if len(out) >= n:
                 return out
     return out
@@ -378,17 +376,11 @@ def _recommendation_context(
 
     occasion_defaults = set(default_vibes_for_occasion(occasion_type or ""))
     requested_vibes = {
-        str(value).strip()
-        for value in (request.vibes_in or [])
-        if str(value).strip()
+        str(value).strip() for value in (request.vibes_in or []) if str(value).strip()
     }
     has_recipient_interest = bool(
         request.recipient_vibe
-        or (profile and (
-            profile.recipient_vibe
-            or profile.interest
-            or profile.gift_category
-        ))
+        or (profile and (profile.recipient_vibe or profile.interest or profile.gift_category))
         or (requested_vibes - occasion_defaults)
     )
 
@@ -398,11 +390,7 @@ def _recommendation_context(
     if not has_recipient_interest:
         missing_fields.append("recipient_interests")
 
-    recipient = (
-        profile.recipient_name
-        if profile and profile.recipient_name
-        else "the recipient"
-    )
+    recipient = profile.recipient_name if profile and profile.recipient_name else "the recipient"
     if "budget" in missing_fields:
         clarifying_question = "What budget would you like to stay within?"
     elif "recipient_interests" in missing_fields:
@@ -433,9 +421,7 @@ def _materialize_refinement_suggestions(result: dict) -> None:
 
     general_ideas = review.get("additional_general_ideas")
     if isinstance(general_ideas, list) and general_ideas:
-        result["suggestions"] = [
-            item for item in general_ideas if isinstance(item, dict)
-        ]
+        result["suggestions"] = [item for item in general_ideas if isinstance(item, dict)]
         result["mode"] = "ai_general_ideas"
 
 
@@ -523,7 +509,9 @@ async def _recipient_city(
     return city_id
 
 
-def _delivery_feasible(candidate: GiftCandidate, occasion_date: str | None) -> tuple[bool, str | None]:
+def _delivery_feasible(
+    candidate: GiftCandidate, occasion_date: str | None
+) -> tuple[bool, str | None]:
     lead_hours = candidate.policy.lead_time_hours if candidate.policy else None
     if not lead_hours or not occasion_date:
         return True, None
@@ -639,9 +627,7 @@ async def recommend_gifts(
             candidate.policy.serviceability_reason = reason
 
     eligible_candidates = [
-        candidate
-        for candidate in all_candidates
-        if _candidate_allowed(candidate, request)
+        candidate for candidate in all_candidates if _candidate_allowed(candidate, request)
     ]
     scored = sorted(
         eligible_candidates,
@@ -657,9 +643,7 @@ async def recommend_gifts(
         reverse=True,
     )
     exclude_names = {
-        str(name).strip().lower()
-        for name in (request.exclude_names or [])
-        if str(name).strip()
+        str(name).strip().lower() for name in (request.exclude_names or []) if str(name).strip()
     }
     fresh_scored = [c for c in scored if c.name.strip().lower() not in exclude_names]
     pool = fresh_scored if exclude_names else scored
@@ -674,7 +658,13 @@ async def recommend_gifts(
             if candidate.fulfillment == "instant_voucher":
                 why_parts.append("instant delivery")
             elif candidate.fulfillment == "physical_delivery":
-                why_parts.append("delivered to door")
+                why_parts.append(
+                    "same-day express delivery"
+                    if candidate.policy.express_delivery_available_today
+                    else "express delivery"
+                    if candidate.policy.express_delivery
+                    else "delivered to door"
+                )
             elif candidate.fulfillment == "booking":
                 why_parts.append("booking-based")
         elif matched:
@@ -687,36 +677,44 @@ async def recommend_gifts(
         price_range = (
             f"₹{candidate.price_min}-₹{candidate.price_max}"
             if candidate.price_max and candidate.price_min
-            else "ask partner" if candidate.policy.fulfillment_mode == "manual"
-            else f"from ₹{candidate.price_min}" if candidate.price_min
+            else "ask partner"
+            if candidate.policy.fulfillment_mode == "manual"
+            else f"from ₹{candidate.price_min}"
+            if candidate.price_min
             else "varies"
         )
-        suggestions.append({
-            "name": candidate.name,
-            "vibes": candidate.vibes,
-            "why": "; ".join(why_parts),
-            "already_taken": candidate.already_taken,
-            "budget_hint" if settings.mvp_reminder_only else "price_range": (
-                _budget_hint(candidate) if settings.mvp_reminder_only else price_range
-            ),
-            **(
-                {}
-                if settings.mvp_reminder_only
-                else {
-                    "source": candidate.source_id,
-                    "provider_id": candidate.source_id,
-                    "fulfillment": candidate.fulfillment,
-                    "fulfillment_mode": candidate.policy.fulfillment_mode,
-                    "serviceable": candidate.policy.serviceable,
-                    "serviceability_reason": candidate.policy.serviceability_reason,
-                    "delivery_policy": candidate.policy.delivery_policy,
-                    "return_policy": candidate.policy.return_policy,
-                    "cancellation_policy": candidate.policy.cancellation_policy,
-                    "item_id": candidate.item_id,
-                    "contact_info": candidate.contact_info,
-                }
-            ),
-        })
+        suggestions.append(
+            {
+                "name": candidate.name,
+                "vibes": candidate.vibes,
+                "why": "; ".join(why_parts),
+                "already_taken": candidate.already_taken,
+                "budget_hint" if settings.mvp_reminder_only else "price_range": (
+                    _budget_hint(candidate) if settings.mvp_reminder_only else price_range
+                ),
+                **(
+                    {}
+                    if settings.mvp_reminder_only
+                    else {
+                        "source": candidate.source_id,
+                        "provider_id": candidate.source_id,
+                        "fulfillment": candidate.fulfillment,
+                        "fulfillment_mode": candidate.policy.fulfillment_mode,
+                        "serviceable": candidate.policy.serviceable,
+                        "serviceability_reason": candidate.policy.serviceability_reason,
+                        "delivery_policy": candidate.policy.delivery_policy,
+                        "express_delivery": candidate.policy.express_delivery,
+                        "express_delivery_available_today": candidate.policy.express_delivery_available_today,
+                        "express_delivery_hours": candidate.policy.lead_time_hours,
+                        "express_delivery_cutoff_hour": candidate.policy.same_day_cutoff_hour,
+                        "return_policy": candidate.policy.return_policy,
+                        "cancellation_policy": candidate.policy.cancellation_policy,
+                        "item_id": candidate.item_id,
+                        "contact_info": candidate.contact_info,
+                    }
+                ),
+            }
+        )
 
     if settings.mvp_reminder_only:
         seen_names = {item["name"].strip().lower() for item in suggestions}
@@ -765,8 +763,7 @@ async def recommend_gifts(
                     for item in result["suggestions"]
                     if (
                         isinstance(item, dict)
-                        and str(item.get("name") or "").strip().lower()
-                        not in exclude_names
+                        and str(item.get("name") or "").strip().lower() not in exclude_names
                     )
                 ]
             return result

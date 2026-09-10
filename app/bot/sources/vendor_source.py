@@ -13,6 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.gift_taxonomy import VIBE_TO_VENDOR_CATEGORIES, vendor_categories_for_vibes
 from app.bot.sources.base import GiftCandidate, ProviderCapabilities, ProviderPolicy, ProviderQuote
+from app.services.delivery_estimate import (
+    express_delivery_available_today,
+    supports_express_delivery,
+)
 from app.models import Vendor, VendorCategoryLink, VendorCity
 
 logger = logging.getLogger("wishkr.sources.vendor")
@@ -107,8 +111,8 @@ class VendorSource:
         if city:
             local_q = (
                 base.join(VendorCity, VendorCity.vendor_id == Vendor.id)
-                    .where(VendorCity.city_id == city)
-                    .where(Vendor.is_national.is_(False))
+                .where(VendorCity.city_id == city)
+                .where(Vendor.is_national.is_(False))
             )
             national_q = base.where(Vendor.is_national.is_(True))
             local_rows = (await db.execute(local_q)).scalars().unique().all()
@@ -122,29 +126,33 @@ class VendorSource:
         for vendor in rows:
             cat = (vendor.category or "").lower()
             matched_vibes = sorted(set(cat_to_vibes.get(cat, [])))
-            out.append(GiftCandidate(
-                source_id=self.source_id,
-                item_id=vendor.id,
-                name=vendor.name,
-                vibes=matched_vibes,
-                price_min=0,  # vendor pricing is per-item; not in DB yet
-                price_max=0,
-                fulfillment=_VENDOR_FULFILLMENT.get(cat, "booking"),
-                cities=None if vendor.is_national else [city] if city else None,
-                metadata={"category": cat, "is_national": vendor.is_national},
-                policy=ProviderPolicy(
-                    fulfillment_mode="manual",
-                    delivery_policy=getattr(vendor, "delivery_policy", None),
-                    return_policy=getattr(vendor, "return_policy", None),
-                    cancellation_policy=getattr(vendor, "cancellation_policy", None),
-                    lead_time_hours=getattr(vendor, "delivery_lead_time_hours", None),
-                    same_day_cutoff_hour=getattr(vendor, "same_day_cutoff_hour", None),
-                    serviceable=True,
-                    provider_health="healthy",
-                    reliability_score=float(getattr(vendor, "reliability_score", None) or 0.5),
-                ),
-                contact_info=vendor.contact_info,
-            ))
+            out.append(
+                GiftCandidate(
+                    source_id=self.source_id,
+                    item_id=vendor.id,
+                    name=vendor.name,
+                    vibes=matched_vibes,
+                    price_min=0,  # vendor pricing is per-item; not in DB yet
+                    price_max=0,
+                    fulfillment=_VENDOR_FULFILLMENT.get(cat, "booking"),
+                    cities=None if vendor.is_national else [city] if city else None,
+                    metadata={"category": cat, "is_national": vendor.is_national},
+                    policy=ProviderPolicy(
+                        fulfillment_mode="manual",
+                        delivery_policy=getattr(vendor, "delivery_policy", None),
+                        return_policy=getattr(vendor, "return_policy", None),
+                        cancellation_policy=getattr(vendor, "cancellation_policy", None),
+                        lead_time_hours=getattr(vendor, "delivery_lead_time_hours", None),
+                        same_day_cutoff_hour=getattr(vendor, "same_day_cutoff_hour", None),
+                        express_delivery=supports_express_delivery(vendor),
+                        express_delivery_available_today=express_delivery_available_today(vendor),
+                        serviceable=True,
+                        provider_health="healthy",
+                        reliability_score=float(getattr(vendor, "reliability_score", None) or 0.5),
+                    ),
+                    contact_info=vendor.contact_info,
+                )
+            )
         return out
 
     async def quote(

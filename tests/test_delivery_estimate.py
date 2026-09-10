@@ -5,6 +5,8 @@ from app.services.delivery_estimate import (
     DEFAULT_LEAD_TIME_HOURS,
     SAFETY_BUFFER_DAYS,
     earliest_delivery_date,
+    express_delivery_available_today,
+    supports_express_delivery,
 )
 
 
@@ -63,6 +65,23 @@ def test_sub_day_lead_after_cutoff_starts_tomorrow() -> None:
     now = datetime(2026, 6, 21, 13, 30, tzinfo=timezone.utc)
     result = earliest_delivery_date(vendor, now=now)
     assert (result - now.date()).days == 1
+
+
+def test_sub_day_vendor_is_express_before_but_not_available_after_cutoff() -> None:
+    vendor = _vendor(lead_hours=4, cutoff_hour=18)
+    before = datetime(2026, 6, 21, 11, 30, tzinfo=timezone.utc)  # 17:00 IST
+    after = datetime(2026, 6, 21, 13, 30, tzinfo=timezone.utc)  # 19:00 IST
+
+    assert supports_express_delivery(vendor) is True
+    assert express_delivery_available_today(vendor, now=before) is True
+    assert express_delivery_available_today(vendor, now=after) is False
+
+
+def test_multi_day_product_override_is_not_express() -> None:
+    vendor = _vendor(lead_hours=4, cutoff_hour=18)
+
+    assert supports_express_delivery(vendor, product_lead_time_days=2) is False
+    assert express_delivery_available_today(vendor, product_lead_time_days=2) is False
 
 
 def test_product_lead_time_overrides_unset_vendor_default() -> None:

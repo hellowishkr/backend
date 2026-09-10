@@ -19,7 +19,12 @@ from app.db.session import get_db
 from app.models.catalog_taxonomy import GiftingOccasion, ProductCategory
 from app.models.product import Product
 from app.models.vendor import Vendor, VendorCity
-from app.services.delivery_estimate import earliest_delivery_date
+from app.services.delivery_estimate import (
+    earliest_delivery_date,
+    effective_delivery_lead_time_hours,
+    express_delivery_available_today,
+    supports_express_delivery,
+)
 from app.services.bouquet_pricing import (
     bouquet_recipe_cost,
     effective_variant_prices,
@@ -61,6 +66,7 @@ def _verify_preview_token(token: str, product_id: str) -> None:
     if expiry < int(time.time()):
         raise HTTPException(status_code=403, detail="preview link expired")
 
+
 ALLOWED_UPLOAD_TYPES = {
     "image/jpeg": ".jpg",
     "image/png": ".png",
@@ -99,9 +105,7 @@ def _money(value: Decimal | None) -> str | None:
 def _discount_pct(base_paise: int, discounted_paise: int | None) -> str:
     if discounted_paise is None or discounted_paise >= base_paise or base_paise <= 0:
         return "0"
-    discount = (
-        Decimal(base_paise - discounted_paise) * Decimal(100)
-    ) / Decimal(base_paise)
+    discount = (Decimal(base_paise - discounted_paise) * Decimal(100)) / Decimal(base_paise)
     return str(discount.quantize(Decimal("0.01")))
 
 
@@ -121,9 +125,7 @@ def serialize_pricing(pricing: StorefrontPricing | None) -> dict:
 
 
 def _serialize_variant(variant, *, include_costs: bool) -> dict:
-    effective_base, effective_discount, seasonal_active = effective_variant_prices(
-        variant
-    )
+    effective_base, effective_discount, seasonal_active = effective_variant_prices(variant)
     recipe = getattr(variant, "bouquet_recipe", None)
     body = {
         "id": variant.id,
@@ -131,9 +133,7 @@ def _serialize_variant(variant, *, include_costs: bool) -> dict:
         "sku": variant.sku,
         # Stored normal amounts remain available to the admin editor.
         "price_delta_paise": variant.price_delta_paise,
-        "discounted_price_paise": getattr(
-            variant, "discounted_price_paise", None
-        ),
+        "discounted_price_paise": getattr(variant, "discounted_price_paise", None),
         # Buyer/checkout-effective amounts account for the current seasonal
         # window. Clients must use these when present.
         "effective_base_price_paise": effective_base,
@@ -149,9 +149,7 @@ def _serialize_variant(variant, *, include_costs: bool) -> dict:
     if include_costs:
         body.update(
             {
-                "seasonal_price_paise": getattr(
-                    variant, "seasonal_price_paise", None
-                ),
+                "seasonal_price_paise": getattr(variant, "seasonal_price_paise", None),
                 "seasonal_price_start": (
                     variant.seasonal_price_start.isoformat()
                     if getattr(variant, "seasonal_price_start", None)
@@ -180,6 +178,13 @@ def serialize_product(
     include_vendor_name: bool = False,
     pricing: StorefrontPricing | None = None,
 ) -> dict:
+    vendor = product.vendor
+    express_delivery = bool(
+        vendor
+        and supports_express_delivery(
+            vendor, product_lead_time_days=product.dispatch_lead_time_days
+        )
+    )
     return {
         "id": product.id,
         "vendor_id": product.vendor_id,
@@ -187,7 +192,9 @@ def serialize_product(
         # Vendor business name is intentionally not exposed on the storefront to
         # avoid buyers contacting vendors directly and bypassing Wishkr. Admin
         # callers opt in via include_vendor_name — they need to know the supplier.
-        "vendor_name": (product.vendor.name if product.vendor else None) if include_vendor_name else None,
+        "vendor_name": (product.vendor.name if product.vendor else None)
+        if include_vendor_name
+        else None,
         # Legacy fields are normalized so older carts cannot revive vendor,
         # product, or quantity-specific delivery fees.
         "vendor_shipping_flat_fee_paise": None,
@@ -198,6 +205,24 @@ def serialize_product(
         "occasions": product.occasions or [],
         "preparation_time": product.preparation_time,
         "dispatch_lead_time_days": product.dispatch_lead_time_days,
+        "express_delivery": express_delivery,
+        "express_delivery_available_today": bool(
+            express_delivery
+            and vendor
+            and express_delivery_available_today(
+                vendor, product_lead_time_days=product.dispatch_lead_time_days
+            )
+        ),
+        "express_delivery_hours": (
+            effective_delivery_lead_time_hours(
+                vendor, product_lead_time_days=product.dispatch_lead_time_days
+            )
+            if express_delivery and vendor
+            else None
+        ),
+        "express_delivery_cutoff_hour": (
+            vendor.same_day_cutoff_hour if express_delivery and vendor else None
+        ),
         "delivery_pincodes": product.delivery_pincodes or [],
         "ships_nationally": getattr(product, "ships_nationally", True),
         "is_bestseller": product.is_bestseller,
@@ -232,7 +257,7 @@ def serialize_product(
             earliest_delivery_date(
                 product.vendor, product_lead_time_days=product.dispatch_lead_time_days
             ).isoformat()
-            if product.vendor
+            if vendor
             else None
         ),
         "variants": [
@@ -312,9 +337,7 @@ async def get_taxonomy(db: AsyncSession = Depends(get_db)) -> dict:
     categories = (
         (
             await db.execute(
-                select(ProductCategory).order_by(
-                    ProductCategory.sort_order, ProductCategory.name
-                )
+                select(ProductCategory).order_by(ProductCategory.sort_order, ProductCategory.name)
             )
         )
         .scalars()
@@ -323,9 +346,7 @@ async def get_taxonomy(db: AsyncSession = Depends(get_db)) -> dict:
     occasions = (
         (
             await db.execute(
-                select(GiftingOccasion).order_by(
-                    GiftingOccasion.sort_order, GiftingOccasion.name
-                )
+                select(GiftingOccasion).order_by(GiftingOccasion.sort_order, GiftingOccasion.name)
             )
         )
         .scalars()
@@ -337,9 +358,7 @@ async def get_taxonomy(db: AsyncSession = Depends(get_db)) -> dict:
     }
     if redis is not None:
         try:
-            await redis.set(
-                TAXONOMY_CACHE_KEY, json.dumps(payload), ex=TAXONOMY_CACHE_TTL_SECONDS
-            )
+            await redis.set(TAXONOMY_CACHE_KEY, json.dumps(payload), ex=TAXONOMY_CACHE_TTL_SECONDS)
         except (RedisError, OSError):
             pass
     return payload
@@ -375,15 +394,11 @@ async def list_active_products(db: AsyncSession = Depends(get_db)) -> dict:
     )
     products = result.scalars().unique().all()
     pricing = await get_storefront_pricing(db)
-    payload = {
-        "products": [serialize_product(product, pricing=pricing) for product in products]
-    }
+    payload = {"products": [serialize_product(product, pricing=pricing) for product in products]}
 
     if redis is not None:
         try:
-            await redis.set(
-                PRODUCTS_CACHE_KEY, json.dumps(payload), ex=PRODUCTS_CACHE_TTL_SECONDS
-            )
+            await redis.set(PRODUCTS_CACHE_KEY, json.dumps(payload), ex=PRODUCTS_CACHE_TTL_SECONDS)
         except (RedisError, OSError):
             pass
     return payload
@@ -493,10 +508,14 @@ async def check_pincode(
         serviceable = pincode in listed
     else:
         vendor_city_ids = (
-            await db.execute(
-                select(VendorCity.city_id).where(VendorCity.vendor_id == product.vendor_id)
+            (
+                await db.execute(
+                    select(VendorCity.city_id).where(VendorCity.vendor_id == product.vendor_id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         result = await check_product_serviceability(
             db,
             ships_nationally=product.ships_nationally,
@@ -523,9 +542,7 @@ async def upload_customization_file(
     abandoned carts are tolerated for now.
     """
     product = (
-        await db.execute(
-            select(Product).where(Product.id == product_id, Product.active.is_(True))
-        )
+        await db.execute(select(Product).where(Product.id == product_id, Product.active.is_(True)))
     ).scalar_one_or_none()
     if product is None:
         raise HTTPException(status_code=404, detail="product not found")

@@ -25,15 +25,17 @@ class ProviderCapabilities:
 class ProviderPolicy:
     """Provider/vendor policy data used by deterministic ranking and checkout."""
 
-    fulfillment_mode: str = "manual"       # api | manual | catalog_only
+    fulfillment_mode: str = "manual"  # api | manual | catalog_only
     delivery_policy: str | None = None
     return_policy: str | None = None
     cancellation_policy: str | None = None
     lead_time_hours: int | None = None
     same_day_cutoff_hour: int | None = None
+    express_delivery: bool = False
+    express_delivery_available_today: bool = False
     serviceable: bool = True
     serviceability_reason: str | None = None
-    provider_health: str = "unknown"       # healthy | degraded | disabled | unknown
+    provider_health: str = "unknown"  # healthy | degraded | disabled | unknown
     reliability_score: float = 0.5
 
 
@@ -55,19 +57,19 @@ class ProviderQuote:
 class GiftCandidate:
     """Unified shape across Hubble / Vendor / future partners."""
 
-    source_id: str                       # "hubble", "vendor_db", "fnp_api"
-    item_id: str                         # source-specific identifier
-    name: str                            # "Cult.fit", "Sky Jumper Pune"
-    vibes: list[str]                     # which taxonomy vibes this hits
-    price_min: int                       # rupees; 0 if booking-based
-    price_max: int                       # rupees; 0 if booking-based / open-priced
-    fulfillment: str                     # "instant_voucher" | "physical_delivery" | "booking" | "experience_voucher"
-    cities: list[str] | None = None      # None = pan-India coverage
+    source_id: str  # "hubble", "vendor_db", "fnp_api"
+    item_id: str  # source-specific identifier
+    name: str  # "Cult.fit", "Sky Jumper Pune"
+    vibes: list[str]  # which taxonomy vibes this hits
+    price_min: int  # rupees; 0 if booking-based
+    price_max: int  # rupees; 0 if booking-based / open-priced
+    fulfillment: str  # "instant_voucher" | "physical_delivery" | "booking" | "experience_voucher"
+    cities: list[str] | None = None  # None = pan-India coverage
     metadata: dict = field(default_factory=dict)
     policy: ProviderPolicy = field(default_factory=ProviderPolicy)
     image_url: str | None = None
-    contact_info: str | None = None      # for vendor partners without API
-    already_taken: bool = False          # set by ranker, not source
+    contact_info: str | None = None  # for vendor partners without API
+    already_taken: bool = False  # set by ranker, not source
 
 
 class SourceAdapter(Protocol):

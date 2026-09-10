@@ -3,9 +3,10 @@
 ## Document status
 
 - **Prepared:** 30 July 2026
+- **Last production update:** 2 August 2026
 - **Vendor audited:** `house.ofzahraa`
-- **Production access:** Read-only catalogue analysis
-- **Implementation status:** Implemented locally; production migration and catalogue configuration are not yet applied
+- **Production access:** Guarded production reads and transactional catalogue updates completed
+- **Implementation status:** Pricing model is deployed; all 14 active vendor products have recipe coverage
 - **Repositories:** `wishkr-backend`, `wishkr-admin`, and `wishkr-web`
 
 ## Decision
@@ -28,12 +29,86 @@ boxes, and packaging can all be recipe materials in the same option.
 
 ## Production catalogue audit
 
-House of Zaharaa currently has 14 active products, with no variants or add-ons.
-Eight products state a usable quantity in their catalogue copy. Six require
-the vendor to confirm their complete composition before they can be priced
-safely.
+The original 30 July audit found 14 active House of Zaharaa products with no
+variants or add-ons. Eight products stated a usable quantity in their catalogue
+copy, while six required the vendor to confirm their complete composition.
+As of 2 August, the catalogue has active 20/40/60 rose-size pilots and inactive
+recipe drafts. The inactive drafts are visible to admin users but excluded
+from public catalogue responses and checkout.
 
-### Products ready for initial recipe configuration
+### Recommendation table applied on 2 August 2026
+
+No existing customer-facing fixed price was changed: the six exact fixed
+prices already matched the recommendation. Exact-count recipes were added as
+inactive variants with zero inventory so operations can complete missing
+costs and images before deciding whether to activate them.
+
+| Product | Production result |
+| --- | --- |
+| Luxury 3 Ft 150 Pink Roses | Live fixed price remains ₹4,999; inactive 150-rose signature recipe added |
+| Pink 200 Roses Bouquet | Live fixed price remains ₹5,999; inactive 200-rose signature recipe added; it remains separate from the 150-rose product |
+| Premium Red & White Heart | Live fixed price remains ₹4,999; inactive 100 red + 60 white signature recipe and ₹2,999 50 + 30 half-size costing draft added |
+| Red/White Rose & Chocolate Heart | Live fixed price remains ₹5,999; inactive 50 red + 25 white + 30 Ferrero signature recipe added; no smaller option added |
+| 200 Rose Gift Box | Live fixed price remains ₹4,499; inactive 200-rose gift-box recipe added |
+| Pink/White Ferrero Hamper | Live fixed price remains ₹3,899; inactive 20 pink + 20 white + 16 Ferrero signature recipe added; the separate ₹1,899 15-rose benchmark also remains an inactive draft |
+| Lilly Roses Mix | Inactive current-photo draft added with red/white lily arrangements, buds, foliage, baby’s breath, pastel wrap, jute mesh, and ribbon; counts remain pending |
+| Lilly and Pink Roses | Inactive current-photo draft records pink lilies, roses, carnations, fillers, and packaging; separate ₹2,699 16-rose + 3-lily benchmark remains inactive and needs its own photo |
+| Teddy Mix Flower Bouquet | Inactive current-photo ₹2,499 recipe records 20 pink/blush roses and a pink teddy; separate ₹1,699 roses/teddy/chocolate benchmark remains inactive and needs its own photo |
+| Mix Flowers Hamper | Inactive current-photo recipe records lilies, sunflowers, roses, carnations, chrysanthemums, orchids, fillers, hatbox, and tags; exact stem counts remain pending |
+| Teddy Hamper | Inactive current-photo recipe records the large teddy, rose basket arrangement, red fillers, two heart balloons, basket, and ribbon; rose count and all costs remain pending |
+| Birthday Combo | Inactive current-photo recipe records two floral arrangements, three LED bubble balloons, three heart balloons, five latex balloons, stand, and presentation materials; flower counts and costs remain pending |
+
+All draft recipes use the confirmed rose procurement lot of 20 stems: ₹200
+per lot normally and ₹600 per lot at peak. Unconfirmed lilies, chocolates,
+teddy bears, bases, wrapping, making, packaging, and delivery inputs are
+currently ₹0 placeholders. A draft must not be activated until those fields
+are replaced with approved costs and its photograph accurately represents the
+option.
+
+### Pune delivery status
+
+House of Zaharaa is configured as a local Pune vendor. Its bouquet products do
+not ship nationally, Pune is its verified operating city, product shipping is
+included, the vendor has no flat shipping override, and the extra-item fee is
+₹0. The resulting checkout shipping charge is therefore ₹0 for serviceable
+Pune orders.
+
+Production verification on 2 August confirmed that pincode `411001` is
+serviceable and that an authoritative bouquet quote returns
+`shipping.fee_paise = 0` with charge type `free`. No additional database change
+was required for free Pune bouquet delivery.
+
+### Full recipe and photography audit
+
+On 2 August, all 14 primary product images and 10 alternate images were
+reviewed against the product name, description, and “What’s included” text.
+Every active House of Zaharaa product now has at least one admin recipe. There
+are 22 recipe options in total: six active rose-size options and 16 inactive
+current-product, signature, or benchmark drafts.
+
+| Product family | Recipe basis | Activation status or blocker |
+| --- | --- | --- |
+| Red Roses Rounded | Exact 20/40/60 rose counts plus photographed white filler and black wrap | Three options active; each size still needs size-accurate photography |
+| Roses Heart-Shaped | Exact 20/40/60 rose counts plus heart support, wrap, ribbon, bow, and tag | Three options active; each size still needs size-accurate photography |
+| 150 Pink Roses | Written 150-rose count agrees with the photograph; filler, structure, border wrap, and ribbon recorded | Inactive until all non-rose costs are entered |
+| 200 Pink Roses | Written 200-rose count agrees with the photograph; white filler, pink wrap, and bow recorded | Inactive; peak rose cost alone reaches ₹6,000 |
+| Premium Red/White Heart | Written 100 red + 60 white counts agree with the photograph; baby’s breath and presentation materials recorded | Signature and half-size drafts inactive; half-size needs its own photograph |
+| Red/White Chocolate Heart | Written 50 red + 25 white + 30 Ferrero agrees with the photograph | Inactive until chocolate, structure, wrapping, and labour costs are entered |
+| 200-Rose Gift Box | Written text promises a gift box, but current photography looks like a wrapped heart bouquet | Inactive; correct the photograph or the product promise before activation |
+| Pink/White Ferrero | Written text promises 20 pink + 20 white roses + 16 Ferrero, while photographs visibly include lilies/chrysanthemums and do not depict that exact promise | Inactive; requires a replacement image or corrected written specification |
+| Lilly Roses Mix | Photography depicts red and white lilies, buds, baby’s breath, and foliage; roses are not visibly established | Inactive; rename/correct copy and confirm stem counts |
+| Lilly and Pink Roses | Photography depicts pink lilies, pink roses, pink carnations, baby’s breath, buds, foliage, and layered packaging | Current recipe and competitor benchmark inactive; confirm counts and provide an exact image per option |
+| Mix Flowers Hamper | Photography supports lilies, sunflowers, roses, carnations, chrysanthemums, orchids, fillers, hatbox, and tags | Inactive; confirm each stem count and substitution policy |
+| Teddy Hamper | Photography supports one large teddy, a red-rose basket, red filler, and two heart balloons | Inactive; confirm rose count, teddy size/SKU, basket, balloon, and labour costs |
+| Teddy Mix Flower | Photography supports 20 pink/blush roses, one pink teddy, foliage, wrap, and ribbon; no chocolates are shown | Current recipe inactive; chocolate benchmark needs separate photography |
+| Birthday Combo | Photography consistently supports a large bouquet, floral box, three LED bubble balloons, three heart balloons, and five latex balloons; cake and branded gift tray appear only in lifestyle photos and are not in “What’s included” | Inactive; exclude photo-only props or explicitly add and cost them before activation |
+
+For unconfirmed flower counts, recipes use one `arrangement` unit at ₹0 rather
+than inventing stem quantities. This preserves the material checklist without
+creating false cost or customer promises. Operations must replace each such
+line with a confirmed quantity, lot size, and cost before activation.
+
+### Original products ready for initial recipe configuration (30 July baseline)
 
 | Product ID | Current product | Current price | Known composition | Recommended configuration |
 | --- | --- | ---: | --- | --- |
@@ -46,7 +121,7 @@ safely.
 | `prd_1783311873_5cee6830` | Heart-Shaped Red Rose Gift Box Hamper | ₹4,499 | 200 red roses | Hamper recipe with roses plus the box and all packaging materials |
 | `prd_1783312316_1faaaf63` | Pink & White Rose Ferrero Hamper | ₹3,899 | 20 pink roses, 20 white roses, 16 Ferrero Rocher | Best first hamper pilot because all important quantities are stated |
 
-### Products requiring vendor confirmation
+### Original products requiring vendor confirmation (30 July baseline)
 
 | Product ID | Current product | Current price | Missing information |
 | --- | --- | ---: | --- |
@@ -208,21 +283,21 @@ Example recipe:
 | ID | Action | Owner | Status | Completion test |
 | --- | --- | --- | --- | --- |
 | BOUQ-001 | Audit House of Zaharaa bouquet and hamper catalogue | CAT, ENG-BE | Complete | All 14 active products are classified by recipe readiness |
-| BOUQ-002 | Add recipe, seasonal price, and date-window fields to the database/API | ENG-BE | Implemented locally | Migration applies and admin values round-trip |
-| BOUQ-003 | Add admin bouquet/hamper pricing builder with cost and margin preview | ENG-ADMIN | Implemented locally | Admin can create, duplicate, cost, schedule, and disable buyer options |
-| BOUQ-004 | Show bouquet-size choices and composition on the product page | ENG-WEB | Implemented locally | Buyer can choose an available option and sees its exact price |
-| BOUQ-005 | Enforce seasonal option price in backend checkout | ENG-BE | Implemented locally | Quote test proves the database price overrides browser snapshots |
+| BOUQ-002 | Add recipe, seasonal price, and date-window fields to the database/API | ENG-BE | Complete in production | Migration applies and admin values round-trip |
+| BOUQ-003 | Add admin bouquet/hamper pricing builder with cost and margin preview | ENG-ADMIN | Implemented and build verified | Admin can create, duplicate, cost, schedule, and disable buyer options |
+| BOUQ-004 | Show bouquet-size choices and composition on the product page | ENG-WEB | Implemented | Buyer can choose an available option and sees its exact price |
+| BOUQ-005 | Enforce seasonal option price in backend checkout | ENG-BE | Complete | Quote test proves the database price overrides browser snapshots |
 | BOUQ-006 | Confirm missing compositions for six products | VOPS, house.ofzahraa | Waiting on vendor | Every material, quantity, and unit is confirmed in writing |
 | BOUQ-007 | Confirm rose/lily lot sizes, normal/peak costs, making, packaging, delivery, tax, and target margin | VOPS, FINANCE | Not started | Every configured option has an approved non-loss price |
 | BOUQ-008 | Decide which existing listings become one option family and prepare size-accurate images | CAT, house.ofzahraa | Not started | Each variant family has consistent design and honest imagery |
-| BOUQ-009 | Apply migration and deploy backend, admin, and web changes | ENG | Awaiting approval | All three production services run the same release |
-| BOUQ-010 | Configure the 20/40 red-rose pilot and the Pink & White Rose Ferrero Hamper | CAT, VOPS | Blocked by BOUQ-007/009 | Both products have verified costs, inventory, options, images, and seasonal prices |
+| BOUQ-009 | Apply migration and deploy backend, admin, and web changes | ENG | Backend production migration complete; verify every frontend deployment | All three production services run the same release |
+| BOUQ-010 | Configure the 20/40 red-rose pilot and the Pink & White Rose Ferrero Hamper | CAT, VOPS | Rose pilots active; Ferrero recipe drafts inactive | Both products have verified costs, inventory, options, images, and seasonal prices |
 | BOUQ-011 | Place one normal-price and one seasonal-price test order | OPS, ENG | Not started | PDP, cart, checkout, payment, and stored order totals match |
 | BOUQ-012 | Review conversion, gross contribution, cancellations, and substitutions weekly | DATA, VOPS | Not started | Option-level results are reviewed before adding more sizes |
 
 ## Production rollout gate
 
-Do not configure production variants until:
+Do not activate an inactive production draft until:
 
 - the migration and all three applications are deployed together;
 - the vendor confirms the complete material recipe;
@@ -233,4 +308,11 @@ Do not configure production variants until:
 - normal and festive inventory processes are agreed;
 - one end-to-end test order has passed.
 
-No production database write was made during this analysis or implementation.
+Production writes are limited to the documented active rose pilots and
+inactive, zero-inventory costing drafts. The recommendation-table transaction
+is preserved in
+`ops/database/add-recommendation-table-draft-variants-20260802.sql`; the three
+FNP benchmark drafts are preserved in
+`ops/database/add-fnp-benchmark-draft-variants-20260802.sql`; and the full
+catalogue recipe/photo reconciliation is preserved in
+`ops/database/complete-house-of-zahraa-recipes-20260802.sql`.

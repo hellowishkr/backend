@@ -22,6 +22,41 @@ SAFETY_BUFFER_DAYS = 1
 INDIA_TIMEZONE = ZoneInfo("Asia/Kolkata")
 
 
+def effective_delivery_lead_time_hours(
+    vendor: Vendor, *, product_lead_time_days: int | None = None
+) -> int:
+    """Return the most specific configured lead time for a product."""
+    if product_lead_time_days is not None:
+        return product_lead_time_days * 24
+    if vendor.delivery_lead_time_hours is not None:
+        return vendor.delivery_lead_time_hours
+    return DEFAULT_LEAD_TIME_HOURS
+
+
+def supports_express_delivery(vendor: Vendor, *, product_lead_time_days: int | None = None) -> bool:
+    """Whether this vendor/product combination has a verified same-day SLA."""
+    return (
+        effective_delivery_lead_time_hours(vendor, product_lead_time_days=product_lead_time_days)
+        < 24
+        and vendor.same_day_cutoff_hour is not None
+    )
+
+
+def express_delivery_available_today(
+    vendor: Vendor,
+    *,
+    now: datetime | None = None,
+    product_lead_time_days: int | None = None,
+) -> bool:
+    """Whether an express-capable product can still be ordered for today."""
+    if not supports_express_delivery(vendor, product_lead_time_days=product_lead_time_days):
+        return False
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    return current.astimezone(INDIA_TIMEZONE).hour < int(vendor.same_day_cutoff_hour)
+
+
 def earliest_delivery_date(
     vendor: Vendor, *, now: datetime | None = None, product_lead_time_days: int | None = None
 ) -> date:
@@ -42,12 +77,9 @@ def earliest_delivery_date(
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
     local_current = current.astimezone(INDIA_TIMEZONE)
-    if product_lead_time_days is not None:
-        lead_hours = product_lead_time_days * 24
-    elif vendor.delivery_lead_time_hours is not None:
-        lead_hours = vendor.delivery_lead_time_hours
-    else:
-        lead_hours = DEFAULT_LEAD_TIME_HOURS
+    lead_hours = effective_delivery_lead_time_hours(
+        vendor, product_lead_time_days=product_lead_time_days
+    )
 
     if lead_hours < 24 and vendor.same_day_cutoff_hour is not None:
         if local_current.hour < vendor.same_day_cutoff_hour:

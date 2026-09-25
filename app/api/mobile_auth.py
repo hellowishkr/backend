@@ -155,24 +155,50 @@ async def verify_otp(
 from app.models.device_registration import DeviceRegistration
 from sqlalchemy import update
 
+_JWT_ALGORITHM = "HS256"
+
 
 @router.post("/logout")
 async def logout(
     auth_header: str | None = Header(None, alias="Authorization"),
+    x_device_token: str | None = Header(None, alias="X-Device-Token"),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    """Log out the current session.
+
+    If ``X-Device-Token`` is provided, deactivates only that specific device
+    registration — leaving the user's other devices signed in.
+    If no device token is supplied (offline logout, demo account, etc.),
+    deactivates **all** device registrations for the user so push
+    notifications stop for every device.  Always returns 200.
+    """
     if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header[7:].strip()
+        raw_token = auth_header[7:].strip()
         try:
-            payload = jwt.decode(token, _JWT_SECRET, algorithms=[_JWT_ALGORITHM])
+            payload = jwt.decode(raw_token, _JWT_SECRET, algorithms=[_JWT_ALGORITHM])
             user_id = payload.get("sub")
             if user_id:
-                await db.execute(
-                    update(DeviceRegistration)
-                    .where(DeviceRegistration.user_id == user_id)
-                    .values(is_active=False)
-                )
+                if x_device_token:
+                    # Selective: deactivate only the device presenting this FCM/APNs token.
+                    await db.execute(
+                        update(DeviceRegistration)
+                        .where(
+                            DeviceRegistration.user_id == user_id,
+                            DeviceRegistration.token == x_device_token,
+                        )
+                        .values(is_active=False)
+                    )
+                    logger.info("Logged out device (user=%s, fcm=%.12s…)", user_id, x_device_token)
+                else:
+                    # No FCM token supplied — deactivate all devices for this user.
+                    await db.execute(
+                        update(DeviceRegistration)
+                        .where(DeviceRegistration.user_id == user_id)
+                        .values(is_active=False)
+                    )
+                    logger.info("Logged out all devices for user=%s", user_id)
                 await db.commit()
-        except Exception:
-            pass
+        except Exception as exc:
+            # Expired / malformed token: still succeed — client is logging out.
+            logger.debug("Logout token decode skipped: %s", exc)
     return {"status": "ok"}

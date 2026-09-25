@@ -72,8 +72,12 @@ class AddWishlistPayload(BaseModel):
     price: float | None = Field(None, ge=0, description="Estimated price in INR")
     image_url: str | None = Field(None, description="Product thumbnail URL")
     own_occasion_id: str | None = Field(None, description="Optional linked personal occasion")
-    purpose: str = Field("self", description="'self' for personal wishlist, 'gift' for recipient ideas")
-    recipient_occasion_id: str | None = Field(None, description="Associated occasion ID if purpose is gift")
+    purpose: str = Field(
+        "self", description="'self' for personal wishlist, 'gift' for recipient ideas"
+    )
+    recipient_occasion_id: str | None = Field(
+        None, description="Associated occasion ID if purpose is gift"
+    )
     visibility: str = Field("friends", description="private, friends, or public")
 
 
@@ -123,12 +127,9 @@ async def list_my_wishlist(
     occasion_id: str | None = None,
 ) -> list[WishlistItemResponse]:
     """Retrieve personal wishlist items or recipient gift shortlist for the authenticated user."""
-    stmt = (
-        select(WishlistItem)
-        .where(
-            WishlistItem.user_id == user.id,
-            WishlistItem.purpose == purpose,
-        )
+    stmt = select(WishlistItem).where(
+        WishlistItem.user_id == user.id,
+        WishlistItem.purpose == purpose,
     )
     if purpose == "gift" and occasion_id:
         stmt = stmt.where(WishlistItem.recipient_occasion_id == occasion_id)
@@ -344,9 +345,13 @@ async def get_occasion_shared_wishlist(
                 )
             )
         else:
-            is_reserved_by_me = (item.reserved_by_user_id == user.id and status_val == "reserved")
-            is_purchased_by_me = (item.purchased_by_user_id == user.id)
-            is_taken = (status_val in ("reserved", "purchased") and not is_reserved_by_me and not is_purchased_by_me)
+            is_reserved_by_me = item.reserved_by_user_id == user.id and status_val == "reserved"
+            is_purchased_by_me = item.purchased_by_user_id == user.id
+            is_taken = (
+                status_val in ("reserved", "purchased")
+                and not is_reserved_by_me
+                and not is_purchased_by_me
+            )
             expires_str = (
                 item.reservation_expires_at.isoformat()
                 if (item.reservation_expires_at and status_val == "reserved")
@@ -400,7 +405,10 @@ async def reserve_wishlist_item(
         if (user_phone not in allowed_phones) and (user.id not in allowed_users):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail={"error": "access_denied", "message": "You are not authorized for this celebration."},
+                detail={
+                    "error": "access_denied",
+                    "message": "You are not authorized for this celebration.",
+                },
             )
 
     # Fetch item with row lock where possible
@@ -416,7 +424,11 @@ async def reserve_wishlist_item(
 
     now = datetime.now(timezone.utc)
     effective = item.share_status or "available"
-    if effective == "reserved" and item.reservation_expires_at and now >= item.reservation_expires_at:
+    if (
+        effective == "reserved"
+        and item.reservation_expires_at
+        and now >= item.reservation_expires_at
+    ):
         effective = "available"
 
     if effective == "purchased":
@@ -464,7 +476,11 @@ async def confirm_wishlist_purchase(
 
     now = datetime.now(timezone.utc)
     effective = item.share_status or "available"
-    if effective == "reserved" and item.reservation_expires_at and now >= item.reservation_expires_at:
+    if (
+        effective == "reserved"
+        and item.reservation_expires_at
+        and now >= item.reservation_expires_at
+    ):
         effective = "available"
 
     if effective == "purchased" and item.purchased_by_user_id != user.id:

@@ -37,8 +37,10 @@ from app.models.gift_log import GiftLog
 from app.models.admin_user import AdminUser, NotificationTemplate, AuditLog, PricingSetting
 from app.models.campaign_context import CampaignContext
 from app.models.occasion_gift_plan import OccasionGiftPlan
+from app.models.device_registration import DeviceRegistration
 
 __all__ = [
+    "DeviceRegistration",
     "AdminUser",
     "NotificationTemplate",
     "AuditLog",

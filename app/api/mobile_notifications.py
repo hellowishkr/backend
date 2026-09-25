@@ -50,8 +50,8 @@ class InAppNotificationItem(BaseModel):
     action_url: str | None = None
 
 
-# ── In-Memory / Soft Cache for Registered Tokens ──────────────────────────────
-_DEVICE_TOKENS: dict[str, dict[str, str]] = {}
+from app.models.device_registration import DeviceRegistration
+from app.utils.id_gen import generate_id
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -61,13 +61,32 @@ _DEVICE_TOKENS: dict[str, dict[str, str]] = {}
 async def register_device_token(
     payload: DeviceTokenPayload,
     user: Annotated[User, Depends(get_current_mobile_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
-    """Store device token for push notification delivery via APNs / FCM."""
-    _DEVICE_TOKENS[user.id] = {
-        "token": payload.token,
-        "platform": payload.platform.lower(),
-        "registered_at": datetime.now(timezone.utc).isoformat(),
-    }
+    """Store device token for push notification delivery via APNs / FCM in database."""
+    now = datetime.now(timezone.utc)
+    stmt = select(DeviceRegistration).where(
+        DeviceRegistration.user_id == user.id,
+        DeviceRegistration.token == payload.token,
+    )
+    reg = await db.scalar(stmt)
+    if reg:
+        reg.is_active = True
+        reg.platform = payload.platform.lower()
+        reg.updated_at = now
+    else:
+        reg = DeviceRegistration(
+            id=generate_id("dev"),
+            user_id=user.id,
+            token=payload.token,
+            platform=payload.platform.lower(),
+            is_active=True,
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(reg)
+
+    await db.commit()
     logger.info(
         "Registered %s device token for user %s (%s...)",
         payload.platform,

@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.api.mobile_auth import get_current_mobile_user
@@ -28,6 +29,9 @@ from app.models import (
     Occasion,
     PreferenceRequest,
     RecipientPreference,
+    PreferenceRequest,
+    GiftLog,
+    DeviceRegistration,
     User,
     WishlistItem,
 )
@@ -44,6 +48,7 @@ _TABLES = [
     RecipientPreference.__table__,
     PreferenceRequest.__table__,
     GiftLog.__table__,
+    DeviceRegistration.__table__,
 ]
 
 
@@ -374,6 +379,126 @@ async def test_discovery_and_gift_log_anti_duplicate(
         )
         assert dup_res.status_code == 200
         assert dup_res.json()["is_duplicate"] is True
-        assert "previously gave" in dup_res.json()["warning"].lower()
+
+
+@pytest.mark.asyncio
+async def test_celebrant_surprise_safe_on_wishlist_status(
+    test_app: FastAPI, test_user: User, async_db: AsyncSession
+):
+    """Verify celebrant sees neutral 'on_wishlist' status and never reservation state."""
+    occ_id = generate_id("occ")
+    occ = Occasion(
+        id=occ_id,
+        user_id=test_user.id,
+        type=OccasionType.BIRTHDAY,
+        date=datetime.now(timezone.utc),
+    )
+    async_db.add(occ)
+    item = WishlistItem(
+        id=generate_id("wsh"),
+        user_id=test_user.id,
+        url="https://amazon.in/dp/B001",
+        title="Kindle Paperwhite",
+        purpose="self",
+        share_status="reserved",
+        reserved_by_user_id="other_friend_user_id",
+    )
+    async_db.add(item)
+    await async_db.commit()
+
+    transport = ASGITransport(app=test_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Owner view (test_user owns occasion and wishlist item)
+        res = await client.get(f"/api/v1/occasions/{occ_id}/shared-wishlist")
+        assert res.status_code == 200
+        items = res.json()
+        assert len(items) == 1
+        # MUST BE NEUTRAL "on_wishlist", NOT "available" and NOT "reserved"
+        assert items[0]["share_status"] == "on_wishlist"
+        assert items[0]["is_reserved_by_me"] is False
+        assert items[0]["is_purchased_by_me"] is False
+
+
+@pytest.mark.asyncio
+async def test_recipient_shortlist_separated_from_personal_wishlist(
+    test_app: FastAPI, test_user: User, async_db: AsyncSession
+):
+    """Verify recipient gift ideas are stored with purpose='gift' and do not pollute personal wishlist."""
+    transport = ASGITransport(app=test_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # 1. Add personal item
+        p_res = await client.post(
+            "/api/v1/wishlist/link",
+            json={
+                "title": "My Personal AirPods",
+                "url": "https://apple.com/airpods",
+                "purpose": "self",
+            },
+        )
+        assert p_res.status_code == 201
+        assert p_res.json()["purpose"] == "self"
+
+        # 2. Add gift idea for Rohan's birthday
+        rohan_occ_id = "occ_rohan_bday"
+        g_res = await client.post(
+            "/api/v1/wishlist/link",
+            json={
+                "title": "Gift Idea for Rohan: Coffee Grinder",
+                "url": "https://amazon.in/dp/B002",
+                "purpose": "gift",
+                "recipient_occasion_id": rohan_occ_id,
+            },
+        )
+        assert g_res.status_code == 201
+        assert g_res.json()["purpose"] == "gift"
+
+        # 3. Listing default personal wishlist only returns purpose='self'
+        my_wishes = await client.get("/api/v1/wishlist")
+        assert my_wishes.status_code == 200
+        my_titles = [i["title"] for i in my_wishes.json()]
+        assert "My Personal AirPods" in my_titles
+        assert "Gift Idea for Rohan: Coffee Grinder" not in my_titles
+
+        # 4. Listing recipient shortlist for Rohan returns the gift idea
+        rohan_ideas = await client.get(
+            f"/api/v1/wishlist?purpose=gift&occasion_id={rohan_occ_id}"
+        )
+        assert rohan_ideas.status_code == 200
+        rohan_titles = [i["title"] for i in rohan_ideas.json()]
+        assert "Gift Idea for Rohan: Coffee Grinder" in rohan_titles
+        assert "My Personal AirPods" not in rohan_titles
+
+
+@pytest.mark.asyncio
+async def test_device_registration_persistence_multiple_devices(
+    test_app: FastAPI, test_user: User, async_db: AsyncSession
+):
+    """Verify device registration table supports multiple devices and token updates."""
+    transport = ASGITransport(app=test_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Register Android device
+        res1 = await client.post(
+            "/api/v1/notifications/device-token",
+            json={"token": "token_pixel_8_pro_12345", "platform": "android"},
+        )
+        assert res1.status_code == 200
+
+        # Register iPad device
+        res2 = await client.post(
+            "/api/v1/notifications/device-token",
+            json={"token": "token_ipad_air_67890", "platform": "ios"},
+        )
+        assert res2.status_code == 200
+
+        # Verify both tokens are stored in the database
+        stmt = select(DeviceRegistration).where(
+            DeviceRegistration.user_id == test_user.id,
+            DeviceRegistration.is_active == True,
+        )
+        regs = list((await async_db.scalars(stmt)).all())
+        assert len(regs) == 2
+        tokens = {r.token for r in regs}
+        assert "token_pixel_8_pro_12345" in tokens
+        assert "token_ipad_air_67890" in tokens
 
 

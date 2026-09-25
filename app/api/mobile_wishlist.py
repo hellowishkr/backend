@@ -72,6 +72,8 @@ class AddWishlistPayload(BaseModel):
     price: float | None = Field(None, ge=0, description="Estimated price in INR")
     image_url: str | None = Field(None, description="Product thumbnail URL")
     own_occasion_id: str | None = Field(None, description="Optional linked personal occasion")
+    purpose: str = Field("self", description="'self' for personal wishlist, 'gift' for recipient ideas")
+    recipient_occasion_id: str | None = Field(None, description="Associated occasion ID if purpose is gift")
     visibility: str = Field("friends", description="private, friends, or public")
 
 
@@ -117,16 +119,21 @@ class CancelWishlistReservationPayload(BaseModel):
 async def list_my_wishlist(
     user: Annotated[User, Depends(get_current_mobile_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    purpose: str = "self",
+    occasion_id: str | None = None,
 ) -> list[WishlistItemResponse]:
-    """Retrieve all personal wishlist items for the authenticated user."""
+    """Retrieve personal wishlist items or recipient gift shortlist for the authenticated user."""
     stmt = (
         select(WishlistItem)
         .where(
             WishlistItem.user_id == user.id,
-            WishlistItem.purpose == "self",
+            WishlistItem.purpose == purpose,
         )
-        .order_by(WishlistItem.created_at.desc())
     )
+    if purpose == "gift" and occasion_id:
+        stmt = stmt.where(WishlistItem.recipient_occasion_id == occasion_id)
+
+    stmt = stmt.order_by(WishlistItem.created_at.desc())
     result = await db.scalars(stmt)
     items = list(result.all())
 
@@ -185,7 +192,8 @@ async def add_wishlist_item(
         product_id=product_id,
         url=final_url,
         title=title[:160],
-        purpose="self",
+        purpose=payload.purpose if payload.purpose in ("self", "gift") else "self",
+        recipient_occasion_id=payload.recipient_occasion_id,
         own_occasion_id=payload.own_occasion_id,
         visibility=payload.visibility
         if payload.visibility in ("private", "friends", "public")
@@ -320,7 +328,7 @@ async def get_occasion_shared_wishlist(
                 status_val = "available"
 
         if is_owner:
-            # 🎁 Surprise-safe: celebrant never sees who claimed or bought items!
+            # 🎁 Surprise-safe: celebrant sees neutral "on_wishlist" status; never who claimed or bought!
             response_items.append(
                 SharedWishlistItemResponse(
                     id=item.id,
@@ -328,7 +336,7 @@ async def get_occasion_shared_wishlist(
                     url=item.url,
                     price=None,
                     image_url=None,
-                    share_status="available",
+                    share_status="on_wishlist",
                     is_reserved_by_me=False,
                     is_purchased_by_me=False,
                     is_taken=False,
@@ -455,6 +463,21 @@ async def confirm_wishlist_purchase(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wishlist item not found")
 
     now = datetime.now(timezone.utc)
+    effective = item.share_status or "available"
+    if effective == "reserved" and item.reservation_expires_at and now >= item.reservation_expires_at:
+        effective = "available"
+
+    if effective == "purchased" and item.purchased_by_user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This item was already purchased by another friend.",
+        )
+    if effective == "reserved" and item.reserved_by_user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Your reservation has expired and the item was claimed by another friend.",
+        )
+
     item.purchased_by_user_id = user.id
     item.purchased_at = now
     item.share_status = "purchased"

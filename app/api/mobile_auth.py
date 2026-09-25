@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -152,6 +152,27 @@ async def verify_otp(
     )
 
 
+from app.models.device_registration import DeviceRegistration
+from sqlalchemy import update
+
+
 @router.post("/logout")
-async def logout() -> dict:
+async def logout(
+    auth_header: str | None = Header(None, alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+        try:
+            payload = jwt.decode(token, _JWT_SECRET, algorithms=[_JWT_ALGORITHM])
+            user_id = payload.get("sub")
+            if user_id:
+                await db.execute(
+                    update(DeviceRegistration)
+                    .where(DeviceRegistration.user_id == user_id)
+                    .values(is_active=False)
+                )
+                await db.commit()
+        except Exception:
+            pass
     return {"status": "ok"}

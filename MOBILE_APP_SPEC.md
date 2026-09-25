@@ -228,6 +228,11 @@ The existing FastAPI backend will expose standard RESTful endpoints for the mobi
   - [x] Enforced allowlist privacy verification on shared wishlists (403 for unauthorized users & `_PrivateCelebrationState` lock screen).
   - [x] In-app + WhatsApp fallback preference exchange requests ("Ask what they want" action button on CelebrationCard + `POST /api/v1/preferences/request`).
   - [x] Universal deep linking support (`/occasions/:occasionId/shared-wishlist` and `/o/:occasionId`).
-- [ ] **Phase 4: AI Visual Discovery & Polish**
-  - Dynamic AI gift inspiration feed connected to live product catalog.
-  - Micro-animations, haptic feedback, end-to-end integration tests, and beta release.
+- [x] **Phase 4: AI Visual Discovery & Polish** (Completed - 100%)
+  - [x] Dynamic AI gift inspiration feed connected to live product catalog (`POST /api/v1/recommendations/discover`, `DiscoverScreen`).
+  - [x] Interactive AI Gift Advisor modal with recipient relationship tuning (Friend, Partner, Sibling, Mom, Dad, Colleague).
+  - [x] "Log My Gift" history timeline per contact (`ContactGiftingTimelineSheet`, `GET/POST /api/v1/contacts/{contact_id}/gifts`).
+  - [x] Anti-duplicate validation checks (`POST /api/v1/recommendations/check-duplicate` and anti-duplicate check dialogs).
+  - [x] 1-Tap Save to Wishlist from Discovery feed directly persisted to SQLite and synced to server.
+  - [x] Micro-animations and haptic feedback (`HapticFeedback.lightImpact()`, `HapticFeedback.mediumImpact()`).
+  - [x] End-to-end integration and widget test coverage (6 backend integration tests, 24 mobile Flutter tests).

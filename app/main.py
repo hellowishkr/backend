@@ -422,6 +422,20 @@ app.include_router(admin_blog_router, prefix="/api")
 app.include_router(product_orders_router, prefix="/api")
 app.include_router(vendor_edit_router, prefix="/api")
 app.include_router(vendor_edit_admin_router, prefix="/api")
+from app.api.mobile_auth import router as mobile_auth_router  # noqa: E402
+app.include_router(mobile_auth_router, prefix="/api")
+from app.api.mobile_occasions import router as mobile_occasions_router  # noqa: E402
+app.include_router(mobile_occasions_router, prefix="/api")
+from app.api.mobile_wishlist import router as mobile_wishlist_router  # noqa: E402
+app.include_router(mobile_wishlist_router, prefix="/api")
+from app.api.mobile_preferences import router as mobile_preferences_router  # noqa: E402
+app.include_router(mobile_preferences_router, prefix="/api")
+from app.api.mobile_calendar import router as mobile_calendar_router  # noqa: E402
+app.include_router(mobile_calendar_router, prefix="/api")
+from app.api.mobile_notifications import router as mobile_notifications_router  # noqa: E402
+app.include_router(mobile_notifications_router, prefix="/api")
+from app.api.mobile_discovery import router as mobile_discovery_router  # noqa: E402
+app.include_router(mobile_discovery_router, prefix="/api")
 app.include_router(internal_router)
 
 # Local agent chat window (GET/POST /dev/whatsapp-chat). Registered only outside

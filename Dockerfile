@@ -6,7 +6,8 @@ WORKDIR /app
 # pinned upstream image can temporarily lag fixable packages in the Debian
 # repository; the production Trivy gate rejects fixable HIGH/CRITICAL findings.
 # All pinned Python dependencies publish wheels for Linux amd64, so compilers
-# and development headers are unnecessary.
+# Bust build cache when OS security updates are released
+ARG SECURITY_UPGRADE="2026-09-30"
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends curl && \

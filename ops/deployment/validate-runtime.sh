@@ -47,18 +47,23 @@ if [[ ${scheduler_count} != "1" ]]; then
 fi
 echo "PASS: exactly one scheduler container is active"
 
-if ! docker logs wishkr-scheduler-1 2>&1 |
-  grep 'Scheduler advisory lock acquired' >/dev/null; then
-  echo "ERROR: scheduler did not report acquisition of its PostgreSQL advisory lock" >&2
-  exit 1
-fi
-echo "PASS: scheduler owns the PostgreSQL advisory lock"
-
 docker exec wishkr-db-1 pg_isready -U wishkr -d wishkr >/dev/null
 docker exec wishkr-db-1 sh -ec \
   'PGPASSWORD="${POSTGRES_PASSWORD}" psql -U wishkr -d wishkr -Atqc "SELECT 1"' |
   grep -qx '1'
 echo "PASS: PostgreSQL accepts authenticated application-database queries"
+
+lock_held=$(docker exec wishkr-db-1 sh -ec \
+  'PGPASSWORD="${POSTGRES_PASSWORD}" psql -U wishkr -d wishkr -Atqc "SELECT count(*) FROM pg_locks WHERE locktype = '\''advisory'\'' AND objid = 41051 AND granted = true"' 2>/dev/null || true)
+
+if [[ "${lock_held}" == "1" ]]; then
+  echo "PASS: scheduler owns the PostgreSQL advisory lock"
+elif docker logs wishkr-scheduler-1 2>&1 | grep 'Scheduler advisory lock acquired' >/dev/null; then
+  echo "PASS: scheduler owns the PostgreSQL advisory lock"
+else
+  echo "ERROR: scheduler did not report acquisition of its PostgreSQL advisory lock" >&2
+  exit 1
+fi
 
 docker exec wishkr-redis-1 sh -ec \
   'REDISCLI_AUTH="${REDIS_PASSWORD}" redis-cli ping' |

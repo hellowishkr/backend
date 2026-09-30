@@ -1,5 +1,8 @@
 FROM postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
 
+# Apply security updates to Alpine packages to eliminate fixable CVEs (e.g. libcrypto3, libssl3, util-linux)
+RUN apk update && apk upgrade --no-cache
+
 # The upstream entrypoint uses gosu only when the container starts as root.
 # Wishkr always starts PostgreSQL as its fixed non-root account, so retaining
 # that helper would add an unused Go binary (and its vulnerability surface).

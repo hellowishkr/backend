@@ -179,7 +179,7 @@ async def logout(
             user_id = payload.get("sub")
             if user_id:
                 if x_device_token:
-                    # Selective: deactivate only the device presenting this FCM/APNs token.
+                    # Selective: deactivate only the device presenting this FCM/APNs token for this user.
                     await db.execute(
                         update(DeviceRegistration)
                         .where(
@@ -188,16 +188,12 @@ async def logout(
                         )
                         .values(is_active=False)
                     )
+                    await db.commit()
                     logger.info("Logged out device (user=%s, fcm=%.12s…)", user_id, x_device_token)
                 else:
-                    # No FCM token supplied — deactivate all devices for this user.
-                    await db.execute(
-                        update(DeviceRegistration)
-                        .where(DeviceRegistration.user_id == user_id)
-                        .values(is_active=False)
-                    )
-                    logger.info("Logged out all devices for user=%s", user_id)
-                await db.commit()
+                    # No device token supplied (web client, offline session, or missing header).
+                    # Do NOT deactivate unrelated devices belonging to this user.
+                    logger.info("Logout for user=%s without X-Device-Token; preserving existing device registrations", user_id)
         except Exception as exc:
             # Expired / malformed token: still succeed — client is logging out.
             logger.debug("Logout token decode skipped: %s", exc)

@@ -78,7 +78,7 @@ Currently, Wishkr operates as a conversational agent inside WhatsApp. While What
     * Real-time notifications: *"Aarav asked for your gift preferences for his Birthday!"*
   * **WhatsApp Outbound Alerts:**
     * Users still receive scheduled WhatsApp reminders (7 days, 3 days, day-of).
-    * Reminders include a deep link: `wishkr.app/o/{occasion_id}` to open the event directly in the mobile app.
+    * Reminders include a deep link: `wishkr.com/o/{occasion_id}` to open the event directly in the mobile app.
   * **Push Notifications:** Standard OS push notifications (APNs / FCM) for users with the app installed.
 
 ---
@@ -116,7 +116,7 @@ Currently, Wishkr operates as a conversational agent inside WhatsApp. While What
   * **Celebrant Circle:** Friends can view the celebrant's active shared wishlist.
   * **🔒 Granular Occasion Privacy & Allowlist Access Control (Selective Sharing):**
     * **Per-Occasion Allowlist:** Celebrants can designate specific people (e.g. spouse, parents, 3 best friends) authorized to view the wishlist for that celebration.
-    * **Strict Access Control (403 Forbidden):** If Person B (or any unauthorized contact) attempts to inspect the celebrant's wishlist or opens a shared deep link (`wishkr.app/o/{occ_id}`), access is blocked (`HTTP 403 Forbidden: {"error": "access_denied", "message": "This celebration wishlist is private to invited circle members."}`).
+    * **Strict Access Control (403 Forbidden):** If Person B (or any unauthorized contact) attempts to inspect the celebrant's wishlist or opens a shared deep link (`wishkr.com/o/{occ_id}`), access is blocked (`HTTP 403 Forbidden: {"error": "access_denied", "message": "This celebration wishlist is private to invited circle members."}`).
     * **Dynamic Member Management:** Celebrants can add or revoke viewing permissions at any time from the celebration settings screen.
   * **48-Hour Reservation Hold:**
     * Tap *"I'm getting this"* to lock the item for 48 hours.

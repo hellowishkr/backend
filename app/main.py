@@ -438,6 +438,25 @@ from app.api.mobile_discovery import router as mobile_discovery_router  # noqa: 
 app.include_router(mobile_discovery_router, prefix="/api")
 app.include_router(internal_router)
 
+
+@app.get("/.well-known/assetlinks.json", include_in_schema=False)
+async def assetlinks_endpoint():
+    """Android Digital Asset Links verification for app links."""
+    from fastapi.responses import JSONResponse
+    return JSONResponse(content=[
+        {
+            "relation": ["delegate_permission/common.handle_all_urls"],
+            "target": {
+                "namespace": "android_app",
+                "package_name": "com.example.wishkr_app",
+                "sha256_cert_fingerprint_list": [
+                    "EA:4F:41:87:DD:DF:EF:2B:68:15:91:99:A8:A5:62:B4:E9:9D:61:1A:4A:B9:57:1A:05:2B:D7:1E:32:37:79:E1"
+                ]
+            }
+        }
+    ])
+
+
 # Local agent chat window (GET/POST /dev/whatsapp-chat). Registered only outside
 # production: it runs the agent as an arbitrary phone with no signature check,
 # so in production the route must not exist at all rather than be guarded.

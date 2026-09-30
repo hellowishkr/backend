@@ -215,6 +215,7 @@ class Settings(BaseSettings):
     # history if the repo is ever public-mirrored or contractor-shared.
     founder_phone: str = ""
     corporate_lead_email_to: str = "hello@wishkr.com"
+    order_notification_email_to: str = "hello@wishkr.com"
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""

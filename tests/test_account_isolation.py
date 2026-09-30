@@ -13,7 +13,6 @@ Sections
 from __future__ import annotations
 
 import asyncio
-import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -163,6 +162,108 @@ async def test_logout_without_valid_token_still_returns_200(db: AsyncSession):
         # No Authorization header (offline logout)
         res2 = await client.post("/api/v1/auth/logout")
         assert res2.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_logout_without_device_token_preserves_all_devices(db: AsyncSession):
+    """When X-Device-Token is missing, logout must NOT deactivate any devices."""
+    user = _make_user()
+    db.add(user)
+
+    now = datetime.now(timezone.utc)
+    dev1 = DeviceRegistration(
+        id=generate_id("dev"), user_id=user.id, token="token_alpha_" + generate_id("t"),
+        platform="android", is_active=True, created_at=now, updated_at=now,
+    )
+    dev2 = DeviceRegistration(
+        id=generate_id("dev"), user_id=user.id, token="token_beta_" + generate_id("t"),
+        platform="ios", is_active=True, created_at=now, updated_at=now,
+    )
+    db.add_all([dev1, dev2])
+    await db.commit()
+
+    import jwt
+    from app.api.mobile_auth import _JWT_SECRET, _JWT_ALGORITHM
+
+    token = jwt.encode(
+        {"sub": user.id, "phone": user.phone, "exp": int((now + timedelta(days=30)).timestamp())},
+        _JWT_SECRET, algorithm=_JWT_ALGORITHM,
+    )
+
+    app = _make_app(db, user)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Logging out with valid JWT but WITHOUT X-Device-Token
+        res = await client.post(
+            "/api/v1/auth/logout",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert res.status_code == 200
+
+    await db.refresh(dev1)
+    await db.refresh(dev2)
+    assert dev1.is_active is True, "dev1 must remain active when no device token was sent"
+    assert dev2.is_active is True, "dev2 must remain active when no device token was sent"
+
+
+@pytest.mark.asyncio
+async def test_logout_with_stale_or_other_users_token_does_not_deactivate_unowned_devices(db: AsyncSession):
+    """Providing another user's device token or a stale token must not deactivate any unowned devices."""
+    user_a = _make_user("+919111111111")
+    user_b = _make_user("+919222222222")
+    db.add_all([user_a, user_b])
+
+    now = datetime.now(timezone.utc)
+    token_b = "token_user_b_" + generate_id("t")
+    token_a = "token_user_a_" + generate_id("t")
+    dev_a = DeviceRegistration(
+        id=generate_id("dev"), user_id=user_a.id, token=token_a,
+        platform="android", is_active=True, created_at=now, updated_at=now,
+    )
+    dev_b = DeviceRegistration(
+        id=generate_id("dev"), user_id=user_b.id, token=token_b,
+        platform="ios", is_active=True, created_at=now, updated_at=now,
+    )
+    db.add_all([dev_a, dev_b])
+    await db.commit()
+
+    import jwt
+    from app.api.mobile_auth import _JWT_SECRET, _JWT_ALGORITHM
+
+    token_jwt_a = jwt.encode(
+        {"sub": user_a.id, "phone": user_a.phone, "exp": int((now + timedelta(days=30)).timestamp())},
+        _JWT_SECRET, algorithm=_JWT_ALGORITHM,
+    )
+
+    app_a = _make_app(db, user_a)
+    transport = ASGITransport(app=app_a)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # User A tries to pass User B's device token
+        res1 = await client.post(
+            "/api/v1/auth/logout",
+            headers={
+                "Authorization": f"Bearer {token_jwt_a}",
+                "X-Device-Token": token_b,  # belongs to User B!
+            },
+        )
+        assert res1.status_code == 200
+
+        # User A passes a stale/nonexistent token
+        res2 = await client.post(
+            "/api/v1/auth/logout",
+            headers={
+                "Authorization": f"Bearer {token_jwt_a}",
+                "X-Device-Token": "stale_nonexistent_token_12345",
+            },
+        )
+        assert res2.status_code == 200
+
+    await db.refresh(dev_a)
+    await db.refresh(dev_b)
+    # dev_b was never owned by user_a, so it MUST NOT be deactivated
+    assert dev_b.is_active is True, "User B's device must NOT be deactivated by User A's logout"
+    # dev_a was not the token sent, so it also remains active
+    assert dev_a.is_active is True, "User A's device must NOT be deactivated by mismatched tokens"
 
 
 @pytest.mark.asyncio
@@ -531,3 +632,284 @@ async def test_device_token_registration_multi_device_isolation(db: AsyncSession
     tokens = {r.token for r in regs}
     assert "token_device_one_abc123" in tokens
     assert "token_device_two_def456" in tokens
+
+
+@pytest.mark.asyncio
+async def test_concurrent_reservation_claims_two_sessions_one_winner(engine):
+    """Simultaneous requests from two friends using separate DB sessions produce exactly ONE winner."""
+    Session = async_sessionmaker(engine, expire_on_commit=False)
+
+    # Setup celebrant and item
+    celebrant = _make_user("+919000000001")
+    friend_1 = _make_user("+919000000002")
+    friend_2 = _make_user("+919000000003")
+
+    now = datetime.now(timezone.utc)
+    occ = Occasion(
+        id=generate_id("occ"), user_id=celebrant.id,
+        type=OccasionType.BIRTHDAY, date=now + timedelta(days=5),
+    )
+    item = WishlistItem(
+        id=generate_id("wsh"), user_id=celebrant.id,
+        url="https://amazon.in/dp/CONCUR01",
+        title="Concurrent Target Gift",
+        purpose="self",
+        share_status="available",
+    )
+
+    async with Session() as init_sess:
+        init_sess.add_all([celebrant, friend_1, friend_2, occ, item])
+        await init_sess.commit()
+
+    # Now create two independent sessions and apps for the two friends
+    async with Session() as sess_1, Session() as sess_2:
+        app_1 = _make_app(sess_1, friend_1)
+        app_2 = _make_app(sess_2, friend_2)
+
+        transport_1 = ASGITransport(app=app_1)
+        transport_2 = ASGITransport(app=app_2)
+
+        async with AsyncClient(transport=transport_1, base_url="http://test") as client_1, \
+                   AsyncClient(transport=transport_2, base_url="http://test") as client_2:
+
+            # Execute simultaneous claims
+            payload = {"item_id": item.id, "occasion_id": occ.id}
+            req_1 = client_1.post("/api/v1/friends/wishlist/reserve", json=payload)
+            req_2 = client_2.post("/api/v1/friends/wishlist/reserve", json=payload)
+
+            res_1, res_2 = await asyncio.gather(req_1, req_2)
+
+    # Exactly one request must succeed (200) and the other must fail (409)
+    statuses = [res_1.status_code, res_2.status_code]
+    assert 200 in statuses, f"Expected one 200 OK, got: {statuses}"
+    assert 409 in statuses, f"Expected one 409 Conflict, got: {statuses}"
+
+    # Verify final database state: exactly one winner is recorded
+    async with Session() as verify_sess:
+        final_item = await verify_sess.scalar(
+            select(WishlistItem).where(WishlistItem.id == item.id)
+        )
+        assert final_item is not None
+        assert final_item.share_status == "reserved"
+        assert final_item.reserved_by_user_id in (friend_1.id, friend_2.id)
+
+
+@pytest.mark.asyncio
+async def test_expired_reservation_overridden_and_old_reserver_cannot_confirm(db: AsyncSession):
+    """If User A's reservation expires and User B claims it, User A cannot confirm purchase."""
+    celebrant = _make_user("+919000000010")
+    user_a = _make_user("+919000000011")
+    user_b = _make_user("+919000000012")
+    db.add_all([celebrant, user_a, user_b])
+
+    now = datetime.now(timezone.utc)
+    occ = Occasion(
+        id=generate_id("occ"), user_id=celebrant.id,
+        type=OccasionType.BIRTHDAY, date=now + timedelta(days=10),
+    )
+    # Item had been reserved by User A, but the 48h window expired 2 hours ago
+    item = WishlistItem(
+        id=generate_id("wsh"), user_id=celebrant.id,
+        url="https://amazon.in/dp/OVERRIDE01",
+        title="Override Target Item",
+        purpose="self",
+        share_status="reserved",
+        reserved_by_user_id=user_a.id,
+        reserved_at=now - timedelta(hours=50),
+        reservation_expires_at=now - timedelta(hours=2),
+    )
+    db.add_all([occ, item])
+    await db.commit()
+
+    # User B now reserves the item because User A's reservation is expired
+    app_b = _make_app(db, user_b)
+    transport_b = ASGITransport(app=app_b)
+    async with AsyncClient(transport=transport_b, base_url="http://test") as client_b:
+        res_b = await client_b.post(
+            "/api/v1/friends/wishlist/reserve",
+            json={"item_id": item.id, "occasion_id": occ.id},
+        )
+        assert res_b.status_code == 200, res_b.text
+        assert res_b.json()["status"] == "reserved"
+
+    # User A now tries to confirm purchase after User B claimed it
+    app_a = _make_app(db, user_a)
+    transport_a = ASGITransport(app=app_a)
+    async with AsyncClient(transport=transport_a, base_url="http://test") as client_a:
+        res_a_confirm = await client_a.post(
+            "/api/v1/friends/wishlist/confirm",
+            json={"item_id": item.id},
+        )
+        assert res_a_confirm.status_code == 409, "User A's confirm must be rejected with 409"
+        assert "claimed by another friend" in res_a_confirm.text
+
+    # User B (the valid current reservation holder) confirms purchase -> succeeds!
+    async with AsyncClient(transport=transport_b, base_url="http://test") as client_b:
+        res_b_confirm = await client_b.post(
+            "/api/v1/friends/wishlist/confirm",
+            json={"item_id": item.id},
+        )
+        assert res_b_confirm.status_code == 200
+        assert res_b_confirm.json()["status"] == "purchased"
+
+    await db.refresh(item)
+    assert item.share_status == "purchased"
+    assert item.purchased_by_user_id == user_b.id
+
+
+@pytest.mark.asyncio
+async def test_recipient_shortlist_sync_and_isolation_end_to_end(db: AsyncSession):
+    """Full lifecycle: save idea -> view -> restart/sync -> separation from shared wishlist -> remove."""
+    user = _make_user("+919333333333")
+    db.add(user)
+    await db.commit()
+
+    app = _make_app(db, user)
+    recip_occ_id = generate_id("occ")
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # 1. Save gift idea for recipient's occasion
+        save_res = await client.post(
+            "/api/v1/wishlist/link",
+            json={
+                "title": "Kindle Paperwhite",
+                "url": "https://amazon.in/dp/KINDLE01",
+                "purpose": "gift",
+                "recipient_occasion_id": recip_occ_id,
+            },
+        )
+        assert save_res.status_code == 201
+        idea_id = save_res.json()["id"]
+
+        # 2. Simulate reopen / app sync
+        sync_res = await client.get(
+            f"/api/v1/wishlist?purpose=gift&occasion_id={recip_occ_id}"
+        )
+        assert sync_res.status_code == 200
+        items = sync_res.json()
+        assert len(items) == 1
+        assert items[0]["id"] == idea_id
+        assert items[0]["purpose"] == "gift"
+        assert items[0]["recipient_occasion_id"] == recip_occ_id
+
+        # 3. Verify separation from personal wishlist
+        personal_res = await client.get("/api/v1/wishlist")
+        assert personal_res.status_code == 200
+        assert not any(i["id"] == idea_id for i in personal_res.json()), (
+            "Gift idea must NOT leak into personal wishlist"
+        )
+
+        # 4. Remove idea
+        del_res = await client.delete(f"/api/v1/wishlist/{idea_id}")
+        assert del_res.status_code in (200, 204)
+
+        # 5. Re-check recipient shortlist — must now be empty
+        recheck_res = await client.get(
+            f"/api/v1/wishlist?purpose=gift&occasion_id={recip_occ_id}"
+        )
+        assert recheck_res.status_code == 200
+        assert recheck_res.json() == []
+
+
+@pytest.mark.asyncio
+async def test_push_dispatch_excludes_logged_out_device_and_preserves_active_devices(db: AsyncSession):
+    """Test Wishkr's push notification sender with mocked transport:
+    - Logged-out device A is excluded from dispatch.
+    - Active device B of the same user remains eligible.
+    - Another user's device C is unaffected and never dispatched to.
+    """
+    from app.services.push_notification_sender import dispatch_push_to_user
+
+    user_1 = _make_user("+919100000001")
+    user_2 = _make_user("+919200000002")
+    db.add_all([user_1, user_2])
+
+    now = datetime.now(timezone.utc)
+    token_1a = "fcm_token_device_1a_" + generate_id("t")
+    token_1b = "fcm_token_device_1b_" + generate_id("t")
+    token_2c = "fcm_token_device_2c_" + generate_id("t")
+
+    dev_1a = DeviceRegistration(
+        id=generate_id("dev"), user_id=user_1.id, token=token_1a,
+        platform="android", is_active=True, created_at=now, updated_at=now,
+    )
+    dev_1b = DeviceRegistration(
+        id=generate_id("dev"), user_id=user_1.id, token=token_1b,
+        platform="ios", is_active=True, created_at=now, updated_at=now,
+    )
+    dev_2c = DeviceRegistration(
+        id=generate_id("dev"), user_id=user_2.id, token=token_2c,
+        platform="android", is_active=True, created_at=now, updated_at=now,
+    )
+    db.add_all([dev_1a, dev_1b, dev_2c])
+    await db.commit()
+
+    # User 1 logs out device 1A via auth API
+    app_1 = _make_app(db, user_1)
+    import jwt
+    from app.api.mobile_auth import _JWT_SECRET, _JWT_ALGORITHM
+    bearer_1 = jwt.encode(
+        {"sub": user_1.id, "phone": user_1.phone, "exp": int((now + timedelta(days=30)).timestamp())},
+        _JWT_SECRET, algorithm=_JWT_ALGORITHM,
+    )
+
+    transport_app = ASGITransport(app=app_1)
+    async with AsyncClient(transport=transport_app, base_url="http://test") as client:
+        logout_res = await client.post(
+            "/api/v1/auth/logout",
+            headers={
+                "Authorization": f"Bearer {bearer_1}",
+                "X-Device-Token": token_1a,
+            },
+        )
+        assert logout_res.status_code == 200
+
+    # Mock push transport to capture dispatches without sending real network calls
+    class MockPushTransport:
+        def __init__(self):
+            self.sent_tokens: list[str] = []
+
+        async def send(self, tokens, title, body, data=None):
+            self.sent_tokens.extend(tokens)
+            return list(tokens)
+
+    mock_transport = MockPushTransport()
+
+    # Dispatch to User 1
+    result_1 = await dispatch_push_to_user(
+        db=db,
+        user_id=user_1.id,
+        title="Friend Celebration!",
+        body="It's Rohan's birthday tomorrow!",
+        transport=mock_transport,
+    )
+
+    # Assertions for User 1 dispatch:
+    # 1. Logged-out Device 1A MUST be excluded
+    assert token_1a not in result_1.eligible_tokens, "Logged-out device 1A must be excluded"
+    assert token_1a not in mock_transport.sent_tokens, "Logged-out device 1A must not receive push"
+
+    # 2. Active Device 1B MUST be eligible and received
+    assert token_1b in result_1.eligible_tokens, "Active device 1B must be eligible"
+    assert token_1b in mock_transport.sent_tokens, "Active device 1B must receive push"
+
+    # 3. User 2's Device 2C MUST NOT be included in User 1's dispatch
+    assert token_2c not in result_1.eligible_tokens
+    assert token_2c not in mock_transport.sent_tokens
+
+    # Now dispatch to User 2
+    mock_transport_2 = MockPushTransport()
+    result_2 = await dispatch_push_to_user(
+        db=db,
+        user_id=user_2.id,
+        title="Welcome to Wishkr",
+        body="Your wishlist is ready!",
+        transport=mock_transport_2,
+    )
+    # User 2's device 2C receives it; User 1's devices are untouched
+    assert token_2c in result_2.eligible_tokens
+    assert token_1a not in result_2.eligible_tokens
+    assert token_1b not in result_2.eligible_tokens
+
+

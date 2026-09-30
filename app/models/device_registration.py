@@ -1,7 +1,7 @@
 """Device registration model for mobile push notifications (FCM / APNs)."""
 
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -33,5 +33,12 @@ class DeviceRegistration(Base):
     )
 
     __table_args__ = (
-        Index("ix_device_registrations_user_token", "user_id", "token"),
+        UniqueConstraint("user_id", "token", name="uq_device_registrations_user_token"),
+        Index(
+            "uq_device_registrations_active_token",
+            "token",
+            unique=True,
+            postgresql_where=text("is_active = true"),
+            sqlite_where=text("is_active = 1"),
+        ),
     )

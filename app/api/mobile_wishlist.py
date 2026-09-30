@@ -15,7 +15,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -59,6 +59,7 @@ class WishlistItemResponse(BaseModel):
     price: float | None = None
     image_url: str | None = None
     purpose: str = "self"
+    recipient_occasion_id: str | None = None
     visibility: str = "friends"
     share_status: str = "available"
     created_at: str
@@ -147,6 +148,7 @@ async def list_my_wishlist(
             price=None,  # extracted from URL / scraped if available
             image_url=None,
             purpose=item.purpose,
+            recipient_occasion_id=item.recipient_occasion_id,
             visibility=item.visibility,
             share_status=item.share_status,
             created_at=item.created_at.isoformat()
@@ -214,6 +216,7 @@ async def add_wishlist_item(
         price=payload.price,
         image_url=payload.image_url,
         purpose=new_item.purpose,
+        recipient_occasion_id=new_item.recipient_occasion_id,
         visibility=new_item.visibility,
         share_status=new_item.share_status,
         created_at=new_item.created_at.isoformat()
@@ -325,7 +328,10 @@ async def get_occasion_shared_wishlist(
         status_val = item.share_status or "available"
         # Auto-expire reservations past 48h
         if status_val == "reserved" and item.reservation_expires_at:
-            if now >= item.reservation_expires_at:
+            exp = item.reservation_expires_at
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
+            if now >= exp:
                 status_val = "available"
 
         if is_owner:
@@ -411,48 +417,66 @@ async def reserve_wishlist_item(
                 },
             )
 
-    # Fetch item with row lock where possible
-    item = await db.scalar(
-        select(WishlistItem).where(
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(hours=48)
+
+    # Atomic conditional update: only succeeds if item is available or its reservation has expired.
+    # This guarantees race-free execution across concurrent requests in ANY database.
+    update_stmt = (
+        update(WishlistItem)
+        .where(
             WishlistItem.id == payload.item_id,
             WishlistItem.user_id == occ.user_id,
             WishlistItem.purpose == "self",
+            or_(
+                WishlistItem.share_status.is_(None),
+                WishlistItem.share_status == "available",
+                and_(
+                    WishlistItem.share_status == "reserved",
+                    WishlistItem.reservation_expires_at.is_not(None),
+                    WishlistItem.reservation_expires_at <= now,
+                ),
+                and_(
+                    WishlistItem.share_status == "reserved",
+                    WishlistItem.reserved_by_user_id == user.id,
+                ),
+            ),
+        )
+        .values(
+            share_status="reserved",
+            reserved_by_user_id=user.id,
+            reserved_at=now,
+            reservation_expires_at=expires,
         )
     )
-    if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wishlist item not found")
+    result = await db.execute(update_stmt)
+    await db.commit()
 
-    now = datetime.now(timezone.utc)
-    effective = item.share_status or "available"
-    if (
-        effective == "reserved"
-        and item.reservation_expires_at
-        and now >= item.reservation_expires_at
-    ):
-        effective = "available"
-
-    if effective == "purchased":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This item has already been purchased by a friend.",
+    if result.rowcount == 0:
+        # Determine specific failure reason (not found, already purchased, or reserved by another)
+        current = await db.scalar(
+            select(WishlistItem).where(
+                WishlistItem.id == payload.item_id,
+                WishlistItem.user_id == occ.user_id,
+                WishlistItem.purpose == "self",
+            )
         )
-    if effective == "reserved" and item.reserved_by_user_id != user.id:
+        if not current:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wishlist item not found")
+        if current.share_status == "purchased":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This item has already been purchased by a friend.",
+            )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="This item is currently reserved by another friend.",
         )
 
-    expires = now + timedelta(hours=48)
-    item.reserved_by_user_id = user.id
-    item.reserved_at = now
-    item.reservation_expires_at = expires
-    item.share_status = "reserved"
-
-    await db.commit()
-    logger.info("User %s reserved wishlist item %s until %s", user.id, item.id, expires.isoformat())
+    logger.info("User %s reserved wishlist item %s until %s", user.id, payload.item_id, expires.isoformat())
     return {
         "status": "reserved",
-        "item_id": item.id,
+        "item_id": payload.item_id,
         "reservation_expires_at": expires.isoformat(),
         "message": "Item reserved for 48 hours! Other friends will see it as taken.",
     }
@@ -476,12 +500,12 @@ async def confirm_wishlist_purchase(
 
     now = datetime.now(timezone.utc)
     effective = item.share_status or "available"
-    if (
-        effective == "reserved"
-        and item.reservation_expires_at
-        and now >= item.reservation_expires_at
-    ):
-        effective = "available"
+    if effective == "reserved" and item.reservation_expires_at:
+        exp = item.reservation_expires_at
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        if now >= exp:
+            effective = "available"
 
     if effective == "purchased" and item.purchased_by_user_id != user.id:
         raise HTTPException(

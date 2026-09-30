@@ -119,3 +119,37 @@ async def test_payment_state_is_committed_before_vendor_notification(monkeypatch
     assert order.status == OrderStatus.PAID
     assert order.razorpay_payment_id == "pay_product"
     assert db.commit.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_team_order_email_notification_dispatches(monkeypatch):
+    order = _order()
+    order.delivery_date = None
+    order.gift_message = None
+    order.hide_prices = False
+    order.shipping_name = "Jane Doe"
+    order.shipping_phone = "+919876543210"
+
+    sent_emails = []
+    async def fake_send_email(**kwargs):
+        sent_emails.append(kwargs)
+        return True
+
+    monkeypatch.setattr(razorpay_handlers, "send_email", fake_send_email)
+
+    await razorpay_handlers._email_team_order_notification(
+        order=order,
+        vendor=None,
+        line_items=[],
+        products={},
+        variants={},
+        customer_name="Jane Doe",
+        customer_phone="+919876543210",
+        customer_email="jane@example.com",
+    )
+
+    assert len(sent_emails) == 1
+    assert sent_emails[0]["to_email"] == "hello@wishkr.com"
+    assert "ord_product" in sent_emails[0]["subject"]
+    assert sent_emails[0]["reply_to"] == "jane@example.com"
+

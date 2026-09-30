@@ -1012,9 +1012,44 @@ async def _email_buyer_confirmation(
         )
 
 
+async def _email_team_order_notification(
+    order: Order,
+    vendor: Vendor | None,
+    line_items,
+    products: dict,
+    variants: dict,
+    customer_name: str,
+    customer_phone: str,
+    customer_email: str,
+) -> None:
+    """Send the Wishkr team an order notification email. Best-effort; never raises."""
+    to_email = settings.order_notification_email_to
+    if not to_email:
+        return
+    vendor_label = vendor.name if vendor else (order.vendor_id or "Unknown Vendor")
+    try:
+        await send_email(
+            to_email=to_email,
+            subject=f"[New Order] #{order.id} — ₹{order.total_amount} ({vendor_label})",
+            text=_vendor_order_email_body(
+                order, line_items, products, variants,
+                customer_name, customer_phone, customer_email,
+            ),
+            html=_vendor_order_email_html(
+                order, line_items, products, variants,
+                customer_name, customer_phone, customer_email,
+            ),
+            reply_to=customer_email or None,
+        )
+    except Exception as e:
+        logger.error(
+            "Team order notification email failed for order=%s: %s", order.id, e
+        )
+
+
 async def _notify_vendor_of_product_order(order: Order, db: AsyncSession) -> None:
-    """Send the vendor the full order detail via WhatsApp + email, and email the
-    buyer a confirmation.
+    """Send the vendor the full order detail via WhatsApp + email, email the
+    buyer a confirmation, and alert the internal team (hello@wishkr.com).
 
     Best-effort: a notify failure must not block marking the order PAID —
     the founder alert is the fallback so the vendor still gets fulfilled
@@ -1029,9 +1064,25 @@ async def _notify_vendor_of_product_order(order: Order, db: AsyncSession) -> Non
         return
     line_items, products, variants = ctx
 
+    user = await _get_user(db, order.user_id)
+    customer_name = (user.name if user else order.shipping_name) or "Customer"
+    customer_phone = (user.phone if user else order.shipping_phone) or ""
+    customer_email = (user.email if user else None) or ""
+
     vendor = (
         await db.execute(select(Vendor).where(Vendor.id == order.vendor_id))
     ).scalar_one_or_none()
+
+    # Always notify the internal team so ops has a complete record of every paid order.
+    await _email_team_order_notification(
+        order, vendor, line_items, products, variants,
+        customer_name, customer_phone, customer_email,
+    )
+    # Always email the buyer their confirmation.
+    await _email_buyer_confirmation(
+        order, line_items, products, variants, customer_name, customer_email,
+    )
+
     if vendor is None or (not vendor.phone and not vendor.poc_email):
         logger.warning(
             "Cannot notify vendor for order=%s: vendor=%s has no phone/email on file",
@@ -1043,25 +1094,17 @@ async def _notify_vendor_of_product_order(order: Order, db: AsyncSession) -> Non
         )
         return
 
-    user = await _get_user(db, order.user_id)
-    customer_name = (user.name if user else order.shipping_name) or "Customer"
-    customer_phone = (user.phone if user else order.shipping_phone) or ""
-    customer_email = (user.email if user else None) or ""
-
     items_summary = "; ".join(
         _render_line_descriptor(li, products, variants) for li in line_items
     )
     if order.hide_prices:
         items_summary += " | ⚠️ GIFT: do not include prices in parcel"
 
-    # Email both vendor (full packet) and buyer (confirmation). Independent of
-    # WhatsApp so a template failure still leaves a complete record in the inbox.
+    # Email vendor (full packet). Independent of WhatsApp so a template
+    # failure still leaves a complete record in the inbox.
     await _email_vendor_order_packet(
         order, vendor, line_items, products, variants,
         customer_name, customer_phone, customer_email,
-    )
-    await _email_buyer_confirmation(
-        order, line_items, products, variants, customer_name, customer_email,
     )
 
     if not vendor.phone:

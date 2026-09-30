@@ -14,7 +14,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.mobile_auth import get_current_mobile_user
@@ -65,6 +66,19 @@ async def register_device_token(
 ) -> dict:
     """Store device token for push notification delivery via APNs / FCM in database."""
     now = datetime.now(timezone.utc)
+
+    # 1. Device reassignment: if another user was previously using this token on this device,
+    # mark their registration inactive so they don't receive this user's notifications.
+    await db.execute(
+        update(DeviceRegistration)
+        .where(
+            DeviceRegistration.token == payload.token,
+            DeviceRegistration.user_id != user.id,
+        )
+        .values(is_active=False)
+    )
+
+    # 2. Find or create registration for this user
     stmt = select(DeviceRegistration).where(
         DeviceRegistration.user_id == user.id,
         DeviceRegistration.token == payload.token,
@@ -86,7 +100,44 @@ async def register_device_token(
         )
         db.add(reg)
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Concurrent retry or simultaneous registration across accounts:
+        # Roll back and ensure any other account's active registration on this device is deactivated
+        await db.rollback()
+        await db.execute(
+            update(DeviceRegistration)
+            .where(
+                DeviceRegistration.token == payload.token,
+                DeviceRegistration.user_id != user.id,
+                DeviceRegistration.is_active.is_(True),
+            )
+            .values(is_active=False)
+        )
+        reg = await db.scalar(
+            select(DeviceRegistration).where(
+                DeviceRegistration.user_id == user.id,
+                DeviceRegistration.token == payload.token,
+            )
+        )
+        if reg:
+            reg.is_active = True
+            reg.platform = payload.platform.lower()
+            reg.updated_at = now
+        else:
+            reg = DeviceRegistration(
+                id=generate_id("dev"),
+                user_id=user.id,
+                token=payload.token,
+                platform=payload.platform.lower(),
+                is_active=True,
+                created_at=now,
+                updated_at=now,
+            )
+            db.add(reg)
+        await db.commit()
+
     logger.info(
         "Registered %s device token for user %s (%s...)",
         payload.platform,

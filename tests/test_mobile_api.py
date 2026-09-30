@@ -321,6 +321,52 @@ async def test_wishlist_reservation_lifecycle_and_surprise_safe(
 
 
 @pytest.mark.asyncio
+async def test_wishlist_reservation_with_null_share_status(
+    test_app: FastAPI, test_user: User, async_db: AsyncSession
+):
+    """Regression test: verify item with share_status IS NULL can be reserved."""
+    cel_user_id = generate_id("usr")
+    cel_user = User(id=cel_user_id, phone="+919222222222", name="Celebrant Null Status", is_guest=False)
+    async_db.add(cel_user)
+
+    occ_id = generate_id("occ")
+    occ = Occasion(
+        id=occ_id,
+        user_id=cel_user_id,
+        type=OccasionType.BIRTHDAY,
+        custom_label="Birthday Celebration",
+        date=datetime(2026, 11, 20, tzinfo=timezone.utc),
+        recurring=True,
+    )
+    async_db.add(occ)
+
+    item = WishlistItem(
+        id=generate_id("wsh"),
+        user_id=cel_user_id,
+        own_occasion_id=occ_id,
+        title="Null Status Gift",
+        url="https://amazon.in/dp/NULLSTATUS01",
+        purpose="self",
+        share_status=None,  # explicitly NULL in database
+    )
+    async_db.add(item)
+    await async_db.commit()
+
+    transport = ASGITransport(app=test_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res = await client.post(
+            "/api/v1/friends/wishlist/reserve",
+            json={"item_id": item.id, "occasion_id": occ_id},
+        )
+        assert res.status_code == 200
+        assert res.json()["status"] == "reserved"
+
+        await async_db.refresh(item)
+        assert item.share_status == "reserved"
+        assert item.reserved_by_user_id == test_user.id
+
+
+@pytest.mark.asyncio
 async def test_discovery_and_gift_log_anti_duplicate(
     test_app: FastAPI, test_user: User, async_db: AsyncSession
 ):
@@ -500,5 +546,21 @@ async def test_device_registration_persistence_multiple_devices(
         tokens = {r.token for r in regs}
         assert "token_pixel_8_pro_12345" in tokens
         assert "token_ipad_air_67890" in tokens
+
+
+@pytest.mark.asyncio
+async def test_android_assetlinks_endpoint():
+    """Verify /.well-known/assetlinks.json returns valid Digital Asset Links for wishkr."""
+    from app.main import app
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        res = await client.get("/.well-known/assetlinks.json")
+        assert res.status_code == 200
+        data = res.json()
+        assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["relation"] == ["delegate_permission/common.handle_all_urls"]
+        assert data[0]["target"]["package_name"] == "com.example.wishkr_app"
+        assert "EA:4F:41:87:DD:DF:EF:2B:68:15:91:99:A8:A5:62:B4:E9:9D:61:1A:4A:B9:57:1A:05:2B:D7:1E:32:37:79:E1" in data[0]["target"]["sha256_cert_fingerprint_list"]
+
 
 

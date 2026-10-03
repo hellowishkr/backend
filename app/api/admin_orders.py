@@ -667,6 +667,18 @@ async def update_fulfillment(
             summary="; ".join(summary_parts),
         )
     await db.commit()
+
+    if old_status != order.fulfillment_status:
+        from app.services.order_notifications import (
+            send_order_delivered_email,
+            send_order_shipped_email,
+        )
+
+        if order.fulfillment_status == "shipped":
+            await send_order_shipped_email(order, db)
+        elif order.fulfillment_status == "delivered":
+            await send_order_delivered_email(order, db)
+
     return {
         "ok": True,
         "fulfillment_status": order.fulfillment_status,
@@ -674,6 +686,87 @@ async def update_fulfillment(
         "tracking_carrier": order.tracking_carrier,
         "tracking_url": order.tracking_url,
     }
+
+
+class CancelOrderPayload(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
+
+
+@router.post("/{order_id}/cancel", dependencies=[Depends(require_role("owner", "ops"))])
+async def cancel_order(
+    order_id: str,
+    payload: CancelOrderPayload | None = None,
+    db: AsyncSession = Depends(get_db),
+    x_admin_email: Annotated[str | None, Header()] = None,
+) -> dict:
+    from app.api.admin_settings import record_audit
+    from app.services.order_notifications import send_order_cancelled_email
+
+    order = await _get_order_or_404(db, order_id)
+    if order.status in (OrderStatus.CANCELLED, OrderStatus.REFUNDED):
+        raise HTTPException(
+            status_code=400,
+            detail=f"order is already {order.status.value}",
+        )
+
+    old_status = order.status
+    order.status = OrderStatus.CANCELLED
+    reason = payload.reason if payload else None
+
+    # Cancel any active top-up link
+    await _cancel_active_link_if_any(db, order.id, x_admin_email)
+
+    summary = f"Order status {old_status.value} → CANCELLED"
+    if reason:
+        summary += f" ({reason})"
+
+    await record_audit(
+        db,
+        actor=x_admin_email,
+        action="order.cancelled",
+        entity_type="order",
+        entity_id=order.id,
+        summary=summary,
+    )
+    await db.commit()
+
+    await send_order_cancelled_email(order, db, reason=reason)
+
+    return {
+        "ok": True,
+        "order_id": order.id,
+        "status": order.status.value,
+        "reason": reason,
+    }
+
+
+@router.post(
+    "/{order_id}/resend-fulfillment-notification",
+    dependencies=[Depends(require_role("owner", "ops"))],
+)
+async def resend_fulfillment_notification(
+    order_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    from app.services.order_notifications import (
+        send_order_delivered_email,
+        send_order_shipped_email,
+    )
+
+    order = await _get_order_or_404(db, order_id)
+    if order.fulfillment_status == "shipped":
+        ok = await send_order_shipped_email(order, db)
+    elif order.fulfillment_status == "delivered":
+        ok = await send_order_delivered_email(order, db)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Order fulfillment status is '{order.fulfillment_status}'. "
+                "Only 'shipped' or 'delivered' orders can have fulfillment notifications sent."
+            ),
+        )
+    return {"ok": ok, "fulfillment_status": order.fulfillment_status}
 
 
 @router.get("/{order_id}/history", dependencies=[Depends(require_role("owner", "ops"))])

@@ -725,6 +725,7 @@ _EMAIL_INK = "#2a2233"
 _EMAIL_MUTED = "#7a7186"
 _EMAIL_LINE = "#e8e0d4"
 _EMAIL_ROSE = "#e85d9c"
+_WISHKR_LOGO_URL = f"{settings.wishkr_website_url.rstrip('/')}/images/logo.png"
 
 
 def _esc(value) -> str:
@@ -811,12 +812,23 @@ def _email_shell(title: str, preheader: str, inner: str) -> str:
         f'<table role="presentation" width="600" cellpadding="0" cellspacing="0" '
         f'style="max-width:600px;width:100%;background:{_EMAIL_CREAM};border-radius:16px;overflow:hidden;'
         f'border:1px solid {_EMAIL_LINE};font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">'
-        f'<tr><td style="background:{_EMAIL_INK};padding:22px 28px;">'
-        f'<span style="color:{_EMAIL_GOLD};font-size:22px;font-weight:800;letter-spacing:0.5px;">Wishkr</span>'
-        f'<span style="color:#ffffff;font-size:14px;margin-left:10px;">{_esc(title)}</span>'
+        f'<tr><td style="background:#ffffff;padding:20px 28px;border-bottom:1px solid {_EMAIL_LINE};">'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>'
+        f'<td align="left" style="vertical-align:middle;">'
+        f'<a href="{settings.wishkr_website_url}" target="_blank" style="text-decoration:none;display:inline-block;">'
+        f'<img src="{_WISHKR_LOGO_URL}" alt="Wishkr" width="112" height="36" '
+        f'style="display:block;border:0;outline:none;text-decoration:none;width:112px;height:auto;max-height:36px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:22px;font-weight:800;color:{_EMAIL_PURPLE};" />'
+        f'</a>'
+        f'</td>'
+        f'<td align="right" style="vertical-align:middle;">'
+        f'<span style="display:inline-block;padding:5px 12px;border-radius:20px;background:{_EMAIL_CREAM2};color:{_EMAIL_PURPLE};font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">{_esc(title)}</span>'
+        f'</td>'
+        f'</tr></table>'
         f'</td></tr>'
         f'<tr><td style="padding:28px;">{inner}</td></tr>'
-        f'<tr><td style="padding:18px 28px;background:{_EMAIL_CREAM2};color:{_EMAIL_MUTED};font-size:12px;text-align:center;">'
+        f'<tr><td style="padding:20px 28px;background:{_EMAIL_CREAM2};color:{_EMAIL_MUTED};font-size:12px;text-align:center;line-height:1.6;">'
+        f'<div style="font-weight:600;color:{_EMAIL_PURPLE};font-size:13px;margin-bottom:4px;">Wish kar, Wishkr kar</div>'
+        f'<div style="margin-bottom:4px;"><a href="{settings.wishkr_website_url}" target="_blank" style="color:{_EMAIL_PURPLE};text-decoration:none;">wishkr.com</a></div>'
         f'Reply to this email or message Wishkr if you have any questions.</td></tr>'
         f'</table></td></tr></table></body></html>'
     )
@@ -1266,6 +1278,10 @@ async def handle_payment_link_cancelled(payload: dict, db: AsyncSession) -> dict
         except Exception as e:
             logger.error("Failed to notify user of cancellation: %s", e)
 
+    from app.services.order_notifications import send_order_cancelled_email
+
+    await send_order_cancelled_email(order, db, reason="Payment link cancelled")
+
     return {"status": "ok", "order_id": order.id}
 
 
@@ -1498,6 +1514,9 @@ async def handle_dispute_lost(payload: dict, db: AsyncSession) -> dict:
     if order:
         order.status = OrderStatus.REFUNDED
         db.add(order)
+        from app.services.order_notifications import send_order_refunded_email
+
+        await send_order_refunded_email(order, db, amount_rupees=Decimal(d.amount))
 
     await send_founder_alert(
         msg.ALERT_DISPUTE_LOST.format(
@@ -1591,6 +1610,10 @@ async def handle_refund_processed(payload: dict, db: AsyncSession) -> dict:
             amount=int(amount_rupees),
         )
     )
+
+    from app.services.order_notifications import send_order_refunded_email
+
+    await send_order_refunded_email(order, db, amount_rupees=amount_rupees)
 
     return {"status": "ok", "order_id": order.id, "amount": float(amount_rupees)}
 

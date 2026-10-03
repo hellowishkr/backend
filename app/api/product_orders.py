@@ -32,6 +32,7 @@ logger = logging.getLogger("wishkr.product_orders")
 # far above real shopper behaviour — the cart re-quotes on edit, not per
 # keystroke — while capping the amplification.
 _quote_rate_limiter = RateLimiter(max_requests=30, window_seconds=60, name="product_quote")
+_track_rate_limiter = RateLimiter(max_requests=30, window_seconds=60, name="order_track")
 
 # Delivery is an order-level promotion, never a product surcharge. A vendor may
 # Wishkr owns the delivery rule: one standard fee for smaller baskets, waived
@@ -841,3 +842,172 @@ async def verify_product_order_payment(
         "status": order.status.value,
         "confirmation_token": order.confirmation_token,
     }
+
+
+class TrackOrderPayload(BaseModel):
+    order_id: str = Field(min_length=1, max_length=50)
+    email: str = Field(min_length=3, max_length=255)
+
+
+def _build_tracking_response(order: Order) -> dict:
+    created_str = order.created_at.isoformat() if order.created_at else None
+    delivery_str = order.delivery_date.isoformat() if order.delivery_date else None
+    fulfillment = (order.fulfillment_status or "pending").lower()
+    carrier = order.tracking_carrier
+    carrier_label = f" via {carrier}" if carrier else ""
+
+    # Determine steps based on order and fulfillment status
+    if order.status == OrderStatus.CANCELLED:
+        steps = [
+            {"key": "confirmed", "label": "Order Confirmed", "description": "Order was received", "status": "completed", "date": created_str},
+            {"key": "cancelled", "label": "Order Cancelled", "description": "This order was cancelled", "status": "completed", "date": None},
+        ]
+    elif order.status in (OrderStatus.REFUNDED, OrderStatus.REFUND_FAILED):
+        steps = [
+            {"key": "confirmed", "label": "Order Confirmed", "description": "Order was received", "status": "completed", "date": created_str},
+            {"key": "refunded", "label": "Refund Processed", "description": "Refund initiated to original payment method", "status": "completed", "date": None},
+        ]
+    else:
+        if fulfillment == "delivered":
+            step_conf = "completed"
+            step_proc = "completed"
+            step_ship = "completed"
+            step_deliv = "completed"
+        elif fulfillment == "shipped":
+            step_conf = "completed"
+            step_proc = "completed"
+            step_ship = "current"
+            step_deliv = "upcoming"
+        elif order.status in (OrderStatus.PAID, OrderStatus.PROCESSING, OrderStatus.COMPLETED):
+            step_conf = "completed"
+            step_proc = "current"
+            step_ship = "upcoming"
+            step_deliv = "upcoming"
+        else:
+            step_conf = "current"
+            step_proc = "upcoming"
+            step_ship = "upcoming"
+            step_deliv = "upcoming"
+
+        steps = [
+            {
+                "key": "confirmed",
+                "label": "Order Confirmed",
+                "description": "Payment confirmed and order placed",
+                "status": step_conf,
+                "date": created_str,
+            },
+            {
+                "key": "processing",
+                "label": "Preparing Gift",
+                "description": "Handcrafted and prepared with care by partner",
+                "status": step_proc,
+                "date": None,
+            },
+            {
+                "key": "shipped",
+                "label": "Shipped",
+                "description": f"In transit{carrier_label}" if fulfillment in ("shipped", "delivered") else "Handover to delivery partner",
+                "status": step_ship,
+                "date": None,
+            },
+            {
+                "key": "delivered",
+                "label": "Delivered",
+                "description": "Delivered to recipient" if fulfillment == "delivered" else f"Expected by {delivery_str}" if delivery_str else "Delivered to recipient",
+                "status": step_deliv,
+                "date": delivery_str if fulfillment == "delivered" else None,
+            },
+        ]
+
+    status_str = order.status.value if hasattr(order.status, "value") else str(order.status)
+    return {
+        "order_id": order.id,
+        "status": status_str,
+        "fulfillment_status": fulfillment,
+        "created_at": created_str,
+        "delivery_date": delivery_str,
+        "currency": order.currency,
+        "total_amount": str(order.total_amount),
+        "tracking_carrier": order.tracking_carrier,
+        "tracking_number": order.tracking_number,
+        "tracking_url": order.tracking_url,
+        "shipping_address": {
+            "name": order.shipping_name,
+            "line1": order.shipping_line1,
+            "line2": order.shipping_line2,
+            "city": order.shipping_city,
+            "state": order.shipping_state,
+            "pincode": order.shipping_pincode,
+        },
+        "steps": steps,
+        "items": [
+            {
+                "product_id": line.product_id,
+                "product_name": line.product_name,
+                "image_url": line.product_image_url,
+                "variant_id": line.variant_id,
+                "qty": line.qty,
+                "unit_price_paise": line.unit_price_paise,
+                "line_total_paise": line.line_total_paise,
+                "shipping_fee_paise": line.shipping_fee_paise,
+            }
+            for line in order.line_items
+        ],
+    }
+
+
+async def _lookup_order_by_id_and_email(
+    order_id: str,
+    email: str,
+    db: AsyncSession,
+    request: Request,
+) -> dict:
+    ip = _client_ip(request)
+    if not _track_rate_limiter.allow(ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many tracking requests. Please try again shortly.",
+        )
+
+    clean_order_id = order_id.strip()
+    clean_email = email.strip().lower()
+
+    order = (
+        await db.execute(
+            select(Order)
+            .where(Order.id == clean_order_id, Order.order_type == "product")
+            .options(selectinload(Order.line_items), selectinload(Order.user))
+        )
+    ).scalar_one_or_none()
+
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found or email does not match.")
+
+    # Match buyer email on associated User
+    user = order.user
+    if not user or not user.email or user.email.strip().lower() != clean_email:
+        raise HTTPException(status_code=404, detail="Order not found or email does not match.")
+
+    return _build_tracking_response(order)
+
+
+@router.post("/product/track")
+async def track_product_order(
+    payload: TrackOrderPayload,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Public order tracking lookup by order ID and buyer email."""
+    return await _lookup_order_by_id_and_email(payload.order_id, payload.email, db, request)
+
+
+@router.get("/product/track")
+async def track_product_order_get(
+    order_id: str,
+    email: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Public order tracking GET lookup (e.g., from direct email links)."""
+    return await _lookup_order_by_id_and_email(order_id, email, db, request)

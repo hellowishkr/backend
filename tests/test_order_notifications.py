@@ -60,7 +60,12 @@ async def session_factory():
 @pytest.mark.asyncio
 async def test_send_order_shipped_email(session_factory):
     async with session_factory() as db:
-        user = User(id="usr_shipped", name="Aarav Sharma", email="aarav@example.com")
+        user = User(
+            id="usr_shipped",
+            phone="+919876500001",
+            name="Aarav Sharma",
+            email="aarav@example.com",
+        )
         db.add(user)
         order = Order(
             id="ord_shipped_1",
@@ -114,7 +119,12 @@ async def test_send_order_shipped_email(session_factory):
 @pytest.mark.asyncio
 async def test_send_order_delivered_email(session_factory):
     async with session_factory() as db:
-        user = User(id="usr_deliv", name="Priya Patel", email="priya@example.com")
+        user = User(
+            id="usr_deliv",
+            phone="+919876500002",
+            name="Priya Patel",
+            email="priya@example.com",
+        )
         db.add(user)
         order = Order(
             id="ord_deliv_1",
@@ -148,7 +158,12 @@ async def test_send_order_delivered_email(session_factory):
 @pytest.mark.asyncio
 async def test_send_order_cancelled_email(session_factory):
     async with session_factory() as db:
-        user = User(id="usr_canc", name="Vikram Singh", email="vikram@example.com")
+        user = User(
+            id="usr_canc",
+            phone="+919876500003",
+            name="Vikram Singh",
+            email="vikram@example.com",
+        )
         db.add(user)
         order = Order(
             id="ord_canc_1",
@@ -178,7 +193,12 @@ async def test_send_order_cancelled_email(session_factory):
 @pytest.mark.asyncio
 async def test_send_order_refunded_email(session_factory):
     async with session_factory() as db:
-        user = User(id="usr_ref", name="Ananya Das", email="ananya@example.com")
+        user = User(
+            id="usr_ref",
+            phone="+919876500004",
+            name="Ananya Das",
+            email="ananya@example.com",
+        )
         db.add(user)
         order = Order(
             id="ord_ref_1",
@@ -208,7 +228,12 @@ async def test_send_order_refunded_email(session_factory):
 @pytest.mark.asyncio
 async def test_update_fulfillment_triggers_shipped_email(session_factory):
     async with session_factory() as db:
-        user = User(id="usr_full", name="Karan M", email="karan@example.com")
+        user = User(
+            id="usr_full",
+            phone="+919876500005",
+            name="Karan M",
+            email="karan@example.com",
+        )
         db.add(user)
         order = Order(
             id="ord_full_1",
@@ -241,7 +266,12 @@ async def test_update_fulfillment_triggers_shipped_email(session_factory):
 @pytest.mark.asyncio
 async def test_cancel_order_endpoint(session_factory):
     async with session_factory() as db:
-        user = User(id="usr_cancel_api", name="Ritu V", email="ritu@example.com")
+        user = User(
+            id="usr_cancel_api",
+            phone="+919876500006",
+            name="Ritu V",
+            email="ritu@example.com",
+        )
         db.add(user)
         order = Order(
             id="ord_cancel_api_1",
@@ -275,7 +305,12 @@ async def test_cancel_order_endpoint(session_factory):
 @pytest.mark.asyncio
 async def test_resend_fulfillment_notification(session_factory):
     async with session_factory() as db:
-        user = User(id="usr_resend", name="Amit K", email="amit@example.com")
+        user = User(
+            id="usr_resend",
+            phone="+919876500007",
+            name="Amit K",
+            email="amit@example.com",
+        )
         db.add(user)
         order = Order(
             id="ord_resend_1",

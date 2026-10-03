@@ -964,7 +964,7 @@ async def _lookup_order_by_id_and_email(
     request: Request,
 ) -> dict:
     ip = _client_ip(request)
-    if not _track_rate_limiter.allow(ip):
+    if not await _track_rate_limiter.allow(ip):
         raise HTTPException(
             status_code=429,
             detail="Too many tracking requests. Please try again shortly.",

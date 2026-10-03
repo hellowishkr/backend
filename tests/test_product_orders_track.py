@@ -86,6 +86,7 @@ async def test_track_order_success_post(session_factory):
         item = OrderLineItem(
             id="item_trk_1",
             order_id="ord_trk_100",
+            vendor_id="ven_roses_1",
             product_id="prd_roses",
             product_name="Classic Crimson Roses",
             product_image_url="https://cdn.wishkr.com/roses.jpg",

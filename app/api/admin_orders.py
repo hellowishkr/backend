@@ -82,8 +82,10 @@ def serialize_order_detail(
     product_names: dict[str, str],
     payment_links: list[OrderPaymentLink] | None = None,
     outstanding_paise: int = 0,
+    customer_email: str | None = None,
 ) -> dict:
     base = serialize_order_summary(order, vendor_name)
+    base["customer_email"] = customer_email
     base.update(
         {
             "shipping": {
@@ -240,10 +242,12 @@ async def get_order(order_id: str, db: AsyncSession = Depends(get_db)) -> dict:
         )
     ).scalars().all()
     outstanding_paise = await _outstanding_amount_paise(db, order)
+    user = await db.get(User, order.user_id) if order.user_id else None
     return {
         "order": serialize_order_detail(
             order, vendor_name, list(line_items), product_names,
             payment_links=list(payment_links), outstanding_paise=outstanding_paise,
+            customer_email=user.email if user else None,
         )
     }
 
@@ -747,13 +751,18 @@ async def cancel_order(
 async def resend_fulfillment_notification(
     order_id: str,
     db: AsyncSession = Depends(get_db),
+    x_admin_email: Annotated[str | None, Header()] = None,
 ) -> dict:
+    from app.api.admin_settings import record_audit
     from app.services.order_notifications import (
         send_order_delivered_email,
         send_order_shipped_email,
     )
 
     order = await _get_order_or_404(db, order_id)
+    user = await db.get(User, order.user_id) if order.user_id else None
+    recipient_email = user.email if user else None
+
     if order.fulfillment_status == "shipped":
         ok = await send_order_shipped_email(order, db)
     elif order.fulfillment_status == "delivered":
@@ -766,7 +775,23 @@ async def resend_fulfillment_notification(
                 "Only 'shipped' or 'delivered' orders can have fulfillment notifications sent."
             ),
         )
-    return {"ok": ok, "fulfillment_status": order.fulfillment_status}
+
+    if ok:
+        await record_audit(
+            db,
+            actor=x_admin_email or "system",
+            action="order.notification_resent",
+            entity_type="order",
+            entity_id=order.id,
+            summary=f"Resent {order.fulfillment_status} email to buyer ({recipient_email or 'no email'})",
+        )
+        await db.commit()
+
+    return {
+        "ok": ok,
+        "fulfillment_status": order.fulfillment_status,
+        "recipient_email": recipient_email,
+    }
 
 
 @router.get("/{order_id}/history", dependencies=[Depends(require_role("owner", "ops"))])

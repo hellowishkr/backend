@@ -57,7 +57,12 @@ def _dummy_request(ip: str = "127.0.0.1"):
 @pytest.mark.asyncio
 async def test_track_order_success_post(session_factory):
     async with session_factory() as db:
-        user = User(id="usr_trk_1", name="Rohan Sharma", email="rohan@example.com")
+        user = User(
+            id="usr_trk_1",
+            phone="+919876510001",
+            name="Rohan Sharma",
+            email="rohan@example.com",
+        )
         db.add(user)
         order = Order(
             id="ord_trk_100",
@@ -117,7 +122,12 @@ async def test_track_order_success_post(session_factory):
 @pytest.mark.asyncio
 async def test_track_order_success_get(session_factory):
     async with session_factory() as db:
-        user = User(id="usr_trk_2", name="Priya Patel", email="priya@example.com")
+        user = User(
+            id="usr_trk_2",
+            phone="+919876510002",
+            name="Priya Patel",
+            email="priya@example.com",
+        )
         db.add(user)
         order = Order(
             id="ord_trk_200",
@@ -144,7 +154,12 @@ async def test_track_order_success_get(session_factory):
 @pytest.mark.asyncio
 async def test_track_order_wrong_email_rejected(session_factory):
     async with session_factory() as db:
-        user = User(id="usr_trk_3", name="Vikram", email="vikram@example.com")
+        user = User(
+            id="usr_trk_3",
+            phone="+919876510003",
+            name="Vikram",
+            email="vikram@example.com",
+        )
         db.add(user)
         order = Order(
             id="ord_trk_300",

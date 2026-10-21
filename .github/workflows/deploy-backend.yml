@@ -45,6 +45,7 @@ jobs:
     env:
       APP_ENV: test
       DATABASE_URL: postgresql+asyncpg://wishkr:wishkr@localhost:5432/wishkr_test
+      WISHKR_TEST_POSTGRES_URL: postgresql+asyncpg://wishkr:wishkr@localhost:5432/wishkr_test
       SYNC_DATABASE_URL: postgresql://wishkr:wishkr@localhost:5432/wishkr_test
       ENABLE_SHARED_WISHLIST: "false"
       PREFERENCE_OUTBOUND_ENABLED: "false"

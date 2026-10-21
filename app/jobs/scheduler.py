@@ -12,6 +12,7 @@ from app.jobs.poll_stale_orders import poll_stale_orders
 from app.jobs.deliver_gifts import deliver_scheduled_gifts
 from app.jobs.cleanup_rate_limiters import cleanup_rate_limiters
 from app.jobs.retry_failed_outbound import retry_failed_outbound
+from app.jobs.process_razorpay_refunds import process_pending_refunds
 from app.jobs.sync_gift_catalog import sync_gift_catalog
 from app.jobs.reconcile_payments import reconcile_payments
 from app.jobs.topup_link_reconciliation import topup_link_reconciliation
@@ -106,6 +107,16 @@ def start_scheduler():
         "interval",
         seconds=15,
         id="retry_failed_outbound",
+        replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+    )
+
+    scheduler.add_job(
+        process_pending_refunds,
+        "interval",
+        seconds=15,
+        id="process_razorpay_refunds",
         replace_existing=True,
         coalesce=True,
         max_instances=1,

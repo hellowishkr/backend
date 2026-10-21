@@ -4,7 +4,7 @@ Responsibilities:
   1. Verify signature (fail closed in production)
   2. Persist every event to webhook_events (immutable audit log — legal paper trail)
   3. Dedupe by Razorpay event_id
-  4. Dispatch to the per-event handler in razorpay_handlers.py
+  4. Queue refunds durably; dispatch other events to razorpay_handlers.py
   5. Record processing outcome on the audit row
 
 Handlers must NOT raise — exceptions bubble up here and are caught so we
@@ -16,11 +16,13 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request, HTTPException, Depends
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.session import get_db
+from app.jobs.process_razorpay_refunds import REFUND_HANDLERS
 from app.models import WebhookEvent, WebhookProvider, WebhookEventStatus, DisputeStatus
 from app.services.razorpay_service import razorpay_service
 from app.webhooks import razorpay_handlers as h
@@ -109,7 +111,8 @@ async def razorpay_webhook(request: Request, db: AsyncSession = Depends(get_db))
             db.add(WebhookEvent(
                 provider=WebhookProvider.RAZORPAY,
                 event_type=invalid_payload.get("event", "unknown"),
-                event_id=invalid_payload.get("id"),
+                # Unverified requests must not reserve a legitimate event's key.
+                event_id=None,
                 payload=invalid_payload,
                 signature=signature[:255],
                 signature_valid=False,
@@ -126,7 +129,8 @@ async def razorpay_webhook(request: Request, db: AsyncSession = Depends(get_db))
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
     event_type = payload.get("event", "")
-    event_id = payload.get("id")
+    # Razorpay supplies its delivery identity in the header, not the JSON body.
+    event_id = request.headers.get("X-Razorpay-Event-Id") or payload.get("id")
     logger.info("Razorpay webhook: event=%s id=%s", event_type, event_id)
 
     # Resolve handler
@@ -162,6 +166,20 @@ async def razorpay_webhook(request: Request, db: AsyncSession = Depends(get_db))
         await db.flush()
     except IntegrityError:
         await db.rollback()
+        # Only a matching provider key proves this was a duplicate; do not
+        # swallow unrelated constraint failures as successful deliveries.
+        existing = (
+            await db.scalar(
+                select(WebhookEvent.id).where(
+                    WebhookEvent.provider == WebhookProvider.RAZORPAY,
+                    WebhookEvent.event_id == event_id,
+                )
+            )
+            if event_id
+            else None
+        )
+        if existing is None:
+            raise
         if event_id:
             db.add(WebhookEvent(
                 provider=WebhookProvider.RAZORPAY,
@@ -175,6 +193,12 @@ async def razorpay_webhook(request: Request, db: AsyncSession = Depends(get_db))
             ))
             await db.commit()
         return {"status": "duplicate", "event_id": event_id}
+
+    if event_type in REFUND_HANDLERS:
+        # RECEIVED is the durable queue state. Commit before acknowledging;
+        # the scheduler resumes pending rows after a deploy or process crash.
+        await db.commit()
+        return {"status": "accepted", "event": event_type}
 
     if not handler:
         audit.status = WebhookEventStatus.IGNORED

@@ -18,6 +18,9 @@ redis==5.2.1
 
 # HTTP client (async)
 httpx==0.28.1
+# Patched transitive HTTP dependencies required by the production image scan.
+aiohttp==3.14.4
+certifi==2026.10.19
 
 # JWT signing for Hubble SDK SSO
 PyJWT[crypto]==2.14.0

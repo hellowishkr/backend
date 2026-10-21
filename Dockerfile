@@ -7,7 +7,7 @@ WORKDIR /app
 # repository; the production Trivy gate rejects fixable HIGH/CRITICAL findings.
 # All pinned Python dependencies publish wheels for Linux amd64, so compilers
 # Bust build cache when OS security updates are released
-ARG SECURITY_UPGRADE="2026-09-30"
+ARG SECURITY_UPGRADE="2026-10-21"
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends curl && \

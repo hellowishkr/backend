@@ -103,7 +103,7 @@ async def set_chat_preferences(db: AsyncSession, phone: str, args: dict) -> dict
     """Persist model-understood language preferences and clear abandoned flow state."""
     from app.bot.state_utils import clear_state, set_state
 
-    result = {}
+    result: dict = {}
     language = args.get("language")
     if language is not None:
         if not isinstance(language, str) or not 2 <= len(language.strip()) <= 80 or any(ord(c) < 32 for c in language):

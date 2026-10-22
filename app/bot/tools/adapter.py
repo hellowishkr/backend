@@ -1383,7 +1383,7 @@ async def record_recipient_preferences(
     disliked_categories: list[str] | None = None, preferred_brands: list[str] | None = None,
     disliked_brands: list[str] | None = None,
 ) -> dict:
-    args = {"raw_response": raw_response}
+    args: dict[str, Any] = {"raw_response": raw_response}
     args.update({key: value for key, value in (
         ("preferred_categories", preferred_categories), ("disliked_categories", disliked_categories),
         ("preferred_brands", preferred_brands), ("disliked_brands", disliked_brands)

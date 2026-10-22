@@ -365,6 +365,7 @@ _BROWSE_TOOLS = _tools(
 # item trapped users out of `suggest_gifts` and the model would
 # hallucinate tool calls that weren't registered — see issue #009 §5b
 # Gap G7 (stale cart traps user in narrow phase).
+_BROWSE_TOOLS += _tools("save_gift_plan", "update_celebrant_occasion")
 _CHECKOUT_TOOLS = list(_BROWSE_TOOLS) + _tools("clear_cart")
 for _phase_tools in (_UNREGISTERED_TOOLS, _FRIEND_TOOLS, _BROWSE_TOOLS, _CHECKOUT_TOOLS):
     for _name in ("register_user", "get_order_support", "set_chat_preferences", "record_recipient_preferences"):
@@ -1111,6 +1112,9 @@ def _route_hint(intent_result: IntentResult | RouteResult) -> str:
     if tools:
         parts.append(f"- Likely tools: {', '.join(tools)}")
     if slots:
+        reply_language = slots.get("reply_language")
+        if isinstance(reply_language, str) and 1 <= len(reply_language.strip()) <= 80:
+            parts.append("- Reply language for this turn: " + json.dumps(reply_language, ensure_ascii=False))
         try:
             rendered = json.dumps(slots, ensure_ascii=False)[:600]
         except (TypeError, ValueError):
@@ -1636,7 +1640,8 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
                 "selected item, and style. If budget is optional or unrestricted, give "
                 "options without asking again. Never send internal tool guidance as a reply. "
                 "Understand any language or code-switching semantically; reply in the user's "
-                "requested/current language. Use set_chat_preferences for an explicit language "
+                "latest explicitly requested language, otherwise saved preferred language, otherwise "
+                "the router's current-language hint. Use set_chat_preferences for an explicit language "
                 "preference or ending a flow. Use register_user for explicit profile-name "
                 "corrections. For owned-order questions/returns/refunds use get_order_support "
                 "even before registration; translate the verified facts and review requirements. "

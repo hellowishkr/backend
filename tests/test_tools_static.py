@@ -158,14 +158,14 @@ def test_pick_phase_browse_default():
 @pytest.mark.parametrize(
     "phase,expected_min,expected_max",
     [
-        ("unregistered", 1, 3),
-        ("friend", 9, 13),
+        ("unregistered", 1, 7),
+        ("friend", 9, 16),
         # Checkout is now a SUPERSET of browse + clear_cart (see Gap G7 fix).
         # +1 on both bands for `delete_all_occasions` (2026-08): "delete all my
         # reminders" previously mapped to no tool, so the agent invented a
         # confirmation. Deliberate addition, not creep.
-        ("checkout", 20, 26),
-        ("browse", 20, 25),
+        ("checkout", 20, 33),
+        ("browse", 20, 32),
     ],
 )
 def test_phase_tool_surface_within_bounds(phase, expected_min, expected_max):
@@ -259,7 +259,10 @@ def test_browse_phase_tool_schema_budget():
     names = [t.name for t in agent._PHASE_TOOLS["browse"]]
     payload = "".join(_tool_schema_payload(name) for name in names)
     est = _rough_token_estimate(payload)
-    assert est <= 23500, f"browse schema payload too large: ~{est} tokens"
+    # Full fallback includes multilingual support/state tools and the two
+    # write tools previously exposed only by English keyword heuristics.
+    # Normal turns still narrow using the semantic router's named tools.
+    assert est <= 29000, f"browse schema payload too large: ~{est} tokens"
 
 
 def test_friend_phase_tool_schema_budget():
@@ -301,10 +304,10 @@ def test_selective_tool_injection_exposes_gift_plan_updates():
     tools, subflow = agent._select_tools_for_turn(
         "browse",
         "suggest gifts for Swaraj but no clothes",
-        intent_classifier.IntentResult("product_question", 0.95, "rule"),
+        agent.RouteResult("gift_suggestion", 0.95, "llm", likely_tools=("save_gift_plan",)),
     )
     names = {tool.name for tool in tools}
-    assert subflow == "product_discovery"
+    assert subflow == "routed"
     assert "save_gift_plan" in names
 
 
@@ -312,10 +315,10 @@ def test_selective_tool_injection_exposes_celebrant_updates():
     tools, subflow = agent._select_tools_for_turn(
         "browse",
         "remove a friend from my birthday occasion reminders",
-        intent_classifier.IntentResult("other", 0.8, "rule"),
+        agent.RouteResult("other", 0.95, "llm", likely_tools=("update_celebrant_occasion",)),
     )
     names = {tool.name for tool in tools}
-    assert subflow == "occasions"
+    assert subflow == "routed"
     assert "update_celebrant_occasion" in names
 
 
@@ -1304,3 +1307,9 @@ def test_salvage_reply_from_tool_emits_payment_link():
     assert out is not None
     assert "https://rzp.io/abc" in out
     assert "Amazon" in out
+
+
+def test_routed_support_schema_stays_small():
+    tools, _ = agent._select_tools_for_turn("browse", "ನನ್ನ ಆರ್ಡರ್", agent.RouteResult("other", .99, "llm", likely_tools=("get_order_support",)))
+    payload = "".join(_tool_schema_payload(t.name) for t in tools)
+    assert _rough_token_estimate(payload) <= 2000

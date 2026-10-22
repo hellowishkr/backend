@@ -232,18 +232,36 @@ def _contract(
 TOOL_DECLARATIONS: dict[str, FunctionDeclaration] = {
     "get_order_support": _decl(
         "get_order_support",
-        "Look up the caller's existing Wishkr orders, payment/refund status, tracking, or return/cancellation support. Available before registration and while new purchases are disabled. Supply an order ID only when known. Returns verified facts and support contact; never approves refunds or modifies an order. Phrase the facts in the user's language. Use this instead of list_orders for product orders and guest checkouts.",
+        _contract(
+            when="Look up the caller's existing Wishkr order, payment/refund status, tracking, or return support.",
+            use_when=["Caller asks about an existing order, including guest checkout and product orders."],
+            do_not=["User wants to create a new purchase; this is read-only support."],
+            important=["Available before registration and while purchases are disabled.", "Verify ownership through this tool; never approve a return/refund or claim support was contacted.", "Phrase only returned facts and review requirements in the user's language."],
+            output="Verified owned-order facts, review requirement, and support email; never changes an order.",
+        ),
         _params({"order_id": _str("Existing order ID from this conversation. Omit to list recent owned orders.")}),
     ),
     "set_chat_preferences": _decl(
         "set_chat_preferences",
-        "Save an explicit request to use any language, dialect, or code-switching style. Also use when the user ends/declines the current flow. Understand intent in any language; do not rely on fixed words. Returns saved state; phrase the acknowledgement naturally in the user's language.",
+        _contract(
+            when="Save an explicit language/style preference or end the current conversation flow.",
+            use_when=["The user requests any language, dialect or code-switching style.", "User ends or declines the current flow in any language."],
+            do_not=["Do not infer a fixed language from a keyword list."],
+            important=["A closure clears pending flow state, not saved records.", "Phrase the acknowledgement naturally in the user's language."],
+            output="Saved language preference or confirmation that pending flow state was cleared.",
+        ),
         _params({"language": _str("User's requested language/style, such as Hindi, Marathi, Spanish, or Hinglish. No fixed language list."),
                  "end_conversation": _bool("True only when the user ends or declines the current flow; clears pending flow state, not saved records.")}),
     ),
     "record_recipient_preferences": _decl(
         "record_recipient_preferences",
-        "Record the caller's reply to a pending gift preference request. Infer preferences semantically in any language. Call only when the current message answers that request; unrelated messages must keep their own intent. Ownership and the live request are checked by the tool. Never reveal the gift giver's identity.",
+        _contract(
+            when="Record the caller's response to a pending gift preference request.",
+            use_when=["Current message answers the active preference request in any language; extract matching labels semantically."],
+            do_not=["Do not capture unrelated requests merely because a preference request exists."],
+            important=["Tool checks the caller's live request; never reveal the gift giver's identity."],
+            output="Saved preference facts and request status for a natural acknowledgement.",
+        ),
         _params({"raw_response": _str("The recipient's actual reply in their own language."),
                  "preferred_categories": _arr("Categories they like, translated to concise matching labels.", _str("Category")),
                  "disliked_categories": _arr("Explicitly rejected categories.", _str("Category")),
@@ -275,7 +293,7 @@ TOOL_DECLARATIONS: dict[str, FunctionDeclaration] = {
     "register_user": _decl(
         "register_user",
         _contract(
-            when="Create, complete, or explicitly correct the current user's Wishkr profile name.",
+            when="Create or complete the current user's Wishkr profile, or explicitly correct their profile name.",
             use_when=[
                 "User gives their name after onboarding.",
                 "User wants to create a Wishkr account.",

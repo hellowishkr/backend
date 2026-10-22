@@ -72,6 +72,7 @@ def _no_live_intent_router(monkeypatch):
         return intent_router.DEGRADED
 
     monkeypatch.setattr(intent_router, "route", _degraded)
+
     # Belt and braces: `_call_model` is the only place that touches the
     # network, so stubbing it means even a module that captured `route` before
     # this fixture ran (or one imported later) cannot reach DeepSeek.
@@ -106,9 +107,7 @@ async def db() -> AsyncSession:
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
 
     async with engine.begin() as conn:
-        await conn.run_sync(
-            lambda sync_conn: Base.metadata.create_all(sync_conn, tables=_TABLES)
-        )
+        await conn.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, tables=_TABLES))
 
     Session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
@@ -134,27 +133,47 @@ def model_turn(monkeypatch):
         yield
 
     monkeypatch.setattr(agent, "_db_phone_lock", no_db_lock)
-    monkeypatch.setattr(agent, "_get_or_create_session", AsyncMock(return_value=(SimpleNamespace(id="test_session", events=[]), False)))
+    monkeypatch.setattr(
+        agent,
+        "_get_or_create_session",
+        AsyncMock(return_value=(SimpleNamespace(id="test_session", events=[]), False)),
+    )
     monkeypatch.setattr(agent, "_trim_session_events", AsyncMock())
     monkeypatch.setattr(agent, "_log_llm_usage", AsyncMock())
     monkeypatch.setattr(agent, "get_daily_budget_usage", AsyncMock(return_value=(0, 100, 0)))
     monkeypatch.setattr(agent, "check_all_budgets", AsyncMock(return_value=(True, None)))
-    monkeypatch.setattr(agent, "check_and_bump", AsyncMock(return_value=SimpleNamespace(allowed=True)))
-    monkeypatch.setattr(agent, "_gemini_breaker", CircuitBreaker(failure_threshold=5, window_seconds=30, cooldown_seconds=30))
+    monkeypatch.setattr(
+        agent, "check_and_bump", AsyncMock(return_value=SimpleNamespace(allowed=True))
+    )
+    monkeypatch.setattr(
+        agent,
+        "_gemini_breaker",
+        CircuitBreaker(failure_threshold=5, window_seconds=30, cooldown_seconds=30),
+    )
 
     def setup(reply, actions=(), route=DEGRADED):
         seen = {"messages": [], "results": []}
+
         async def run_async(**kwargs):
             seen["messages"].append(kwargs["new_message"].parts[0].text)
             for name, args in actions:
-                yield SimpleNamespace(content=None, get_function_calls=lambda: [SimpleNamespace(name=name, args=args)])
+                yield SimpleNamespace(
+                    content=None, get_function_calls=lambda: [SimpleNamespace(name=name, args=args)]
+                )
                 result = await execute_tool(name, args)
                 seen["results"].append(result)
-                yield SimpleNamespace(content=None, get_function_responses=lambda: [SimpleNamespace(name=name, response=result)])
-            yield SimpleNamespace(content=SimpleNamespace(role="model", parts=[SimpleNamespace(text=reply)]))
+                yield SimpleNamespace(
+                    content=None,
+                    get_function_responses=lambda: [SimpleNamespace(name=name, response=result)],
+                )
+            yield SimpleNamespace(
+                content=SimpleNamespace(role="model", parts=[SimpleNamespace(text=reply)])
+            )
+
         runner = SimpleNamespace(run_async=run_async)
         get_runner = lambda *args: runner
         monkeypatch.setattr(agent, "_get_runner_for_phase", get_runner)
         monkeypatch.setattr(agent, "route_intent", AsyncMock(return_value=route))
         return seen
+
     return setup

@@ -207,6 +207,7 @@ every one of them in slots.occasions.
 - Order/payment/refund/return questions use get_order_support, including guests. Never confuse a return with a new purchase.
 - Explicit language requests and ending a flow use set_chat_preferences. Name corrections use register_user.
 - A multilingual confirmation is an answer to the previous question, not a greeting. Use the actual action tool when appropriate.
+- Infer the requested/current reply language semantically and include its name in slots.reply_language for EVERY turn. Honor explicit language preferences from history unless the user changes them. No fixed language list.
 - Do not depend on English words or translate the customer-facing reply here; the main agent writes it.
 - Only name tools that appear in the list above.
 - If the request is unclear, use intent "other" and leave likely_tools empty. \
@@ -215,7 +216,7 @@ Do not guess.
 Return ONLY a JSON object, no markdown fence, no explanation:
 {{"intent": "<short_snake_case_label>",
   "likely_tools": ["tool_name"],
-  "slots": {{}},
+  "slots": {{"reply_language": "<inferred language/style>"}},
   "confidence": 0.0-1.0}}
 
 For occasion saves, slots should look like:

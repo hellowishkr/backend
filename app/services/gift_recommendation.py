@@ -19,7 +19,7 @@ from app.bot.gift_taxonomy import all_vibe_ids, default_vibes_for_occasion
 from app.bot.language_map import resolve_vibe_keywords
 from app.bot.sources import GiftCandidate, SourceAdapter, enabled_sources
 from app.core.config import settings
-from app.models import Contact, Occasion, User, WishlistItem
+from app.models import Contact, Occasion, WishlistItem
 from app.utils.budget_parser import (
     budget_ranges_overlap,
     parse_budget,
@@ -62,7 +62,7 @@ _IDEA_LIBRARY: dict[str, list[dict[str, str]]] = {
             "why": "comfortable but a little more polished than loungewear",
         },
     ],
-    "wall_art": [
+    "art_supplies": [
         {
             "name": "Sketchbook and brush-pen set",
             "budget_hint": "around ₹500-₹1,200",
@@ -78,6 +78,11 @@ _IDEA_LIBRARY: dict[str, list[dict[str, str]]] = {
             "budget_hint": "around ₹600-₹1,400",
             "why": "a complete creative activity rather than a single supply",
         },
+    ],
+    "wall_art": [
+        {"name": "Framed art print", "budget_hint": "around ₹500-₹1,500", "why": "a finished piece for their home; choose a style that suits the room"},
+        {"name": "Personalized illustrated portrait", "budget_hint": "around ₹1,000-₹3,000", "why": "a personal keepsake to display"},
+        {"name": "Small framed original artwork", "budget_hint": "around ₹1,500-₹3,000", "why": "a finished artwork rather than a painting kit"},
     ],
 }
 
@@ -141,6 +146,11 @@ def _candidate_allowed(
     excluded_vibes = resolve_vibe_keywords(excluded, known_vibes)
     candidate_vibes = set(candidate.vibes or [])
     text = _candidate_text(candidate)
+    desired = normalize_match_values(request.desired_categories)
+    if desired and not count_match_values(text, desired):
+        desired_vibes = resolve_vibe_keywords(desired, known_vibes)
+        if not candidate_vibes.intersection(desired_vibes):
+            return False
     if candidate_vibes & excluded_vibes:
         return False
     if count_match_values(text, excluded):
@@ -272,6 +282,7 @@ def _idea_suggestions(
     excluded_categories: list[str] | None = None,
     gift_format: str | None = None,
     constraints: dict | None = None,
+    recipient_interest: str | None = None,
 ) -> list[dict]:
     """Return catalogue-independent ideas for reminder-only planning.
 
@@ -290,7 +301,10 @@ def _idea_suggestions(
         if vibe not in _IDEA_LIBRARY or vibe in excluded_vibes:
             continue
         filtered = []
-        for idea in _IDEA_LIBRARY[vibe]:
+        library_key = vibe
+        if vibe == "wall_art" and any(word in (recipient_interest or "").lower() for word in ("art supplies", "sketchbook", "painting kit", "paint supplies")):
+            library_key = "art_supplies"
+        for idea in _IDEA_LIBRARY[library_key]:
             idea_min, idea_max = parse_budget_hint(idea.get("budget_hint"))
             idea_text = " ".join(
                 (
@@ -385,7 +399,7 @@ def _recommendation_context(
     )
 
     missing_fields: list[str] = []
-    if budget_min is None and budget_max is None:
+    if budget_min is None and budget_max is None and not (profile and profile.budget_unlimited):
         missing_fields.append("budget")
     if not has_recipient_interest:
         missing_fields.append("recipient_interests")
@@ -498,7 +512,9 @@ async def _recipient_city(
 ) -> str | None:
     if profile and profile.recipient_city:
         return profile.recipient_city
-    user = (await db.execute(select(User).where(User.phone == phone))).scalar_one_or_none()
+    from app.utils.phones import user_for_phone
+
+    user = await user_for_phone(db, phone)
     city_id = user.city_id if user else None
     if occasion_id:
         occ = await db.get(Occasion, occasion_id)
@@ -719,13 +735,17 @@ async def recommend_gifts(
     if settings.mvp_reminder_only:
         seen_names = {item["name"].strip().lower() for item in suggestions}
         for idea in _idea_suggestions(
-            vibes,
+            sorted(resolve_vibe_keywords(request.desired_categories, set(all_vibe_ids())))
+            if request.desired_categories else vibes,
             max(1, min(int(request.n or 8), 20)),
             budget_min=budget_min,
             budget_max=budget_max,
             excluded_categories=request.excluded_categories,
             gift_format=request.gift_format,
             constraints=request.constraints,
+            recipient_interest=request.recipient_vibe or (
+                (request.profile.recipient_vibe or request.profile.interest) if request.profile else None
+            ),
         ):
             idea_name = idea["name"].strip().lower()
             if idea_name in seen_names or idea_name in exclude_names:
@@ -741,7 +761,8 @@ async def recommend_gifts(
                 "mode": "ai_fallback_pending",
                 "suggestions": [],
                 **recommendation_context,
-                "message": (
+                "message": "I couldn't find a suitable catalog match for those requirements.",
+                "guidance": (
                     "No deterministic match was found. Use the attached AI-generated "
                     "ideas when present. Never ask for a field listed in known_fields, "
                     "and do not claim a general idea is stocked by Wishkr."

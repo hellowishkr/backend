@@ -31,6 +31,7 @@ from app.bot.state_utils import (
     clear_state,
     get_gift_need_profile,
     get_state,
+    set_state,
     remember_occasion_slots,
     update_active_gift_context,
 )
@@ -102,6 +103,7 @@ async def _activate_saved_occasion(
     # `awaiting` marker. Leaving it armed would keep suppressing legitimate
     # "my occasions" requests on later turns.
     await clear_occasion_slots(db, phone)
+    await clear_state(db, phone, "pending_occasion_confirmation")
     state = await get_state(db, phone)
     active = get_gift_need_profile(state)
     next_occasion_id = str(updates.get("occasion_id") or "").strip()
@@ -207,6 +209,7 @@ async def add_occasion(db: AsyncSession, phone: str, args: dict) -> dict:
         and date_day != date_month
         and not args.get("date_confirmed")
     ):
+        await set_state(db, phone, "pending_occasion_confirmation", dict(args))
         return {
             "error": "date_ambiguous",
             "required_action": (

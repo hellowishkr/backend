@@ -15,13 +15,13 @@ from typing import Annotated
 import jwt
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
 from app.utils.id_gen import generate_id
+from app.utils.phones import normalize_phone, user_for_phone
 from app.utils.observability import mask_phone
 
 logger = logging.getLogger("wishkr.mobile_auth")
@@ -50,13 +50,7 @@ class SessionResponse(BaseModel):
 
 
 def _clean_phone(raw: str) -> str:
-    cleaned = "".join(ch for ch in raw if ch.isdigit() or ch == "+")
-    if not cleaned.startswith("+"):
-        if len(cleaned) == 10:
-            cleaned = "+91" + cleaned
-        elif cleaned.startswith("91") and len(cleaned) == 12:
-            cleaned = "+" + cleaned
-    return cleaned
+    return normalize_phone(raw)
 
 
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -128,7 +122,7 @@ async def verify_otp(
     logger.info("Mobile OTP verify for %s", mask_phone(phone))
 
     # Find or lazily create user
-    user = await db.scalar(select(User).where(User.phone == phone))
+    user = await user_for_phone(db, phone)
     if not user:
         user_id = generate_id("usr")
         user = User(

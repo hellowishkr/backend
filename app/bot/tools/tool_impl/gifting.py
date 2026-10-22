@@ -507,17 +507,42 @@ async def suggest_gifts(db: AsyncSession, phone: str, args: dict) -> dict:
         if budget_max is None:
             budget_max = profile.budget_max
 
-    if profile:
+    for key in ("desired_categories", "excluded_categories", "constraints", "gift_format"):
+        if key in args:
+            continue
+        if profile and getattr(profile, key, None):
+            args = {**args, key: getattr(profile, key)}
+    desired_categories = list(args.get("desired_categories", desired_categories) or [])
+    excluded_categories = list(dict.fromkeys([*excluded_categories, *(args.get("excluded_categories") or [])]))
+    constraints = {**constraints, **(args.get("constraints") or {})}
+    gift_format = args.get("gift_format") or gift_format
+    remembered_budget = active_state.get("budget") or {}
+    unlimited = args.get("budget_unlimited")
+    if unlimited is None:
+        unlimited = False if args.get("budget_min") is not None or args.get("budget_max") is not None else bool(
+            (profile and profile.budget_unlimited) or remembered_budget.get("unlimited")
+        )
+    if unlimited:
+        budget_min = budget_max = None
+    if "budget_unlimited" in args or args.get("budget_min") is not None or args.get("budget_max") is not None:
+        await set_state(db, phone, "budget", {"min": budget_min, "max": budget_max, "unlimited": bool(unlimited)})
+
+    if profile or recipient_vibe or vibes_in or desired_categories or excluded_categories or constraints or unlimited or budget_min is not None or budget_max is not None:
         context_updates: dict[str, object] = {
-            **profile.to_mapping(),
+            **(profile.to_mapping() if profile else {}),
+            "desired_categories": desired_categories,
+            "excluded_categories": excluded_categories,
+            "constraints": constraints,
+            "gift_format": gift_format,
+            "budget_unlimited": bool(unlimited),
             "current_step": "suggesting_gifts",
         }
         if recipient_vibe:
             context_updates["recipient_vibe"] = recipient_vibe
             context_updates["interest"] = recipient_vibe
-        if budget_min is not None:
+        if unlimited or budget_min is not None:
             context_updates["budget_min"] = budget_min
-        if budget_max is not None:
+        if unlimited or budget_max is not None:
             context_updates["budget_max"] = budget_max
         await update_active_gift_context(
             db,
@@ -622,8 +647,8 @@ async def suggest_gifts(db: AsyncSession, phone: str, args: dict) -> dict:
             if isinstance(review, dict):
                 review["clarifying_question"] = None
             result["repeated_question_suppressed"] = True
-            result["message"] = (
-                f"{result.get('message', '')} The same clarification was already "
+            result["guidance"] = (
+                f"{result.get('guidance', '')} The same clarification was already "
                 "asked with no new information. Use any available AI or catalogue "
                 "ideas instead of asking it again; if none are available, do not "
                 "repeat the question."

@@ -15,6 +15,7 @@ from app.utils.timezones import (
     local_schedule_utc,
     occasion_calendar_date,
     today_for_user,
+    timezone_for_user,
 )
 from app.services.reminder import _MESSAGE_TYPE_BY_DAYS
 from app.bot.tools.validators import normalize_phone
@@ -217,6 +218,13 @@ async def set_reminder_schedule(db: AsyncSession, phone: str, args: dict) -> dic
         parsed_days.append(value)
     days_before = sorted(set(parsed_days), reverse=True)
 
+    hour = args.get("local_hour", 9)
+    minute = args.get("local_minute", 0)
+    if isinstance(hour, bool) or not isinstance(hour, int) or not 0 <= hour <= 23:
+        return {"error": "invalid_local_time", "message": "The hour must be between 0 and 23."}
+    if isinstance(minute, bool) or not isinstance(minute, int) or not 0 <= minute <= 59:
+        return {"error": "invalid_local_time", "message": "The minute must be between 0 and 59."}
+
     now = datetime.now(timezone.utc)
     occasion_date = next_occurrence(
         occ,
@@ -232,6 +240,8 @@ async def set_reminder_schedule(db: AsyncSession, phone: str, args: dict) -> dic
         scheduled = local_schedule_utc(
             occasion_date - timedelta(days=offset),
             user,
+            hour=hour,
+            minute=minute,
         )
         if scheduled <= now:
             # "On the day" is still useful after the normal 09:00 IST slot:
@@ -240,6 +250,7 @@ async def set_reminder_schedule(db: AsyncSession, phone: str, args: dict) -> dic
             if (
                 offset == 0
                 and occasion_calendar_date(occasion_date) == today_for_user(user)
+                and "local_hour" not in args and "local_minute" not in args
             ):
                 scheduled = now
             else:
@@ -250,6 +261,7 @@ async def set_reminder_schedule(db: AsyncSession, phone: str, args: dict) -> dic
             "reminder_id": generate_id("rem"),
             "days_before": offset,
             "scheduled_at": scheduled.isoformat(),
+            "scheduled_local": scheduled.astimezone(timezone_for_user(user)).isoformat(),
         })
 
     if not created:

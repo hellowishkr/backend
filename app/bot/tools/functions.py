@@ -5,6 +5,7 @@ the tool_impl/ package; nothing should be added here directly.
 """
 
 from app.services.razorpay_service import razorpay_service
+from app.bot.order_support import get_order_support
 
 # ── helpers (private utilities referenced by tests and adapter indirectly) ──
 from app.bot.tools.tool_impl.helpers import (
@@ -26,6 +27,7 @@ from app.bot.tools.tool_impl.helpers import (
 from app.bot.tools.tool_impl.users import (
     get_user_profile,
     register_user,
+    set_chat_preferences,
 )
 
 # ── occasions ────────────────────────────────────────────────────────────────
@@ -110,6 +112,7 @@ from app.bot.tools.tool_impl.wishlist_sharing import (
 )
 from app.bot.tools.tool_impl.recipient_preferences import (
     request_recipient_preferences,
+    record_recipient_preferences,
 )
 
 # ── celebrant ────────────────────────────────────────────────────────────────
@@ -145,7 +148,7 @@ __all__ = [
     "_get_user", "_find_or_create_contact", "_find_brand_id", "_check_brand_amount",
     "_user_owns_occasion", "_can_view_occasion_gifts", "_duplicate_brand_warning",
     # users
-    "get_user_profile", "register_user",
+    "get_user_profile", "register_user", "set_chat_preferences", "get_order_support", "record_recipient_preferences",
     # occasions
     "add_occasion", "list_occasions", "get_my_occasions", "get_occasion_details",
     "get_upcoming_digest", "snooze_occasion", "skip_occasion_this_year",

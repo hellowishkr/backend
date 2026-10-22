@@ -1,211 +1,153 @@
-"""P2 deterministic routing regressions (safe exact-intent paths only)."""
-
-import os
-from unittest.mock import AsyncMock, patch
+"""Model-first conversation wiring; inference quality is checked in live replays."""
+from decimal import Decimal
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-os.environ["DATABASE_URL"] = "sqlite:////tmp/wishkr_adk_test.db"
-from app.core.config import settings
-settings.database_url = "sqlite:////tmp/wishkr_adk_test.db"
-
-from app.bot.agent import handle_message
-from app.models import Contact, Occasion, OccasionType, User, WishlistItem
-from app.utils.id_gen import generate_id
-from datetime import datetime
+from app.bot import agent
+from app.bot.intent_router import DEGRADED, RouteResult
+from app.bot.state_utils import get_state, set_state
+from app.models import Order, OrderStatus, User, WishlistItem
 
 
 @pytest.mark.asyncio
-async def test_show_my_orders_exact_phrase_gets_mvp_response(db: AsyncSession):
-    phone = "+919876543220"
-    db.add(User(id=generate_id("usr"), phone=phone, name="OrderUser", city_raw="Pune"))
-    await db.commit()
-
-    with patch("app.bot.action_router.list_orders", new=AsyncMock(return_value={"orders": []})) as mock_list_orders:
-        with patch("app.bot.agent._get_runner_for_phase") as mock_get_runner:
-            with patch("app.bot.agent._save_message", new=AsyncMock()):
-                reply = await handle_message(db, phone, "show my orders")
-            mock_get_runner.assert_not_called()
-            mock_list_orders.assert_not_called()
-
-    assert "preferred store" in reply
-
-
-@pytest.mark.asyncio
-async def test_payment_status_exact_phrase_gets_mvp_response(db: AsyncSession):
-    phone = "+919876543221"
-    db.add(User(id=generate_id("usr"), phone=phone, name="PayUser", city_raw="Pune"))
-    await db.commit()
-
-    mocked = {"orders": [{"brand": "Amazon", "amount": 1000, "status": "PENDING", "date": "10 May 2026"}]}
-    with patch("app.bot.action_router.list_orders", new=AsyncMock(return_value=mocked)) as mock_list_orders:
-        with patch("app.bot.agent._get_runner_for_phase") as mock_get_runner:
-            with patch("app.bot.agent._save_message", new=AsyncMock()):
-                reply = await handle_message(db, phone, "payment status")
-            mock_get_runner.assert_not_called()
-            mock_list_orders.assert_not_called()
-
-    assert "preferred store" in reply
+@pytest.mark.parametrize("text,reply", [
+    ("menu", "What would you like help with?"),
+    ("show my orders", "Which order would you like to discuss?"),
+    ("मुझे अपने ऑर्डर की जानकारी चाहिए", "मैं आपके ऑर्डर की जानकारी देख सकती हूँ।"),
+    ("ನನ್ನ ಆರ್ಡರ್ ಹಿಂದಿರುಗಿಸಬೇಕು", "ನಿಮ್ಮ ಆರ್ಡರ್ ವಿವರಗಳನ್ನು ನೋಡೋಣ."),
+    ("எனது ஆர்டரைத் திருப்பித் தர வேண்டும்", "உங்கள் ஆர்டர் விவரங்களைச் சரிபார்க்கிறேன்."),
+    ("माझे नाव पूजा आहे", "पूजा, मी तुमची मदत करते."),
+    ("¿Puedes hablar español?", "Sí, podemos hablar en español."),
+    ("شكراً، هذا كل شيء", "على الرحب والسعة."),
+    ("はい、お願いします", "承知しました。"),
+    ("[media:image] ये वाला चाहिए", "मुझे तस्वीर मिली है; कृपया उत्पाद का लिंक भेजें।"),
+    ("Can I talk to Karan?", "You can reach the team at hello@wishkr.com."),
+    ("thanks", "You're welcome."),
+    ("save this https://example.com/product/123", "I can save that link."),
+])
+async def test_every_conversational_message_reaches_model(db, model_turn, text, reply):
+    db.add(User(id="usr_language", phone="919000000001", name="Buyer"))
+    await db.flush()
+    seen = model_turn(reply)
+    actual = await agent.handle_message(db, "919000000001", text)
+    assert actual == reply
+    assert seen["messages"][0].endswith(text)
 
 
-@pytest.mark.asyncio
-async def test_cart_summary_exact_phrase_bypasses_main_llm(db: AsyncSession):
-    phone = "+919876543222"
-    db.add(User(id=generate_id("usr"), phone=phone, name="CartUser", city_raw="Pune"))
-    await db.commit()
-
-    mocked = {"cart": [{"brand_name": "Amazon", "amount": 500}], "count": 1, "total": 500}
-    with patch("app.bot.action_router.view_cart", new=AsyncMock(return_value=mocked)):
-        with patch("app.bot.agent._get_runner_for_phase") as mock_get_runner:
-            with patch("app.bot.agent._save_message", new=AsyncMock()):
-                reply = await handle_message(db, phone, "cart summary")
-            mock_get_runner.assert_not_called()
-
-    assert "cart" in reply.lower() and "500" in reply
+async def test_guest_order_tool_verifies_alias_ownership_then_model_phrases_reply(db, model_turn):
+    db.add(User(id="guest", phone="+919000000001", name="Buyer", is_guest=True))
+    await db.flush()
+    db.add(Order(id="ord_owned", user_id="guest", total_amount=Decimal("999"), status=OrderStatus.PAID))
+    await db.flush()
+    seen = model_turn("आपके ऑर्डर के रिटर्न की जाँच हमारी टीम करेगी।", [("get_order_support", {"order_id": "ord_owned"})])
+    reply = await agent.handle_message(db, "919000000001", "ये ऑर्डर वापस करना है")
+    assert reply.startswith("आपके")
+    assert seen["results"][0]["order_verified"]
+    assert seen["results"][0]["orders"][0]["status"] == "PAID"
+    assert (await db.get(Order, "ord_owned")).status == OrderStatus.PAID
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "text",
-    [
-        "What are all occasions i have told you till now",
-        "Can you recall all the occasions whatever i have told you",
-        "Show my occasions",
-        "List my occasions",
-        "What occasions have I added",
-        "Which birthdays/anniversaries did I save",
-    ],
-)
-async def test_saved_occasion_phrases_bypass_main_llm_and_list_owned_occasions(
-    db: AsyncSession,
-    text: str,
-):
-    phone = "+919876543226"
-    user = User(id=generate_id("usr"), phone=phone, name="OccUser", city_raw="Pune")
-    contact = Contact(
-        id=generate_id("con"),
-        user_id=user.id,
-        name="Rutuja",
-        relationship_type="sibling",
-    )
-    db.add_all([
-        user,
-        contact,
-        Occasion(
-            id=generate_id("occ"),
-            user_id=user.id,
-            contact_id=contact.id,
-            type=OccasionType.BIRTHDAY,
-            date=datetime(2026, 5, 5),
-            recurring=True,
-        ),
+async def test_language_and_name_changes_use_tools_instead_of_english_patterns(db, model_turn):
+    db.add(User(id="profile", phone="919000000001", name="Old Name"))
+    await db.flush()
+    seen = model_turn("नाम और भाषा अपडेट कर दी है।", [
+        ("register_user", {"name": "पूजा"}),
+        ("set_chat_preferences", {"language": "Hindi"}),
     ])
-    await db.commit()
-
-    with patch("app.bot.agent._get_runner_for_phase") as mock_get_runner:
-        reply = await handle_message(db, phone, text)
-        mock_get_runner.assert_not_called()
-
-    assert "Here are the occasions I have saved for you:" in reply
-    assert "Rutuja" in reply
-    assert "sibling" in reply
-    assert "Birthday" in reply
-    assert "05 May 2027" in reply
+    reply = await agent.handle_message(db, "919000000001", "मेरा नाम पूजा है और हिंदी में बात करो")
+    assert reply == "नाम और भाषा अपडेट कर दी है।"
+    assert all(r.get("success") for r in seen["results"])
+    assert (await db.get(User, "profile")).name == "पूजा"
+    assert (await get_state(db, "919000000001"))["preferred_language"] == "Hindi"
 
 
-@pytest.mark.asyncio
-async def test_saved_occasion_empty_state_bypasses_main_llm(db: AsyncSession):
-    phone = "+919876543227"
-    db.add(User(id=generate_id("usr"), phone=phone, name="NoOccUser", city_raw="Pune"))
-    await db.commit()
-
-    with patch("app.bot.agent._get_runner_for_phase") as mock_get_runner:
-        reply = await handle_message(db, phone, "show my occasions")
-        mock_get_runner.assert_not_called()
-
-    assert "I don't have any occasions saved for you yet" in reply
+async def test_multilingual_link_save_is_performed_only_by_the_called_tool(db, model_turn):
+    db.add(User(id="profile", phone="919000000001", name="Buyer"))
+    await db.flush()
+    seen = model_turn("Enlace guardado.", [("add_to_wishlist", {"url": "https://example.com/product/123"})])
+    assert await agent.handle_message(db, "919000000001", "Guarda este enlace https://example.com/product/123") == "Enlace guardado."
+    assert seen["results"][0]["success"]
+    assert (await db.scalar(select(WishlistItem))).url == "https://example.com/product/123"
 
 
-@pytest.mark.asyncio
-async def test_ambiguous_occasion_phrase_does_not_expose_saved_data(db: AsyncSession):
-    phone = "+919876543228"
-    user = User(id=generate_id("usr"), phone=phone, name="AmbiguousOcc", city_raw="Pune")
-    db.add(user)
-    db.add(
-        Occasion(
-            id=generate_id("occ"),
-            user_id=user.id,
-            contact_id=None,
-            type=OccasionType.WEDDING,
-            date=datetime(2026, 5, 7),
-            recurring=True,
-        )
-    )
-    await db.commit()
-
-    with patch("app.bot.agent._get_runner_for_phase") as mock_get_runner:
-        with patch("app.bot.agent._save_message", new=AsyncMock()):
-            await handle_message(db, phone, "what is an occasion")
-        assert mock_get_runner.called
+async def test_closure_tool_clears_pending_state_but_preserves_language(db, model_turn):
+    await set_state(db, "919000000001", "awaiting", "occasion_slots")
+    await set_state(db, "919000000001", "preferred_language", "Marathi")
+    model_turn("ठीक आहे.", [("set_chat_preferences", {"end_conversation": True})])
+    assert await agent.handle_message(db, "919000000001", "नको, एवढेच") == "ठीक आहे."
+    state = await get_state(db, "919000000001")
+    assert "awaiting" not in state and state["preferred_language"] == "Marathi"
 
 
-@pytest.mark.asyncio
-async def test_remove_wishlist_by_url_exact_phrase_bypasses_main_llm(db: AsyncSession):
-    phone = "+919876543223"
-    user = User(id=generate_id("usr"), phone=phone, name="WishUser", city_raw="Pune")
-    db.add(user)
-    db.add(
-        WishlistItem(
-            id=generate_id("wli"),
-            user_id=user.id,
-            title="Phone",
-            url="https://example.com/item",
-            purpose="self",
-        )
-    )
-    await db.commit()
-
-    with patch("app.bot.agent._get_runner_for_phase") as mock_get_runner:
-        with patch("app.bot.agent._save_message", new=AsyncMock()):
-            reply = await handle_message(db, phone, "remove from wishlist https://example.com/item")
-        mock_get_runner.assert_not_called()
-
-    assert "removed" in reply.lower() or "not found" in reply.lower()
+@pytest.mark.parametrize("text", ["suggest gifts", "मेरे ऑर्डर", "எனது பட்டியல்", "wishlist", "payment", "記念日"])
+def test_unavailable_router_never_narrows_by_message_language(text):
+    tools, _ = agent._select_tools_for_turn("browse", text, DEGRADED)
+    assert tools == agent._PHASE_TOOLS["browse"]
 
 
-@pytest.mark.asyncio
-async def test_remove_wishlist_by_item_id_exact_phrase_bypasses_main_llm(db: AsyncSession):
-    phone = "+919876543224"
-    user = User(id=generate_id("usr"), phone=phone, name="WishUser2", city_raw="Pune")
-    item_id = generate_id("wli")
-    db.add(user)
-    db.add(
-        WishlistItem(
-            id=item_id,
-            user_id=user.id,
-            title="Headphones",
-            url="https://example.com/hp",
-            purpose="self",
-        )
-    )
-    await db.commit()
-
-    with patch("app.bot.agent._get_runner_for_phase") as mock_get_runner:
-        with patch("app.bot.agent._save_message", new=AsyncMock()):
-            reply = await handle_message(db, phone, f"delete wishlist item {item_id}")
-        mock_get_runner.assert_not_called()
-
-    assert "removed" in reply.lower() or "not found" in reply.lower()
+def test_payment_budget_priority_uses_model_tool_intent():
+    route = RouteResult(intent="other", confidence=.99, source="llm", likely_tools=("get_order_support",))
+    assert agent._is_critical_turn("திரும்பப் பெற வேண்டும்", "browse", 0, route)
 
 
-@pytest.mark.asyncio
-async def test_ambiguous_orders_message_does_not_deterministically_short_circuit(db: AsyncSession):
-    phone = "+919876543225"
-    db.add(User(id=generate_id("usr"), phone=phone, name="Ambiguous", city_raw="Pune"))
-    await db.commit()
+async def test_multilingual_confirmation_saves_pending_date_via_action_tool(db, model_turn):
+    from app.bot.tools.tool_impl.occasions import add_occasion
+    from app.models import Occasion, Reminder
 
-    with patch("app.bot.agent._get_runner_for_phase") as mock_get_runner:
-        with patch("app.bot.agent._save_message", new=AsyncMock()):
-            await handle_message(db, phone, "my order was weird yesterday")
-        assert mock_get_runner.called
+    db.add(User(id="profile", phone="919000000001", name="Buyer"))
+    await db.flush()
+    args = {"contact_name": "आशा", "occasion_type": "BIRTHDAY", "date_day": 8, "date_month": 4, "date_input_numeric": True}
+    assert (await add_occasion(db, "919000000001", args))["error"] == "date_ambiguous"
+    seen = model_turn("आशाचा वाढदिवस जतन केला.", [("add_occasion", {**args, "date_confirmed": True})])
+    assert await agent.handle_message(db, "919000000001", "होय, आठ एप्रिल बरोबर आहे") == "आशाचा वाढदिवस जतन केला."
+    assert seen["results"][0]["success"]
+    assert (await db.scalar(select(Occasion))).date.month == 4
+    assert await db.scalar(select(Reminder.id))
+    assert "pending_occasion_confirmation" not in await get_state(db, "919000000001")
+
+
+async def test_unlimited_budget_is_extracted_by_tool_arguments_and_can_be_replaced(db, model_turn, monkeypatch):
+    from app.bot.tools.tool_impl import gifting
+    from app.bot.state_utils import update_active_gift_context
+    from app.core.config import settings
+
+    monkeypatch.setattr(gifting, "SOURCES", [])
+    monkeypatch.setattr(settings, "gift_refinement_enabled", False)
+    await update_active_gift_context(db, "919000000001", {"purpose": "self", "budget_max": 500}, sync_gift_plan=False)
+    model_turn("Presupuesto sin límite.", [("suggest_gifts", {"budget_unlimited": True, "recipient_vibe": "wall art", "vibes": ["wall_art"]})])
+    assert await agent.handle_message(db, "919000000001", "El precio no importa") == "Presupuesto sin límite."
+    state = await get_state(db, "919000000001")
+    assert state["active_gift_context"]["budget_unlimited"] and state["active_gift_context"].get("budget_max") is None
+    model_turn("Máximo mil rupias.", [("suggest_gifts", {"budget_max": 1000, "vibes": ["wall_art"]})])
+    await agent.handle_message(db, "919000000001", "Ahora el límite es mil rupias")
+    state = await get_state(db, "919000000001")
+    assert not state["active_gift_context"]["budget_unlimited"] and state["budget"]["max"] == 1000
+
+
+async def test_preference_reply_tool_uses_semantic_fields_and_checks_pending_owner(db, model_turn, monkeypatch):
+    from app.core.config import settings
+    from app.models.recipient_preference import PreferenceRequest, RecipientPreference
+    from app.bot.tools.tool_impl.recipient_preferences import record_recipient_preferences
+
+    monkeypatch.setattr(settings, "preference_interceptor_enabled", True)
+    db.add(PreferenceRequest(id="req_test", recipient_phone="+919000000001", requester_phone="919000000002", status="pending"))
+    await db.flush()
+    denied = await record_recipient_preferences(db, "919000000003", {"raw_response": "मुझे किताबें पसंद हैं"})
+    assert denied["error"] == "no_pending_preference_request"
+    seen = model_turn("तुमच्या आवडी जतन केल्या.", [("record_recipient_preferences", {"raw_response": "मला पुस्तके आवडतात, कपडे नको", "preferred_categories": ["books"], "disliked_categories": ["clothing"]})])
+    await agent.handle_message(db, "919000000001", "मला पुस्तके आवडतात, कपडे नको")
+    assert seen["results"][0]["saved"]
+    pref = await db.scalar(select(RecipientPreference))
+    assert pref.preferred_categories == "books" and pref.disliked_categories == "clothing"
+    assert (await db.get(PreferenceRequest, "req_test")).status == "responded"
+
+
+async def test_read_only_support_stays_available_at_registration_cap(db, model_turn, monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "launch_user_cap", 1)
+    db.add(User(id="existing", phone="919000000002", name="Existing"))
+    await db.flush()
+    seen = model_turn("Please contact hello@wishkr.com.", [("get_order_support", {})])
+    await agent.handle_message(db, "919000000001", "मदद चाहिए")
+    assert seen["results"][0]["support_email"] == "hello@wishkr.com"

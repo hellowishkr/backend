@@ -230,6 +230,26 @@ def _contract(
 # ─────────────────────────────────────────────────────────
 
 TOOL_DECLARATIONS: dict[str, FunctionDeclaration] = {
+    "get_order_support": _decl(
+        "get_order_support",
+        "Look up the caller's existing Wishkr orders, payment/refund status, tracking, or return/cancellation support. Available before registration and while new purchases are disabled. Supply an order ID only when known. Returns verified facts and support contact; never approves refunds or modifies an order. Phrase the facts in the user's language. Use this instead of list_orders for product orders and guest checkouts.",
+        _params({"order_id": _str("Existing order ID from this conversation. Omit to list recent owned orders.")}),
+    ),
+    "set_chat_preferences": _decl(
+        "set_chat_preferences",
+        "Save an explicit request to use any language, dialect, or code-switching style. Also use when the user ends/declines the current flow. Understand intent in any language; do not rely on fixed words. Returns saved state; phrase the acknowledgement naturally in the user's language.",
+        _params({"language": _str("User's requested language/style, such as Hindi, Marathi, Spanish, or Hinglish. No fixed language list."),
+                 "end_conversation": _bool("True only when the user ends or declines the current flow; clears pending flow state, not saved records.")}),
+    ),
+    "record_recipient_preferences": _decl(
+        "record_recipient_preferences",
+        "Record the caller's reply to a pending gift preference request. Infer preferences semantically in any language. Call only when the current message answers that request; unrelated messages must keep their own intent. Ownership and the live request are checked by the tool. Never reveal the gift giver's identity.",
+        _params({"raw_response": _str("The recipient's actual reply in their own language."),
+                 "preferred_categories": _arr("Categories they like, translated to concise matching labels.", _str("Category")),
+                 "disliked_categories": _arr("Explicitly rejected categories.", _str("Category")),
+                 "preferred_brands": _arr("Brands they like.", _str("Brand")),
+                 "disliked_brands": _arr("Brands they reject.", _str("Brand"))}, required=["raw_response"]),
+    ),
     "get_user_profile": _decl(
         "get_user_profile",
         _contract(
@@ -255,7 +275,7 @@ TOOL_DECLARATIONS: dict[str, FunctionDeclaration] = {
     "register_user": _decl(
         "register_user",
         _contract(
-            when="Create or complete the current user's Wishkr profile.",
+            when="Create, complete, or explicitly correct the current user's Wishkr profile name.",
             use_when=[
                 "User gives their name after onboarding.",
                 "User wants to create a Wishkr account.",
@@ -460,7 +480,12 @@ TOOL_DECLARATIONS: dict[str, FunctionDeclaration] = {
                 ),
                 "budget_min": _int("Lower budget bound in rupees. Omit unless explicit.", minimum=1),
                 "budget_max": _int("Upper budget bound in rupees. Omit unless explicit.", minimum=1),
+                "budget_unlimited": _bool("True when the user says any price/no budget limit, in any language. Clears older budget bounds. Pass false with new explicit bounds."),
                 "budget_text": _str("Free-form budget like '1k-3k', 'around 2000'. Prefer this over min/max when the user gives a fuzzy range."),
+                "desired_categories": _arr("Explicit requested gift categories; preserve them across follow-ups.", _str("One requested category.")),
+                "excluded_categories": _arr("Categories the user rejected, such as books or clothing. Never recommend these.", _str("One excluded category.")),
+                "gift_format": _str("Preferred gift format.", enum=["physical", "digital", "experience", "any"]),
+                "constraints": _obj("Customer requirements, including selected style and size.", {"notes": _str("Customer's explicit requirements, exclusions and style in their own words.")}),
                 "n": _int("How many suggestions to return. 5-8 default, 15 for 'show more', max 20.", minimum=1, maximum=20),
             },
             # scenario is optional — the server defaults to 'for_friend' when
@@ -1553,6 +1578,8 @@ TOOL_DECLARATIONS: dict[str, FunctionDeclaration] = {
                     "Unique day offsets requested by the user. Example: [1, 0] means one day before and on the day.",
                     _int("Whole days before the occasion; 0 means on the day.", minimum=0, maximum=365),
                 ),
+                "local_hour": _int("Requested hour in the user's saved timezone, using 24-hour time. Default 9.", minimum=0, maximum=23),
+                "local_minute": _int("Requested minute in the user's saved timezone. Default 0.", minimum=0, maximum=59),
             },
             required=["occasion_id", "days_before"],
         ),
@@ -1789,6 +1816,10 @@ class ToolSpec:
 # ─────────────────────────────────────────────────────────
 
 _TOOL_CONTRACTS: dict[str, dict] = {
+    "get_order_support": {"requires": [], "produces": ["orders", "order_verified", "support_email"], "depends_on": []},
+    "set_chat_preferences": {"requires": [], "produces": ["language", "conversation_ended"], "depends_on": []},
+    "record_recipient_preferences": {"requires": ["raw_response"], "produces": ["preference_id"], "depends_on": []},
+
     "get_user_profile": {
         "requires": [],
         "conditional_requires": {},

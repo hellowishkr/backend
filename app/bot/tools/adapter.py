@@ -115,6 +115,9 @@ def reset_context(token_db, token_phone, token_produced) -> None:
 FUNCTION_MAP: dict[str, Callable] = {
     "get_user_profile": functions.get_user_profile,
     "register_user": functions.register_user,
+    "get_order_support": functions.get_order_support,
+    "set_chat_preferences": functions.set_chat_preferences,
+    "record_recipient_preferences": functions.record_recipient_preferences,
     "add_occasion": functions.add_occasion,
     "list_occasions": functions.list_occasions,
     "get_my_occasions": functions.get_my_occasions,
@@ -1367,6 +1370,27 @@ async def search_vendors(
     return await execute_tool("search_vendors", args)
 
 
+async def get_order_support(order_id: str | None = None) -> dict:
+    return await execute_tool("get_order_support", {"order_id": order_id} if order_id else {})
+
+
+async def set_chat_preferences(language: str | None = None, end_conversation: bool = False) -> dict:
+    return await execute_tool("set_chat_preferences", {"language": language, "end_conversation": end_conversation})
+
+
+async def record_recipient_preferences(
+    raw_response: str, preferred_categories: list[str] | None = None,
+    disliked_categories: list[str] | None = None, preferred_brands: list[str] | None = None,
+    disliked_brands: list[str] | None = None,
+) -> dict:
+    args = {"raw_response": raw_response}
+    args.update({key: value for key, value in (
+        ("preferred_categories", preferred_categories), ("disliked_categories", disliked_categories),
+        ("preferred_brands", preferred_brands), ("disliked_brands", disliked_brands)
+    ) if value is not None})
+    return await execute_tool("record_recipient_preferences", args)
+
+
 async def suggest_gifts(
     scenario: str = "for_friend",
     occasion_id: str | None = None,
@@ -1375,7 +1399,12 @@ async def suggest_gifts(
     budget_min: int | None = None,
     budget_max: int | None = None,
     budget_text: str | None = None,
+    budget_unlimited: bool | None = None,
     n: int = 8,
+    desired_categories: list[str] | None = None,
+    excluded_categories: list[str] | None = None,
+    gift_format: str | None = None,
+    constraints: dict[str, Any] | None = None,
 ) -> dict:
     """ADK wrapper for suggest_gifts.
 
@@ -1395,6 +1424,13 @@ async def suggest_gifts(
         args["budget_max"] = budget_max
     if budget_text:
         args["budget_text"] = budget_text
+    if budget_unlimited is not None:
+        args["budget_unlimited"] = budget_unlimited
+    for key, value in (("desired_categories", desired_categories),
+                       ("excluded_categories", excluded_categories),
+                       ("gift_format", gift_format), ("constraints", constraints)):
+        if value is not None:
+            args[key] = value
     return await execute_tool("suggest_gifts", args)
 
 
@@ -1500,12 +1536,17 @@ async def get_reminder_history(occasion_id: str) -> dict:
     return await execute_tool("get_reminder_history", {"occasion_id": occasion_id})
 
 
-async def set_reminder_schedule(occasion_id: str, days_before: list[int]) -> dict:
+async def set_reminder_schedule(
+    occasion_id: str, days_before: list[int],
+    local_hour: int | None = None, local_minute: int | None = None,
+) -> dict:
     """ADK wrapper for replacing an occasion's pending reminder schedule."""
-    return await execute_tool(
-        "set_reminder_schedule",
-        {"occasion_id": occasion_id, "days_before": days_before},
-    )
+    args: dict[str, Any] = {"occasion_id": occasion_id, "days_before": days_before}
+    if local_hour is not None:
+        args["local_hour"] = local_hour
+    if local_minute is not None:
+        args["local_minute"] = local_minute
+    return await execute_tool("set_reminder_schedule", args)
 
 
 async def send_reminder_now(occasion_id: str, target_phone: str | None = None) -> dict:
@@ -1571,6 +1612,9 @@ def _make_tool(func: Callable) -> SchemaFunctionTool:
 ALL_TOOLS: list[SchemaFunctionTool] = [
     _make_tool(get_user_profile),
     _make_tool(register_user),
+    _make_tool(get_order_support),
+    _make_tool(set_chat_preferences),
+    _make_tool(record_recipient_preferences),
     _make_tool(add_occasion),
     _make_tool(list_occasions),
     _make_tool(get_my_occasions),

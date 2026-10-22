@@ -110,7 +110,8 @@ def _meta_status_payload(
     }
 
 
-def test_whatsapp_webhook_routes_immediate_text_to_bot(monkeypatch):
+@pytest.mark.parametrize("media_type", [None, "image", "video", "audio", "document"])
+def test_whatsapp_webhook_routes_immediate_text_to_bot(monkeypatch, media_type):
     seen: dict[str, str] = {}
     sent: list[tuple[str, str]] = []
 
@@ -134,22 +135,26 @@ def test_whatsapp_webhook_routes_immediate_text_to_bot(monkeypatch):
     monkeypatch.setattr(whatsapp_webhook, "_claim_processed_message", claim)
     monkeypatch.setattr(whatsapp_webhook, "_has_valid_meta_signature", lambda *_args: True)
     monkeypatch.setattr(whatsapp_webhook, "_stamp_last_inbound", noop)
-    monkeypatch.setattr(whatsapp_webhook, "_run_fast_router", no_fast_path)
     monkeypatch.setattr(whatsapp_webhook, "_mark_processed_done", noop)
     monkeypatch.setattr(whatsapp_webhook, "_process_message", fake_process)
     monkeypatch.setattr(whatsapp_webhook, "_send_reply", fake_send)
     monkeypatch.setattr(whatsapp_webhook.message_rate_limiter, "is_allowed", lambda _phone: True)
     monkeypatch.setattr(whatsapp_webhook._burst_rate_limiter, "is_allowed", lambda _phone: True)
-    monkeypatch.setattr(whatsapp_webhook, "should_send_ack", lambda _text: False)
 
-    response = _client().post(
-        "/webhooks/whatsapp",
-        json=_meta_text_payload(text="hi"),
-    )
+    payload = _meta_text_payload(text="hi")
+    expected_text = "hi"
+    if media_type:
+        message = payload["entry"][0]["changes"][0]["value"]["messages"][0]
+        message.pop("text")
+        message["type"] = media_type
+        message[media_type] = {"id": "test_media", "caption": "this one"}
+        expected_text = f"[media:{media_type}] this one"
+    monkeypatch.setattr(whatsapp_webhook, "_process_and_reply", whatsapp_webhook._process_immediate_and_reply)
+    response = _client().post("/webhooks/whatsapp", json=payload)
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
-    assert seen == {"phone": "919876543210", "text": "hi"}
+    assert seen == {"phone": "919876543210", "text": expected_text}
     assert sent == [("919876543210", "Bot reply from test")]
 
 
@@ -223,12 +228,10 @@ def test_whatsapp_webhook_slow_path_sends_ack_and_spawns_worker(monkeypatch):
     monkeypatch.setattr(whatsapp_webhook, "_claim_processed_message", claim)
     monkeypatch.setattr(whatsapp_webhook, "_has_valid_meta_signature", lambda *_args: True)
     monkeypatch.setattr(whatsapp_webhook, "_stamp_last_inbound", noop)
-    monkeypatch.setattr(whatsapp_webhook, "_run_fast_router", no_fast_path)
-    monkeypatch.setattr(whatsapp_webhook, "_send_ack", fake_ack)
+    monkeypatch.setattr(whatsapp_webhook.whatsapp_service, "send_text", fake_ack)
     monkeypatch.setattr(whatsapp_webhook, "_spawn_tracked", fake_spawn)
     monkeypatch.setattr(whatsapp_webhook.message_rate_limiter, "is_allowed", lambda _phone: True)
     monkeypatch.setattr(whatsapp_webhook._burst_rate_limiter, "is_allowed", lambda _phone: True)
-    monkeypatch.setattr(whatsapp_webhook, "should_send_ack", lambda _text: True)
 
     response = _client().post(
         "/webhooks/whatsapp",
@@ -237,7 +240,7 @@ def test_whatsapp_webhook_slow_path_sends_ack_and_spawns_worker(monkeypatch):
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
-    assert acks == [("919876543210", "please suggest a gift card for my wife")]
+    assert acks == []
     assert spawned == ["worker"]
 
 

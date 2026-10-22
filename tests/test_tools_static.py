@@ -217,15 +217,9 @@ def test_static_prompt_token_estimate_budget():
     assert est <= 2500, f"static prompt too large: ~{est} tokens"
 
 
-def test_tool_count_per_phase_expected():
-    counts = {phase: len(tools) for phase, tools in agent._PHASE_TOOLS.items()}
-    assert counts == {
-        "unregistered": 2,
-        "friend": 12,
-        # +1 each for `delete_all_occasions` (2026-08).
-        "checkout": 26,
-        "browse": 25,
-    }
+def test_support_and_language_tools_available_in_every_phase():
+    for tools in agent._PHASE_TOOLS.values():
+        assert {"get_order_support", "set_chat_preferences", "register_user"} <= {t.name for t in tools}
 
 
 def test_mvp_phase_tools_hide_marketplace_payment_tools():
@@ -289,7 +283,7 @@ def test_gemini_temperature_setting_is_used_by_agent():
 
 def test_critical_turn_classifier_protects_payment_paths():
     assert agent._is_critical_turn("checkout payment now", "browse", 0) is True
-    assert agent._is_critical_turn("show me gift ideas", "browse", 0) is False
+    assert agent._is_critical_turn("भेट सुचवा", "browse", 0, type("Route", (), {"source": "llm", "likely_tools": ("suggest_gifts",)})()) is False
     assert agent._is_critical_turn("anything", "checkout", 0) is True
 
 

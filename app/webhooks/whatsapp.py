@@ -10,7 +10,6 @@ import hashlib
 import hmac
 import json
 import logging
-import re
 import time
 from collections import OrderedDict
 from datetime import datetime, timezone
@@ -22,16 +21,12 @@ from sqlalchemy.exc import IntegrityError
 from app.core.config import settings
 from app.db.session import async_session
 from app.bot.agent import handle_message
-from app.bot.action_router import try_handle_product_urls_before_classifier
-from app.bot.canned_responses import WISHLIST_ADDED_RESPONSE
-from app.bot.intent_classifier import is_rule_based_affirmative
 from sqlalchemy import update
 from app.models import FailedOutboundMessage, ProcessedMessage, User
 from app.services.whatsapp import whatsapp_service
 from app.utils.db_retry import is_transient_db_error, retry_db_operation
 from app.utils.debounce import message_debouncer
 from app.utils.id_gen import generate_id
-from app.utils.link_utils import extract_urls, is_product_link
 from app.utils.observability import latency_bucket, mask_phone, metrics
 from app.utils.rate_limit import RateLimiter, message_rate_limiter, webhook_rate_limiter
 from app.utils.redis_client import get_redis
@@ -575,147 +570,6 @@ async def _send_reply(phone: str, response: str) -> None:
         await _record_failed_outbound(phone, response, "reply", str(e))
 
 
-def get_ack(text: str) -> str:
-    """Instant, rule-based acknowledgement. No LLM, <5ms.
-
-    Sent immediately after the webhook receives a non-fast-path message so the
-    user sees something in <300 ms while the main agent does its work.
-    """
-    text_lower = text.lower()
-
-    urls = extract_urls(text)
-    if any(is_product_link(u) for u in urls):
-        return "Adding it to your wishlist 👍"
-
-    if is_rule_based_affirmative(text):
-        return "Got it 👍"
-
-    if "gift" in text_lower:
-        return "Got it — let me suggest something 🎁"
-
-    return "Got it 👍"
-
-
-_MIXED_INTENT_NUDGE = "Want help choosing a gift too? 🎁"
-
-
-def _has_extra_text_beyond_links(text: str, urls: list[str]) -> bool:
-    """True if the message has meaningful (>2 chars) text beyond the URL(s).
-
-    Used to detect mixed-intent messages like "save this <url> what should i
-    gift rahul" so we can append a follow-up nudge without calling the LLM.
-    """
-    if not urls:
-        return False
-    remainder = text
-    for u in sorted(urls, key=len, reverse=True):
-        remainder = remainder.replace(u, " ")
-    remainder = re.sub(r"\s+", " ", remainder).strip()
-    return len(remainder) > 2
-
-
-def should_send_ack(text: str) -> bool:
-    """Return True only for messages likely to benefit from an instant ACK."""
-    t = (text or "").lower().strip()
-
-    # Short conversational turns usually feel better with a direct reply.
-    if len(t) <= 15:
-        return False
-
-    greetings = ["hi", "hello", "hey", "hii", "yo"]
-    if any(t.startswith(g) for g in greetings):
-        return False
-
-    small_talk = [
-        "how are you",
-        "what's up",
-        "how u doing",
-        "kaise ho",
-    ]
-    if any(s in t for s in small_talk):
-        return False
-
-    return True
-
-
-async def _run_fast_router(phone: str, message_text: str) -> str | None:
-    """Try to handle the message via the deterministic pre-LLM router.
-
-    Uses a fresh, short-lived DB session — never reuses a request-scoped one.
-    Returns the reply text if handled, else None.
-    """
-    async with async_session() as db:
-        try:
-            reply = await try_handle_product_urls_before_classifier(
-                db, phone, message_text
-            )
-            if reply is not None:
-                await db.commit()
-                return reply
-            await db.rollback()
-            return None
-        except Exception as e:
-            logger.error(
-                "fast-router error for %s: %s", mask_phone(phone), e, exc_info=True,
-            )
-            try:
-                await db.rollback()
-            except Exception:
-                pass
-            return None
-
-
-# Delay before the ACK actually leaves the webhook. If the real reply lands
-# inside this window (captured in `_RECENT_REPLIES`), the ACK is suppressed —
-# fast turns no longer show a redundant "Got it 👍" ahead of the real answer.
-# Sized so slow turns still get their sub-1s perceived-latency buffer.
-_ACK_SUPPRESS_DELAY_SECONDS = 0.8
-
-
-async def _send_ack(phone: str, text: str) -> None:
-    """Fire-and-forget ACK (cooldown-gated + delay-suppressed).
-
-    Behaviour:
-      1. Cooldown — don't re-ACK the same phone inside ``_ACK_COOLDOWN_SECONDS``.
-      2. Delay — wait ``_ACK_SUPPRESS_DELAY_SECONDS`` before actually sending.
-         If the real agent reply arrived during the wait (recorded in
-         ``_RECENT_REPLIES`` by ``_send_reply``), skip the ACK entirely.
-         Kills the visible "Got it 👍 / real reply" noise on fast turns
-         without compromising the perceived-latency guarantee on slow ones.
-    """
-    now = time.time()
-    last = await _ack_get(phone)
-    if last is not None and (now - last[0]) < _ACK_COOLDOWN_SECONDS:
-        return  # Already ACKed this burst.
-
-    # Reserve the slot now so a parallel webhook for the same phone doesn't
-    # also race into the ACK path.
-    ack_text = get_ack(text)
-    await _ack_set(phone, now, ack_text)
-
-    # Wait the suppression window, then check whether the real reply already
-    # went out for this phone. Any reply recorded since `now` indicates the
-    # agent beat us — suppress.
-    try:
-        await asyncio.sleep(_ACK_SUPPRESS_DELAY_SECONDS)
-    except asyncio.CancelledError:
-        return
-
-    if await _real_reply_sent_since(phone, now):
-        metrics.inc("ack_suppressed_fast_turn")
-        logger.debug("[%s] suppressing ACK — real reply already sent", mask_phone(phone))
-        # Roll back the ACK slot so a follow-up message that DOES need
-        # an ACK isn't blocked by the one we chose to skip.
-        await _ack_rollback(phone, now)
-        return
-
-    try:
-        await whatsapp_service.send_text(phone, ack_text)
-    except Exception as e:
-        logger.error("Failed to send ACK to %s: %s", mask_phone(phone), e)
-        await _record_failed_outbound(phone, ack_text, "ack", str(e))
-
-
 _FINAL_FALLBACK_TEXT = "Sorry, something went wrong. Try again 🙏"
 
 
@@ -1014,6 +868,10 @@ async def whatsapp_webhook(request: Request):
                         except Exception as e:
                             logger.error("Error parsing contacts message: %s", e, exc_info=True)
 
+                    if not message_text and msg_type in {"image", "video", "audio", "document", "sticker"}:
+                        caption = (msg.get(msg_type) or {}).get("caption") or ""
+                        message_text = f"[media:{msg_type}] {caption}".strip()
+
                     if not message_text:
                         logger.info(
                             "Skipping non-text message type=%s from %s",
@@ -1056,64 +914,6 @@ async def whatsapp_webhook(request: Request):
                     # survives a handler-side rollback.
                     await _stamp_last_inbound(phone)
 
-                    # ---- Fast path ------------------------------------------------
-                    # Product-URL preflight is deterministic, cheap (<200 ms) and
-                    # does not need an ACK — the user sees the canned save-reply
-                    # directly. The path NEVER touches the classifier, Gemini,
-                    # or the debouncer (audited: `_run_fast_router` only calls
-                    # `try_handle_product_urls_before_classifier`).
-                    t0 = time.time()
-                    fast_reply = await _run_fast_router(phone, message_text)
-                    if fast_reply is not None:
-                        elapsed_ms = (time.time() - t0) * 1000
-                        metrics.inc("fast_path_hits")
-                        # Mixed-intent nudge: only when the save actually
-                        # succeeded AND the user wrote more than just the URL.
-                        if fast_reply == WISHLIST_ADDED_RESPONSE:
-                            urls = extract_urls(message_text)
-                            if _has_extra_text_beyond_links(message_text, urls):
-                                fast_reply = f"{fast_reply}\n\n{_MIXED_INTENT_NUDGE}"
-                        logger.info(
-                            "[FAST_PATH] no LLM used | phone=%s elapsed=%.0fms",
-                            mask_phone(phone), elapsed_ms,
-                        )
-                        logger.info(
-                            "latency",
-                            extra={
-                                "type": "fast",
-                                "phone": mask_phone(phone),
-                                "duration_ms": elapsed_ms,
-                                "bucket": latency_bucket(elapsed_ms),
-                            },
-                        )
-                        # One transient retry: the wamid is already in the
-                        # dedup LRU at this point, so a Meta retry will be
-                        # silently dropped and the user would never see the
-                        # confirmation. A short retry covers Meta's typical
-                        # 5xx blip without queue infra.
-                        for attempt in range(2):
-                            try:
-                                await whatsapp_service.send_text(phone, fast_reply)
-                                await _mark_processed_done(wamid)
-                                break
-                            except Exception as e:
-                                if attempt == 0:
-                                    logger.warning(
-                                        "Fast reply send failed for %s, retrying: %s",
-                                        mask_phone(phone), e,
-                                    )
-                                    metrics.inc("fast_send_retries")
-                                    await asyncio.sleep(0.25)
-                                    continue
-                                metrics.inc("fast_send_failures")
-                                logger.error(
-                                    "Failed to send fast reply to %s after retry: %s",
-                                    mask_phone(phone), e,
-                                )
-                                await _record_failed_outbound(phone, fast_reply, "fast_reply", str(e))
-                                await _mark_processed_done(wamid)
-                        continue
-
                     # ---- Backpressure --------------------------------------------
                     # Fast path didn't take it — we're about to spawn a slow-path
                     # task. If we're already at the active-task ceiling, shed load
@@ -1137,47 +937,10 @@ async def whatsapp_webhook(request: Request):
                             )
                         continue
 
-                    # ---- Slow path -----------------------------------------------
-                    # ACK first (awaited, with a strict 0.5 s ceiling) so it
-                    # ALWAYS lands before the final reply — and never delays the
-                    # webhook past Meta's 5 s response budget. The heavy work
-                    # is then handed to a tracked background task.
-                    if should_send_ack(message_text):
-                        metrics.inc("slow_path_dispatched")
-                        ack_t0 = time.time()
-                        try:
-                            await asyncio.wait_for(
-                                _send_ack(phone, message_text),
-                                timeout=_ACK_SEND_TIMEOUT_SECONDS,
-                            )
-                        except asyncio.TimeoutError:
-                            metrics.inc("ack_timeouts")
-                            logger.warning(
-                                "ACK send timed out for %s after %.2fs — continuing",
-                                mask_phone(phone), _ACK_SEND_TIMEOUT_SECONDS,
-                            )
-                        except Exception as e:
-                            metrics.inc("ack_failures")
-                            logger.warning(
-                                "ACK send failed for %s: %s — continuing",
-                                mask_phone(phone), e,
-                            )
-                        finally:
-                            ack_ms = (time.time() - ack_t0) * 1000
-                            logger.info(
-                                "latency",
-                                extra={
-                                    "type": "ack",
-                                    "phone": mask_phone(phone),
-                                    "duration_ms": ack_ms,
-                                    "bucket": latency_bucket(ack_ms),
-                                },
-                            )
-
-                        _spawn_tracked(_process_and_reply(phone, message_text, wamid))
-                    else:
-                        metrics.inc("immediate_path_dispatched")
-                        await _process_immediate_and_reply(phone, message_text, wamid)
+                    # Return Meta's acknowledgement promptly; the model handles
+                    # every conversational message in a tracked background task.
+                    metrics.inc("slow_path_dispatched")
+                    _spawn_tracked(_process_and_reply(phone, message_text, wamid))
 
         return {"status": "ok"}
 

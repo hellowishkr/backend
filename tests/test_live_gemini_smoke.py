@@ -104,7 +104,6 @@ def test_live_gemini_whatsapp_webhook_smoke(monkeypatch):
     monkeypatch.setattr(whatsapp_webhook.whatsapp_service, "send_text", fake_send_text)
     # Keep the smoke deterministic: "hi" takes the immediate path and should
     # wait for the final bot reply instead of spawning a background worker.
-    monkeypatch.setattr(whatsapp_webhook, "should_send_ack", lambda _text: False)
 
     phone = os.getenv("LIVE_GEMINI_SMOKE_PHONE", "919000000001")
     wamid = f"wamid.live-smoke.{int(time.time() * 1000)}"

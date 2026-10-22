@@ -55,4 +55,6 @@ def is_rule_based_affirmative(text: str) -> bool:
     norm = " ".join((text or "").strip().lower().split())
     if not norm or len(norm) > 12:
         return False
+    if re.fullmatch(r"ye+s+[!.?]*", norm):
+        return True
     return _TRAILING_PUNCT_RE.sub("", norm) in AFFIRMATIVE_WORDS

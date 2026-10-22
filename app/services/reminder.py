@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Occasion, Reminder, ReminderStatus, User
 from app.utils.id_gen import generate_id
+from app.utils.dates import next_occurrence
 from app.utils.timezones import (
     local_schedule_utc,
     occasion_calendar_date,
@@ -71,6 +72,10 @@ async def schedule_celebrant_greeting(db: AsyncSession, occasion: Occasion) -> b
     occasion_date = occasion.date
     now = datetime.now(timezone.utc)
     user = await db.get(User, occasion.user_id)
+    occasion_date = next_occurrence(occasion, now, reference_date=today_for_user(user, now))
+    if occasion_date != occasion.date:
+        occasion.date = occasion_date
+        db.add(occasion)
 
     # Day-of at 09:00 in the occasion owner's saved timezone.
     scheduled = local_schedule_utc(occasion_date, user)
@@ -133,6 +138,11 @@ async def schedule_reminders(
     occasion_date = occasion.date
     now = datetime.now(timezone.utc)
     user = await db.get(User, occasion.user_id)
+    occasion_date = next_occurrence(occasion, now, reference_date=today_for_user(user, now))
+    if occasion_date != occasion.date:
+        occasion.date = occasion_date
+        db.add(occasion)
+
     days_until = (
         occasion_calendar_date(occasion_date)
         - today_for_user(user, now)

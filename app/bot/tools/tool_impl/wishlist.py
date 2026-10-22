@@ -7,7 +7,7 @@ from app.utils.timezones import today_for_user
 
 
 async def add_to_wishlist(db: AsyncSession, phone: str, args: dict) -> dict:
-    """LLM fallback for wishlist saves the regex preflight didn't catch.
+    """Save a product link after the model identifies the user's intent.
 
     Accepts any URL the model passes. Lightly normalizes (adds https://),
     rejects obvious non-products via deny-list, then delegates to the

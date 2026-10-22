@@ -36,6 +36,11 @@ class GiftNeedProfile:
     selected_provider_id: str | None = None
     budget_min: int | None = None
     budget_max: int | None = None
+    budget_unlimited: bool = False
+    desired_categories: list[str] | None = None
+    excluded_categories: list[str] | None = None
+    constraints: dict[str, str] | None = None
+    gift_format: str | None = None
     current_step: str | None = None
     recipient_message_permission: bool | None = None
     updated_at: str | None = None

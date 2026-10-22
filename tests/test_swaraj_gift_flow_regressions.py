@@ -26,19 +26,11 @@ os.environ.setdefault("DATABASE_URL", "sqlite:////tmp/wishkr_swaraj_test.db")
 from app.core.config import settings  # noqa: E402
 settings.database_url = "sqlite:////tmp/wishkr_swaraj_test.db"
 
-from app.bot.action_router import (  # noqa: E402
-    _has_active_gift_for_friend_flow,
-    try_handle_exact_phrases,
-    try_handle_product_urls_before_classifier,
-    try_handle_actions,
-)
-from app.bot.canned_responses import MENU_RESPONSE, PRODUCT_GATE_RESPONSE  # noqa: E402
 from app.bot.gift_taxonomy import (  # noqa: E402
     OCCASION_DEFAULT_VIBES,
     VIBE_TO_HUBBLE_BRANDS,
     all_vibe_ids,
 )
-from app.bot.intent_classifier import IntentResult  # noqa: E402
 from app.models import Contact, Occasion, OccasionType, User  # noqa: E402
 from app.utils.id_gen import generate_id  # noqa: E402
 
@@ -48,79 +40,8 @@ from app.utils.id_gen import generate_id  # noqa: E402
 # ──────────────────────────────────────────────────────────────────────────
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        "my occasions",
-        "show my occasions",
-        "list my occasions",
-        "recall occasions",
-        "recall the occasions",
-        "history of my occasions",
-        "what occasions have i saved",
-        # Long-form entries that already sit in the exact-phrase table.
-        "Can u recall whatever occasions I have told you till now",
-        "I want history of my occasions I have told you",
-    ],
-)
-@pytest.mark.asyncio
-async def test_exact_recall_phrases_answer_without_an_llm(
-    db: AsyncSession, text: str,
-) -> None:
-    """Exact recall phrases stay on the zero-LLM lookup path.
-
-    These are whole-message matches, so no interpretation is needed and the
-    turn should cost nothing. Phrasings OUTSIDE this exact set (e.g. "can you
-    recall whatever occasions I have told you till now") are deliberately no
-    longer keyword-matched — see the test below.
-    """
-    phone = "+919000000021"
-    db.add(User(id=generate_id("usr"), phone=phone, name="Karan", city_raw="Pune"))
-    await db.commit()
-    user = (await db.execute(_user_select(phone))).scalar_one()
-
-    with patch("app.bot.action_router.append_message", new=AsyncMock()):
-        reply = await try_handle_exact_phrases(db, phone, text, user=user)
-
-    assert reply is not None, f"Expected {text!r} to be answered without an LLM"
-    assert "occasion" in reply.lower()
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        "What are my upcoming ocassions?",
-        # The 2026-08 bug: a reply to our own question that merely CONTAINS
-        # "birthday" must never be treated as a list request.
-        "Myra - birthday - 7th Aug",
-        "Uttu, birthday, 9th Aug",
-    ],
-)
-@pytest.mark.asyncio
-async def test_conversational_phrasings_go_to_the_intent_router(
-    db: AsyncSession, text: str,
-) -> None:
-    """Anything not an exact match must fall through to be understood.
-
-    Previously these were keyword-matched, which is precisely how
-    "Myra - birthday - 7th Aug" — an ANSWER to the bot's own question — got
-    answered with "I don't have any occasions saved for you yet" while
-    occasions existed. The exact-phrase table must not guess; the intent
-    router reads these with conversation history.
-    """
-    phone = "+919000000022"
-    db.add(User(id=generate_id("usr"), phone=phone, name="Karan", city_raw="Pune"))
-    await db.commit()
-    user = (await db.execute(_user_select(phone))).scalar_one()
-
-    with patch("app.bot.action_router.append_message", new=AsyncMock()) as mock_append:
-        reply = await try_handle_exact_phrases(db, phone, text, user=user)
-
-    assert reply is None, (
-        f"Expected {text!r} to fall through to the intent router, "
-        f"got canned reply: {reply!r}"
-    )
-    mock_append.assert_not_called()
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -128,32 +49,6 @@ async def test_conversational_phrasings_go_to_the_intent_router(
 # ──────────────────────────────────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
-async def test_more_options_during_gift_flow_does_not_dump_menu(
-    db: AsyncSession,
-) -> None:
-    """A long "...more options..." message must never dump the system menu.
-
-    It used to: an intent label of `menu_request` fired MENU_RESPONSE and blew
-    away the recipient + interest + budget context. No label can force that
-    now — only an EXACT whole-message match reaches the menu — so this message
-    passes through to the agent, which has the flow in view."""
-    phone = "+919000000010"
-    db.add(User(id=generate_id("usr"), phone=phone, name="Karan", city_raw="Pune"))
-    await db.commit()
-
-    with patch("app.bot.action_router.append_message", new=AsyncMock()) as mock_append:
-        reply = await try_handle_exact_phrases(
-            db, phone,
-            "Can you suggest me more option like 10/15 options",
-            user=(await db.get(User, (await db.execute(_user_select(phone))).scalar_one().id)),
-        )
-
-    assert reply is None, (
-        "Expected the router to pass through to the agent — "
-        f"got canned reply: {reply!r}"
-    )
-    mock_append.assert_not_called()
 
 
 def _user_select(phone: str):
@@ -161,21 +56,6 @@ def _user_select(phone: str):
     return _select(User).where(User.phone == phone)
 
 
-@pytest.mark.asyncio
-async def test_exact_menu_still_returns_canned_menu(db: AsyncSession) -> None:
-    """Sanity check: the tightening above must not break the actual
-    'menu'/'help' short-circuits."""
-    phone = "+919000000011"
-    db.add(User(id=generate_id("usr"), phone=phone, name="Karan", city_raw="Pune"))
-    await db.commit()
-
-    user = (
-        await db.execute(_user_select(phone))
-    ).scalar_one()
-
-    with patch("app.bot.action_router.append_message", new=AsyncMock()):
-        reply = await try_handle_exact_phrases(db, phone, "menu", user=user)
-    assert reply == MENU_RESPONSE
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -183,97 +63,10 @@ async def test_exact_menu_still_returns_canned_menu(db: AsyncSession) -> None:
 # ──────────────────────────────────────────────────────────────────────────
 
 
-@pytest.mark.asyncio
-async def test_product_gate_skipped_when_friend_birthday_within_window(
-    db: AsyncSession,
-) -> None:
-    """User saved Swaraj's birthday today, then asked "Suggest me brands for
-    headphones". The cold "add to YOUR wishlist" gate must be suppressed —
-    the agent should answer with full recipient context."""
-    phone = "+919000000012"
-    user = User(
-        id=generate_id("usr"), phone=phone, name="Karan", city_raw="Pune",
-    )
-    contact = Contact(
-        id=generate_id("con"), user_id=user.id, name="Swaraj",
-        relationship_type="friend",
-    )
-    today = datetime.now(timezone.utc)
-    occ = Occasion(
-        id=generate_id("occ"), user_id=user.id, contact_id=contact.id,
-        type=OccasionType.BIRTHDAY, date=today, recurring=True,
-    )
-    db.add_all([user, contact, occ])
-    await db.commit()
-
-    rule = IntentResult("product_question", 0.85, "llm")
-
-    with patch("app.bot.action_router.append_message", new=AsyncMock()) as mock_append:
-        reply = await try_handle_actions(
-            db, phone, "Suggest me brands for headphones",
-            user=user, intent_result=rule,
-        )
-
-    assert reply is None, (
-        "Active gift-for-friend flow must bypass the product gate; "
-        f"got canned reply: {reply!r}"
-    )
-    # The router must not echo the user message into history either —
-    # the agent will save it on its own turn.
-    mock_append.assert_not_called()
 
 
-@pytest.mark.asyncio
-async def test_product_gate_still_fires_for_cold_user_no_recent_occasion(
-    db: AsyncSession,
-) -> None:
-    """Mirror test: a user without any recent contact-bound occasion
-    should still see the product gate when asking 'earbuds pls'."""
-    phone = "+919000000013"
-    user = User(
-        id=generate_id("usr"), phone=phone, name="Solo", city_raw="Pune",
-    )
-    db.add(user)
-    await db.commit()
-
-    rule = IntentResult("product_question", 0.85, "llm")
-
-    with patch("app.bot.action_router.append_message", new=AsyncMock()):
-        with patch("app.bot.action_router.set_state", new=AsyncMock()):
-            reply = await try_handle_actions(
-                db, phone, "earbuds pls",
-                user=user, intent_result=rule,
-            )
-
-    assert reply == PRODUCT_GATE_RESPONSE
 
 
-@pytest.mark.asyncio
-async def test_active_gift_helper_ignores_far_future_occasions(
-    db: AsyncSession,
-) -> None:
-    """The helper must not flag a contact occasion that's months away as
-    "active flow" — otherwise every user with an upcoming friend birthday
-    permanently loses the product gate."""
-    phone = "+919000000014"
-    user = User(
-        id=generate_id("usr"), phone=phone, name="Karan", city_raw="Pune",
-    )
-    contact = Contact(
-        id=generate_id("con"), user_id=user.id, name="Faraway",
-        relationship_type="friend",
-    )
-    far = datetime.now(timezone.utc) + timedelta(days=120)
-    db.add_all([
-        user, contact,
-        Occasion(
-            id=generate_id("occ"), user_id=user.id, contact_id=contact.id,
-            type=OccasionType.BIRTHDAY, date=far, recurring=True,
-        ),
-    ])
-    await db.commit()
-
-    assert await _has_active_gift_for_friend_flow(db, user) is False
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -986,55 +779,6 @@ async def test_add_to_wishlist_passes_when_purpose_gift_matches_active_context(
     assert result.get("success") is True, result
 
 
-@pytest.mark.asyncio
-async def test_router_product_url_save_uses_active_friend_context(
-    db: AsyncSession,
-) -> None:
-    """The pre-classifier URL saver bypasses ADK, so it must still honor
-    active_gift_context and save a friend gift idea against the recipient
-    occasion instead of silently creating a self wishlist item."""
-    from sqlalchemy import select as _select
-    from app.bot.state_utils import update_active_gift_context
-    from app.models import WishlistItem
-
-    phone = "+919000000085"
-    user = await _seed_user(db, phone)
-    contact = Contact(
-        id=generate_id("con"), user_id=user.id, name="Swaraj",
-        relationship_type="friend",
-    )
-    occ = Occasion(
-        id=generate_id("occ"), user_id=user.id, contact_id=contact.id,
-        type=OccasionType.BIRTHDAY,
-        date=datetime.now(timezone.utc),
-        recurring=True,
-    )
-    db.add_all([contact, occ])
-    await db.commit()
-
-    await update_active_gift_context(
-        db,
-        phone,
-        {
-            "recipient_name": "Swaraj",
-            "purpose": "gift_for_friend",
-            "occasion_id": occ.id,
-        },
-    )
-
-    reply = await try_handle_product_urls_before_classifier(
-        db,
-        phone,
-        "save this https://www.amazon.in/dp/B0AAAAAAA1",
-    )
-
-    assert reply == "Added to wishlist 👍"
-    rows = (
-        await db.execute(_select(WishlistItem).where(WishlistItem.user_id == user.id))
-    ).scalars().all()
-    assert len(rows) == 1
-    assert rows[0].purpose == "gift"
-    assert rows[0].recipient_occasion_id == occ.id
 
 
 @pytest.mark.asyncio

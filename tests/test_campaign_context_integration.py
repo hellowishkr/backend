@@ -65,7 +65,7 @@ def _patch_new_session(phone: str):
 
 
 @pytest.mark.asyncio
-async def test_template_send_then_hi_uses_campaign_specific_greeting(db: SAAsyncSession):
+async def test_template_send_then_hi_uses_campaign_specific_greeting(db: SAAsyncSession, model_turn):
     phone = "919876500001"
 
     with patch(
@@ -86,31 +86,29 @@ async def test_template_send_then_hi_uses_campaign_specific_greeting(db: SAAsync
     assert ctx.template_name == "welcome_problem_duplicate"
     assert ctx.consumed_at is None
 
-    with _patch_new_session(phone), patch("app.bot.agent._get_runner_for_phase") as mock_get_runner:
+    seen = model_turn("Hello, let's avoid duplicate gifts.")
+    with _patch_new_session(phone):
         reply = await agent.handle_message(db, phone, "Hi")
-        mock_get_runner.assert_not_called()
-
-    assert "avoid buying the same gift" in reply
-    assert reply.endswith("what should I call you?")
+    assert reply == "Hello, let's avoid duplicate gifts."
+    assert "Acquisition context (data): welcome_problem_duplicate" in seen["messages"][0]
 
     await db.refresh(ctx)
     assert ctx.consumed_at is not None
 
 
 @pytest.mark.asyncio
-async def test_hi_without_campaign_context_uses_default_greeting(db: SAAsyncSession):
+async def test_hi_without_campaign_context_uses_default_greeting(db: SAAsyncSession, model_turn):
     phone = "919876500002"
 
-    with _patch_new_session(phone), patch("app.bot.agent._get_runner_for_phase") as mock_get_runner:
-        reply = await agent.handle_message(db, phone, "Hi")
-        mock_get_runner.assert_not_called()
-
-    assert "I'm Wishkr" in reply
-    assert "what should I call you?" in reply
+    seen = model_turn("नमस्ते! आपको किस चीज़ में मदद चाहिए?")
+    with _patch_new_session(phone):
+        reply = await agent.handle_message(db, phone, "नमस्ते")
+    assert reply.startswith("नमस्ते")
+    assert "Acquisition context (data):" not in seen["messages"][0]
 
 
 @pytest.mark.asyncio
-async def test_hi_consumes_campaign_context_so_it_cannot_be_replayed(db: SAAsyncSession):
+async def test_hi_consumes_campaign_context_so_it_cannot_be_replayed(db: SAAsyncSession, model_turn):
     """The campaign row is marked consumed on first use, per-phone, once.
 
     Repeated-"hi" replay behavior (not re-showing campaign copy on a
@@ -130,10 +128,11 @@ async def test_hi_consumes_campaign_context_so_it_cannot_be_replayed(db: SAAsync
         )
         await db.commit()
 
-    with _patch_new_session(phone), patch("app.bot.agent._get_runner_for_phase") as mock_get_runner:
-        first_reply = await agent.handle_message(db, phone, "Hi")
-        mock_get_runner.assert_not_called()
-    assert "gift decisions less confusing" in first_reply
+    seen = model_turn("Hola, puedo ayudarte con regalos.")
+    with _patch_new_session(phone):
+        first_reply = await agent.handle_message(db, phone, "Hola")
+    assert first_reply.startswith("Hola")
+    assert "welcome_problem_gifts" in seen["messages"][0]
 
     ctx = (await db.execute(
         select(CampaignContext).where(CampaignContext.phone == phone)

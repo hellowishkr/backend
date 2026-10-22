@@ -23,6 +23,7 @@ from app.models import (
     CelebrantOccasion,
     CelebrantFriend,
     Purchase,
+    Order,
 )
 from app.models.recipient_preference import PreferenceRequest
 
@@ -49,6 +50,7 @@ _TABLES = [
     # Occasion.purchases is a lazy relationship, so deleting an occasion makes
     # SQLAlchemy read this table even when no purchase exists.
     Purchase.__table__,
+    Order.__table__,
 ]
 
 
@@ -114,3 +116,45 @@ async def db() -> AsyncSession:
         yield session
 
     await engine.dispose()
+
+
+@pytest.fixture
+def model_turn(monkeypatch):
+    """Exercise real orchestration/tools while replacing only model/network edges."""
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from app.bot import agent
+    from app.bot.intent_router import DEGRADED
+    from app.bot.tools.adapter import execute_tool
+    from app.utils.circuit_breaker import CircuitBreaker
+
+    @asynccontextmanager
+    async def no_db_lock(*args):
+        yield
+
+    monkeypatch.setattr(agent, "_db_phone_lock", no_db_lock)
+    monkeypatch.setattr(agent, "_get_or_create_session", AsyncMock(return_value=(SimpleNamespace(id="test_session", events=[]), False)))
+    monkeypatch.setattr(agent, "_trim_session_events", AsyncMock())
+    monkeypatch.setattr(agent, "_log_llm_usage", AsyncMock())
+    monkeypatch.setattr(agent, "get_daily_budget_usage", AsyncMock(return_value=(0, 100, 0)))
+    monkeypatch.setattr(agent, "check_all_budgets", AsyncMock(return_value=(True, None)))
+    monkeypatch.setattr(agent, "check_and_bump", AsyncMock(return_value=SimpleNamespace(allowed=True)))
+    monkeypatch.setattr(agent, "_gemini_breaker", CircuitBreaker(failure_threshold=5, window_seconds=30, cooldown_seconds=30))
+
+    def setup(reply, actions=(), route=DEGRADED):
+        seen = {"messages": [], "results": []}
+        async def run_async(**kwargs):
+            seen["messages"].append(kwargs["new_message"].parts[0].text)
+            for name, args in actions:
+                yield SimpleNamespace(content=None, get_function_calls=lambda: [SimpleNamespace(name=name, args=args)])
+                result = await execute_tool(name, args)
+                seen["results"].append(result)
+                yield SimpleNamespace(content=None, get_function_responses=lambda: [SimpleNamespace(name=name, response=result)])
+            yield SimpleNamespace(content=SimpleNamespace(role="model", parts=[SimpleNamespace(text=reply)]))
+        runner = SimpleNamespace(run_async=run_async)
+        get_runner = lambda *args: runner
+        monkeypatch.setattr(agent, "_get_runner_for_phase", get_runner)
+        monkeypatch.setattr(agent, "route_intent", AsyncMock(return_value=route))
+        return seen
+    return setup

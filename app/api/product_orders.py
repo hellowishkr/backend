@@ -6,7 +6,7 @@ from decimal import Decimal
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -22,6 +22,7 @@ from app.services.delivery_estimate import earliest_delivery_date
 from app.services.razorpay_service import razorpay_service
 from app.services.storefront_pricing import get_storefront_pricing
 from app.utils.id_gen import generate_id
+from app.utils.phones import normalize_phone, user_for_phone
 from app.utils.rate_limit import RateLimiter
 from app.utils.serviceability import check_product_serviceability
 
@@ -77,6 +78,11 @@ class CustomerPayload(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     phone: str = Field(min_length=5, max_length=20)
     email: str | None = Field(default=None, max_length=255)
+
+    @field_validator("phone")
+    @classmethod
+    def canonical_phone(cls, value: str) -> str:
+        return normalize_phone(value)
 
 
 class ShippingAddressPayload(BaseModel):
@@ -160,9 +166,7 @@ class ProductOrderQuote:
 
 
 async def get_or_create_customer(db: AsyncSession, customer: CustomerPayload) -> User:
-    user = (
-        await db.execute(select(User).where(User.phone == customer.phone))
-    ).scalar_one_or_none()
+    user = await user_for_phone(db, customer.phone)
     if user is None:
         user = User(
             id=generate_id("usr"),
@@ -175,9 +179,12 @@ async def get_or_create_customer(db: AsyncSession, customer: CustomerPayload) ->
         await db.flush()
         return user
 
-    user.name = customer.name or user.name
-    if customer.email:
-        user.email = customer.email
+    # Public checkout may reuse an identity; it must not overwrite a registered
+    # profile's name or email using unverified form input.
+    if user.is_guest:
+        user.name = customer.name or user.name
+        if customer.email:
+            user.email = customer.email
     db.add(user)
     await db.flush()
     return user

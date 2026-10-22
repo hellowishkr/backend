@@ -64,9 +64,9 @@ async def _authorized_user_and_occasion(
     phone: str,
     occasion_reference: str,
 ) -> tuple[User, Occasion] | None:
-    user = (
-        await db.execute(select(User).where(User.phone == phone))
-    ).scalar_one_or_none()
+    from app.utils.phones import user_for_phone
+
+    user = await user_for_phone(db, phone)
     if not user:
         return None
     occasion = await _resolve_occasion(db, occasion_reference)

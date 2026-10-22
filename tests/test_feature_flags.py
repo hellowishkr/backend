@@ -122,75 +122,9 @@ class TestPreferenceOutboundFlag:
                 assert result == {"status": "sent"}
 
 
-class TestPreferenceInterceptorFlag:
-    """Test preference_interceptor_enabled flag controls message interception."""
 
-    @pytest.mark.asyncio
-    async def test_preference_interceptor_disabled(self, db: AsyncSession):
-        """When preference_interceptor_enabled=False, returns None (normal agent flow)."""
-        from app.bot.agent import _handle_preference_reply_if_pending
 
-        with patch("app.bot.agent.settings.preference_interceptor_enabled", False):
-            result = await _handle_preference_reply_if_pending(
-                db=db,
-                phone="919876543210",
-                text="I like tech and books"
-            )
-            # Should return None, allowing normal agent flow
-            assert result is None
 
-    @pytest.mark.asyncio
-    async def test_preference_interceptor_enabled_no_pending_request(self, db: AsyncSession):
-        """When enabled but no pending request, returns None."""
-        from app.bot.agent import _handle_preference_reply_if_pending
-
-        with patch("app.bot.agent.settings.preference_interceptor_enabled", True):
-            # DB is empty, so no pending PreferenceRequest
-            result = await _handle_preference_reply_if_pending(
-                db=db,
-                phone="919876543210",
-                text="I like tech and books"
-            )
-            # Should return None because no pending request
-            assert result is None
-
-    @pytest.mark.asyncio
-    async def test_preference_interceptor_enabled_with_pending_request(self, db: AsyncSession):
-        """When enabled and pending request exists, processes the preference."""
-        from app.bot.agent import _handle_preference_reply_if_pending
-        from app.models.recipient_preference import PreferenceRequest
-        from app.utils.id_gen import generate_id
-
-        # Create a pending PreferenceRequest
-        req = PreferenceRequest(
-            id=generate_id("prq"),
-            recipient_phone="919876543210",
-            requester_phone="919876543211",
-            status="pending",
-            occasion_id=None,
-            anonymous=True,
-        )
-        db.add(req)
-        await db.commit()
-
-        with patch("app.bot.agent.settings.preference_interceptor_enabled", True):
-            with patch("app.bot.tools.tool_impl.recipient_preferences.save_recipient_preferences",
-                      new_callable=AsyncMock) as mock_save:
-                mock_save.return_value = {
-                    "preference_id": "prp_123",
-                    "parsed": {"preferred_categories": "tech, books"},
-                    "notified_count": 1,
-                }
-                result = await _handle_preference_reply_if_pending(
-                    db=db,
-                    phone="919876543210",
-                    text="I like tech and books"
-                )
-                # Should process the preference and return ack
-                assert result is not None
-                assert "Thanks" in result
-                assert "tech, books" in result
-                mock_save.assert_called_once()
 
 
 class TestFlagDefaults:
@@ -440,38 +374,3 @@ class TestMvpReminderOnly:
         assert wishlist_job["minute"] == 0
         assert wishlist_job["timezone"] == "UTC"
 
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "text",
-        [
-            "buy Amazon gift card",
-            "I want a voucher for Swaraj",
-            "can I order this",
-            "checkout this gift",
-            "please send gift",
-            "show my orders",
-            "payment status",
-        ],
-    )
-    async def test_purchase_request_phrases_get_mvp_response(
-        self,
-        db: AsyncSession,
-        text: str,
-        monkeypatch,
-    ):
-        # The kill-switch lives in `try_handle_exact_phrases`, which
-        # `handle_message` calls FIRST — before the intent router and before
-        # `try_handle_actions`. Enforced in exactly one place.
-        from app.bot.action_router import try_handle_exact_phrases
-
-        monkeypatch.setattr(settings, "mvp_reminder_only", True)
-
-        reply = await try_handle_exact_phrases(
-            db,
-            "919876543210",
-            text,
-            user=None,
-        )
-
-        assert reply is not None
-        assert "preferred store" in reply

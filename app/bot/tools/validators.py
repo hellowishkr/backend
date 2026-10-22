@@ -7,10 +7,8 @@ no commits, no structured adapter errors, and no user-facing messages.
 Missing or unauthorized rows return ``None``/``False``; callers decide how to
 surface that outcome for their own context.
 
-Phone format assumption: all phone strings reaching this layer are already
-normalized to 12-digit numeric strings (e.g. ``919876543210``). Normalization
-happens at the WhatsApp webhook boundary and in setup_celebrant_occasion before
-friend phones are persisted. Raw string comparison is therefore correct.
+User lookups accept canonical numbers and legacy leading-plus aliases so
+checkout identities remain accessible from WhatsApp.
 """
 
 from sqlalchemy import select
@@ -18,34 +16,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Contact, Occasion, User
 from app.models.celebrant_friend import CelebrantFriend
+from app.utils.phones import normalize_phone  # noqa: F401 - compatibility re-export
+from app.utils.phones import phone_aliases, user_for_phone
 
 
-def normalize_phone(raw: str) -> str:
-    """Normalize a phone string to a 12-digit Indian number (91XXXXXXXXXX).
-
-    Handles the three formats the model commonly produces:
-      - 10 digits (9359615424)      → 919359615424
-      - 12 digits starting with 91  → unchanged
-      - 11 digits starting with 0   → strip leading 0, prepend 91
-
-    Any other format is returned as-is so callers can decide how to handle
-    it rather than silently producing a wrong number.
-    """
-    digits = "".join(c for c in (raw or "") if c.isdigit())
-    if len(digits) == 10:
-        return "91" + digits
-    if len(digits) == 12 and digits.startswith("91"):
-        return digits
-    if len(digits) == 11 and digits.startswith("0"):
-        return "91" + digits[1:]
-    return digits or raw
 from app.models.celebrant_occasion import CelebrantOccasion
 
 
 async def current_user(db: AsyncSession, phone: str) -> User | None:
     """Return the user for ``phone``, or ``None`` when not registered."""
-    result = await db.execute(select(User).where(User.phone == phone))
-    return result.scalar_one_or_none()
+    return await user_for_phone(db, phone)
 
 
 async def owned_occasion(
@@ -60,7 +40,7 @@ async def owned_occasion(
     result = await db.execute(
         select(Occasion)
         .join(User, User.id == Occasion.user_id)
-        .where(User.phone == phone, Occasion.id == occasion_id, Occasion.deleted_at.is_(None))
+        .where(User.phone.in_(phone_aliases(phone)), Occasion.id == occasion_id, Occasion.deleted_at.is_(None))
     )
     return result.scalar_one_or_none()
 
@@ -77,7 +57,7 @@ async def contact_owned(
     result = await db.execute(
         select(Contact)
         .join(User, User.id == Contact.user_id)
-        .where(User.phone == phone, Contact.id == contact_id)
+        .where(User.phone.in_(phone_aliases(phone)), Contact.id == contact_id)
     )
     return result.scalar_one_or_none()
 

@@ -12,7 +12,6 @@ Covers Phases 3–8 + webhook wiring of the shared-wishlist + recipient-preferen
 from __future__ import annotations
 
 import asyncio
-import types
 from datetime import datetime, timedelta, timezone
 from typing import Awaitable, Callable, TypeVar
 
@@ -803,7 +802,6 @@ def test_save_recipient_preferences_notifies_pending_requesters():
 def test_save_recipient_preferences_updates_existing_record():
     """Re-saving preferences merges into the existing row rather than duplicating."""
     from app.bot.tools.tool_impl.recipient_preferences import save_recipient_preferences
-    from sqlalchemy import select
 
     async def run(db: AsyncSession):
         import app.bot.tools.tool_impl.recipient_preferences as mod
@@ -835,139 +833,12 @@ def test_save_recipient_preferences_updates_existing_record():
 
 # ─── Phase 8 (wiring): _handle_preference_reply_if_pending ───────────────────
 
-def test_handle_preference_reply_intercepts_pending_recipient():
-    """When the sender has a pending PreferenceRequest, the interceptor routes
-    the message to save_recipient_preferences and returns an ack, bypassing
-    the AI agent entirely."""
-    from app.bot.agent import _handle_preference_reply_if_pending
-    from unittest.mock import patch
-
-    async def run(db: AsyncSession):
-        # Create a pending request from gift-giver to recipient
-        req = PreferenceRequest(
-            id=generate_id("prq"),
-            recipient_phone="919600000001",
-            requester_phone="919600000099",
-            notify_phones="919600000099",
-            status="pending",
-        )
-        db.add(req)
-        await db.flush()
-        await db.commit()
-
-        import app.bot.tools.tool_impl.recipient_preferences as mod
-        orig = mod._notify_gift_givers
-
-        async def _noop(phones, prefs):
-            pass
-
-        mod._notify_gift_givers = _noop
-        try:
-            with patch("app.bot.agent.settings.preference_interceptor_enabled", True):
-                result = await _handle_preference_reply_if_pending(
-                    db, "919600000001", "I like gadgets and sneakers."
-                )
-        finally:
-            mod._notify_gift_givers = orig
-
-        assert result is not None, "Interceptor should return an ack for pending recipients"
-        assert "gadgets" in result.lower() or "Thanks" in result
-
-        # Preference row should now exist
-        pref = await db.scalar(
-            select(RecipientPreference).where(
-                RecipientPreference.recipient_phone == "919600000001"
-            )
-        )
-        assert pref is not None
-
-        # Request should be marked responded
-        await db.refresh(req)
-        assert req.status == "responded"
-
-    _run_db(run)
 
 
-def test_handle_preference_reply_ignores_no_pending_request():
-    """When there is no pending PreferenceRequest for the sender, the interceptor
-    returns None so the normal agent pipeline handles the message."""
-    from app.bot.agent import _handle_preference_reply_if_pending
-
-    async def run(db: AsyncSession):
-        result = await _handle_preference_reply_if_pending(
-            db, "919700000001", "What should I gift my friend?"
-        )
-        assert result is None, "Should return None for phones with no pending request"
-
-    _run_db(run)
 
 
-def test_handle_preference_reply_expired_request_ignored():
-    """An expired PreferenceRequest (status != pending) is not intercepted."""
-    from app.bot.agent import _handle_preference_reply_if_pending
-
-    async def run(db: AsyncSession):
-        # Create an already-responded request
-        req = PreferenceRequest(
-            id=generate_id("prq"),
-            recipient_phone="919700000002",
-            requester_phone="919700000099",
-            notify_phones="919700000099",
-            status="responded",
-        )
-        db.add(req)
-        await db.flush()
-        await db.commit()
-
-        result = await _handle_preference_reply_if_pending(
-            db, "919700000002", "I like coffee accessories."
-        )
-        assert result is None, "Responded/expired requests should not be intercepted"
-
-    _run_db(run)
 
 
-def test_handle_preference_reply_notifies_multiple_requesters():
-    """All notify_phones on the pending request are notified when the recipient replies."""
-    from app.bot.agent import _handle_preference_reply_if_pending
-    from unittest.mock import patch
-
-    async def run(db: AsyncSession):
-        # Two gift-givers waiting for the same recipient
-        req = PreferenceRequest(
-            id=generate_id("prq"),
-            recipient_phone="919600000003",
-            requester_phone="919600000101",
-            notify_phones="919600000101,919600000102",
-            status="pending",
-        )
-        db.add(req)
-        await db.flush()
-        await db.commit()
-
-        notified: list[list[str]] = []
-        import app.bot.tools.tool_impl.recipient_preferences as mod
-        orig = mod._notify_gift_givers
-
-        async def _track(phones, prefs):
-            notified.append(list(phones))
-
-        mod._notify_gift_givers = _track
-        try:
-            with patch("app.bot.agent.settings.preference_interceptor_enabled", True):
-                result = await _handle_preference_reply_if_pending(
-                    db, "919600000003", "I love books and travel."
-                )
-        finally:
-            mod._notify_gift_givers = orig
-
-        assert result is not None
-        assert len(notified) == 1
-        phones_notified = notified[0]
-        assert "919600000101" in phones_notified
-        assert "919600000102" in phones_notified
-
-    _run_db(run)
 
 
 # ─── Phase 6: recipient-aware suggestion integration ─────────────────────────

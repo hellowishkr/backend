@@ -61,6 +61,11 @@ _ACTIVE_GIFT_CONTEXT_FIELDS = {
     "selected_provider_id",
     "budget_min",
     "budget_max",
+    "budget_unlimited",
+    "desired_categories",
+    "excluded_categories",
+    "constraints",
+    "gift_format",
     "current_step",
     "recipient_message_permission",
     "updated_at",
@@ -102,7 +107,7 @@ def _clean_context_updates(updates: dict[str, Any]) -> dict[str, Any]:
     for key, value in (updates or {}).items():
         if key not in _ACTIVE_GIFT_CONTEXT_FIELDS:
             continue
-        if value is None:
+        if value is None and not (key in {"budget_min", "budget_max"} and updates.get("budget_unlimited")):
             continue
         if isinstance(value, str):
             value = " ".join(value.strip().split())
@@ -297,7 +302,7 @@ async def remember_budget(db: AsyncSession, phone: str, text: str) -> dict[str, 
 
     # Unlimited / open-ended signal — checked first so it wins over a
     # "₹0" parse that would otherwise treat unlimited as zero.
-    if any(kw in lowered for kw in ("unlimited", "no budget", "any budget", "no limit")):
+    if any(kw in lowered for kw in ("unlimited", "no budget", "any budget", "no limit", "budget ki tention", "budget ki tension", "budget doesn't matter", "budget is not an issue")):
         payload = {"min": None, "max": None, "unlimited": True, "raw": text[:80]}
     else:
         try:
@@ -320,6 +325,7 @@ async def remember_budget(db: AsyncSession, phone: str, text: str) -> dict[str, 
             {
                 "budget_min": payload.get("min"),
                 "budget_max": payload.get("max"),
+                "budget_unlimited": payload.get("unlimited", False),
                 "current_step": "budget_known",
             },
         )

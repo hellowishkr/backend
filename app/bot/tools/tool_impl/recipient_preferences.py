@@ -17,9 +17,9 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import User
 from app.models.recipient_preference import PreferenceRequest, RecipientPreference
 from app.utils.id_gen import generate_id
+from app.utils.phones import phone_aliases
 
 logger = logging.getLogger("wishkr.tools.recipient_preferences")
 
@@ -90,7 +90,7 @@ async def request_recipient_preferences(db: AsyncSession, phone: str, args: dict
     # Check for fresh preferences — no need to message again.
     existing_pref = await db.scalar(
         select(RecipientPreference).where(
-            RecipientPreference.recipient_phone == recipient_phone
+            RecipientPreference.recipient_phone.in_(phone_aliases(recipient_phone))
         )
     )
     if existing_pref:
@@ -116,7 +116,7 @@ async def request_recipient_preferences(db: AsyncSession, phone: str, args: dict
 
     # Check for an existing pending request for this (recipient, occasion).
     pending_q = select(PreferenceRequest).where(
-        PreferenceRequest.recipient_phone == recipient_phone,
+        PreferenceRequest.recipient_phone.in_(phone_aliases(recipient_phone)),
         PreferenceRequest.status == "pending",
     )
     if occasion_id:
@@ -200,17 +200,18 @@ async def save_recipient_preferences(
     recipient_phone: str,
     raw_response: str,
     request_id: str | None = None,
+    parsed_preferences: dict | None = None,
 ) -> dict:
     """Parse and store a recipient's preference response. Called from the webhook.
 
     Parses free-text into structured preference fields. Notifies the
     original gift-givers that preferences are now available.
     """
-    prefs = _parse_preferences(raw_response)
+    prefs = dict(parsed_preferences) if parsed_preferences is not None else _parse_preferences(raw_response)
     # The keyword parser misses anything outside its fixed list (e.g. "a PS5").
     # When it finds no category, ask the LLM to map the raw reply to canonical
     # labels. The raw text already lives in notes either way.
-    if not prefs.get("preferred_categories"):
+    if parsed_preferences is None and not prefs.get("preferred_categories"):
         llm_cats = await _llm_categorize(raw_response)
         if llm_cats:
             prefs["preferred_categories"] = llm_cats
@@ -218,7 +219,7 @@ async def save_recipient_preferences(
 
     existing = await db.scalar(
         select(RecipientPreference).where(
-            RecipientPreference.recipient_phone == recipient_phone
+            RecipientPreference.recipient_phone.in_(phone_aliases(recipient_phone))
         )
     )
     if existing:
@@ -273,7 +274,7 @@ async def save_recipient_preferences(
         # Find all pending requests for this recipient.
         pending_reqs = (await db.execute(
             select(PreferenceRequest).where(
-                PreferenceRequest.recipient_phone == recipient_phone,
+                PreferenceRequest.recipient_phone.in_(phone_aliases(recipient_phone)),
                 PreferenceRequest.status == "pending",
             )
         )).scalars().all()
@@ -544,3 +545,26 @@ async def _notify_gift_givers(notify_phones: list[str], prefs: dict) -> None:
             )
         except Exception as exc:
             logger.error("gift-giver notification failed phone=%s: %s", phone[-4:], exc)
+
+
+async def record_recipient_preferences(db: AsyncSession, phone: str, args: dict) -> dict:
+    """Save model-extracted preferences only for the caller's live request."""
+    from app.core.config import settings
+
+    if not settings.preference_interceptor_enabled:
+        return {"error": "preference_replies_disabled"}
+    pending = await db.scalar(select(PreferenceRequest).where(
+        PreferenceRequest.recipient_phone.in_(phone_aliases(phone)),
+        PreferenceRequest.status == "pending",
+        PreferenceRequest.created_at >= datetime.now(timezone.utc) - timedelta(days=PREFERENCE_REQUEST_TTL_DAYS),
+    ).limit(1))
+    if not pending:
+        return {"error": "no_pending_preference_request"}
+    raw = (args.get("raw_response") or "").strip()
+    if not raw:
+        return {"error": "response_required"}
+    prefs = {key: ", ".join(args[key]) for key in (
+        "preferred_categories", "disliked_categories", "preferred_brands", "disliked_brands"
+    ) if isinstance(args.get(key), list)}
+    prefs["notes"] = raw
+    return await save_recipient_preferences(db, phone, raw, request_id=pending.id, parsed_preferences=prefs)

@@ -36,6 +36,7 @@ def test_deterministic_ideas_respect_saved_budget_range() -> None:
         3,
         budget_min=500,
         budget_max=500,
+        recipient_interest="art supplies",
     )
     assert [item["name"] for item in boundary_match] == [
         "Sketchbook and brush-pen set"
@@ -139,3 +140,22 @@ async def test_normalized_budgets_reach_candidate_and_fallback_filters(
     assert source.seen_budget_max == 500
     assert result["mode"] == "ai_fallback_pending"
     assert result["suggestions"] == []
+
+
+@pytest.mark.asyncio
+async def test_explicit_category_replaces_stale_interest_in_general_ideas(db, monkeypatch):
+    from app.bot.gift_context import GiftNeedProfile
+
+    monkeypatch.setattr(settings, "mvp_reminder_only", True)
+    monkeypatch.setattr(settings, "gift_refinement_enabled", False)
+    result = await recommend_gifts(
+        db,
+        GiftRecommendationRequest(
+            phone="919000000512",
+            profile=GiftNeedProfile(recipient_vibe="comfy clothes"),
+            desired_categories=["wall art"],
+        ),
+        sources=[],
+    )
+    assert result["suggestions"]
+    assert all(item["vibes"] == ["wall_art"] for item in result["suggestions"])

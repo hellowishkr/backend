@@ -3,8 +3,8 @@
 import asyncio
 import pytest
 from decimal import Decimal
-from datetime import datetime, timezone, timedelta
-from unittest.mock import patch, MagicMock, AsyncMock
+from datetime import datetime, timezone
+from unittest.mock import patch
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -383,7 +383,6 @@ async def test_per_user_daily_budget_check(db: AsyncSession):
 @pytest.mark.asyncio
 async def test_check_all_budgets(db: AsyncSession):
     """Test that check_all_budgets correctly checks all constraints."""
-    from app.utils.id_gen import generate_id
 
     phone_hash = hash_phone("919876543210")
 
@@ -643,28 +642,6 @@ async def test_intent_router_never_raises_when_the_api_fails(db: AsyncSession):
     assert result.likely_tools == ()
 
 
-@pytest.mark.asyncio
-async def test_exact_phrases_skip_both_llms(db: AsyncSession):
-    """Common exact messages must cost nothing — no router, no main agent.
-
-    These are whole-message lookups, so neither an intent call nor a Gemini
-    call is justified. Regression guard on the cheapest path in the product.
-    """
-    from app.bot.action_router import try_handle_exact_phrases
-    from app.models import User
-    from app.utils.id_gen import generate_id
-
-    phone = "+919876543299"
-    db.add(User(id=generate_id("usr"), phone=phone, name="CostUser"))
-    await db.flush()
-    user = (
-        await db.execute(select(User).where(User.phone == phone))
-    ).scalar_one()
-
-    for text in ("menu", "help", "my occasions", "cart"):
-        with patch("app.bot.action_router.append_message", new=AsyncMock()):
-            reply = await try_handle_exact_phrases(db, phone, text, user=user)
-        assert reply is not None, f"{text!r} must be answered without any LLM"
 
 
 class TestLlmUsageEventFields:

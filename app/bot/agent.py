@@ -10,7 +10,7 @@ Architecture:
 - tools/schemas.py: Gemini-facing FunctionDeclarations
 - tools/adapter.py: SchemaFunctionTool, TOOL_BY_NAME, execution bridge
 - tools/functions.py: Async tool implementations
-- action_router.py: Deterministic pre-LLM routes
+- intent_router.py: History-aware LLM intent and tool hints
 """
 
 import asyncio
@@ -22,15 +22,14 @@ from functools import lru_cache
 import logging
 import time
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal
-from typing import Any, Optional
+from typing import Optional
 
 from google.adk.agents import LlmAgent
 from google.adk.planners import BuiltInPlanner
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService, Session
 from google.genai import errors as genai_errors, types
-from sqlalchemy import func, select, text as sql_text
+from sqlalchemy import select, text as sql_text
 from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,23 +46,15 @@ from app.models import (
     User,
 )
 from app.models.conversation import ConversationState
-from app.bot.action_router import (
-    try_handle_actions,
-    try_handle_exact_phrases,
-    try_handle_product_urls_before_classifier,
-)
-from app.bot.whatsapp_templates import acquisition_greeting_for
 from app.bot.prompt import STATIC_SYSTEM_PROMPT
 from app.bot.intent_classifier import IntentResult
 from app.bot.intent_router import RouteResult, route as route_intent
-from app.bot.language_map import active_gift_context_updates_from_text
 from app.bot.rate_limit import check_and_bump
 from app.bot.tools import set_context, reset_context
 from app.bot.tools.adapter import TOOL_BY_NAME
 from app.bot.tools.functions import CART_TTL_HOURS
 from app.utils.circuit_breaker import CircuitBreaker
 from app.utils.dates import next_occurrence
-from app.utils.link_utils import extract_urls, is_product_link
 from app.utils.observability import latency_bucket, mask_phone, metrics
 from app.utils.phone_hash import hash_phone
 from app.utils.llm_cost import estimate_cost
@@ -129,7 +120,6 @@ _USAGE_METADATA_FIELDS = (
     "total_token_count",
     "cached_content_token_count",
 )
-_SAFE_GREETING_EXACTS = frozenset({"hi", "hello", "hey", "namaste"})
 _NEXT_OCCASION_WINDOW_DAYS = 30
 _NEXT_OCCASION_MAX_WINDOW_DAYS = 60
 
@@ -282,6 +272,8 @@ def _mvp_visible_tools(tools: list) -> list:
     if not settings.mvp_reminder_only:
         return tools
     visible = [tool for tool in tools if tool.name not in MVP_HIDDEN_TOOLS]
+    if not settings.preference_interceptor_enabled:
+        visible = [tool for tool in visible if tool.name != "record_recipient_preferences"]
     if not settings.preference_outbound_enabled:
         visible = [tool for tool in visible if tool.name != "request_recipient_preferences"]
     if not settings.enable_shared_wishlist:
@@ -299,6 +291,7 @@ def _mvp_visible_tools(tools: list) -> list:
 _UNREGISTERED_TOOLS = _tools(
     "get_user_profile",
     "register_user",
+    "suggest_gifts",
 )
 
 _FRIEND_TOOLS = _tools(
@@ -373,6 +366,11 @@ _BROWSE_TOOLS = _tools(
 # hallucinate tool calls that weren't registered — see issue #009 §5b
 # Gap G7 (stale cart traps user in narrow phase).
 _CHECKOUT_TOOLS = list(_BROWSE_TOOLS) + _tools("clear_cart")
+for _phase_tools in (_UNREGISTERED_TOOLS, _FRIEND_TOOLS, _BROWSE_TOOLS, _CHECKOUT_TOOLS):
+    for _name in ("register_user", "get_order_support", "set_chat_preferences", "record_recipient_preferences"):
+        if not any(tool.name == _name for tool in _phase_tools):
+            _phase_tools.append(TOOL_BY_NAME[_name])
+
 
 _PHASE_TOOLS: dict[str, list] = {
     "unregistered": _mvp_visible_tools(_UNREGISTERED_TOOLS),
@@ -455,26 +453,6 @@ async def _session_service_call(method_name: str, **kwargs):
             raise
 
 
-def _end_invocation_on_user_message(
-    tool: Any, args: dict[str, Any], tool_context: Any, tool_response: dict
-) -> None:
-    """Stop the turn when a failed tool already wrote the user-facing reply.
-
-    ADK's own cooperative stop. Breaking out of `runner.run_async` instead throws
-    GeneratorExit into the generator mid-iteration, which unwinds OpenTelemetry's
-    `invocation` span from a different async context and logs "Failed to detach
-    context" (harmless, but real Sentry noise). Setting end_invocation lets the
-    generator finish on its own, so no second LLM call is made and no span is
-    torn down out of order.
-    """
-    if not isinstance(tool_response, dict) or not tool_response.get("error"):
-        return None
-    direct = tool_response.get("user_message")
-    if isinstance(direct, str) and direct.strip():
-        tool_context.invocation_context.end_invocation = True
-    return None
-
-
 def _build_runner(phase: str, model: str, tools: list) -> Runner:
     # gemini-2.5-flash thinking can consume 800-1000 tokens before any
     # visible output. With max=1024, replies got truncated mid-sentence
@@ -499,7 +477,6 @@ def _build_runner(phase: str, model: str, tools: list) -> Runner:
         instruction=STATIC_SYSTEM_PROMPT,
         tools=tools,
         generate_content_config=gen_config,
-        after_tool_callback=_end_invocation_on_user_message,
         planner=BuiltInPlanner(
             thinking_config=types.ThinkingConfig(
                 thinking_budget=settings.gemini_thinking_budget,
@@ -628,13 +605,15 @@ _SELECTIVE_EXTENSION_TOOLS = {
 }
 
 
-def _is_critical_turn(text: str, phase: str, cart_count: int) -> bool:
-    """Critical turns are never downgraded/blocked by budget policy."""
-    if phase == "checkout" or cart_count > 0:
+def _is_critical_turn(text: str, phase: str, cart_count: int, intent_result=None) -> bool:
+    """Protect checkout/support turns using structured intent, in any language."""
+    if phase == "checkout" or cart_count > 0 or intent_result is None:
         return True
-    lower = (text or "").lower()
-    critical_markers = ("payment", "pay ", "checkout", "razorpay", "webhook", "order", "refund")
-    return any(m in lower for m in critical_markers)
+    if getattr(intent_result, "source", None) == "degraded":
+        return True
+    return bool(set(getattr(intent_result, "likely_tools", ())) & (
+        _PAYMENT_SUBFLOW_TOOLS | {"get_order_support"}
+    ))
 
 
 @lru_cache(maxsize=256)
@@ -716,56 +695,9 @@ def _select_tools_for_turn(
         )
         return tools, "routed_wide"
 
-    # Degraded path: the router was unavailable, so fall back to keyword
-    # signals. Intentionally kept for outages only — not the primary route.
-    lower = (text or "").lower()
-    wishlist_signal = "wishlist" in lower
-    payment_signal = any(k in lower for k in ("payment", "pay ", "order", "checkout", "cart"))
-    pref_signal = any(k in lower for k in ("preference", "preferences", "recipient"))
-    occasion_signal = any(
-        k in lower
-        for k in ("occasion", "ocassion", "reminder", "remind", "birthday",
-                  "anniversary", "snooze", "upcoming")
-    )
-    # The classifier is the primary signal here: "gift for my sister under 2000"
-    # names no product, so it lands on gift_suggestion rather than
-    # product_question. Before that label existed it fell through to `default`
-    # and shipped all 24 declarations (~18.3k tokens) for the single most common
-    # request shape. Keywords stay as a backstop for when the classifier is
-    # unavailable and everything degrades to "other".
-    discovery_signal = intent_result.intent in ("product_question", "gift_suggestion") or any(
-        k in lower for k in ("suggest", "gift idea", "gift ideas", "brands", "vouchers")
-    )
-
-    subset: set[str] | None = None
-    subflow = "default"
-    if wishlist_signal:
-        subset = _WISHLIST_SUBFLOW_TOOLS
-        subflow = "wishlist"
-    elif payment_signal:
-        subset = _PAYMENT_SUBFLOW_TOOLS
-        subflow = "payment"
-    elif pref_signal:
-        subset = _PREF_SUBFLOW_TOOLS
-        subflow = "recipient_preference"
-    elif discovery_signal:
-        subset = _DISCOVERY_SUBFLOW_TOOLS
-        subflow = "product_discovery"
-    elif occasion_signal:
-        subset = _OCCASION_SUBFLOW_TOOLS
-        subflow = "occasions"
-
-    if subset is None:
-        return tools, subflow
-
-    selected = [tool for tool in tools if tool.name in subset]
-    selected_names = {tool.name for tool in selected}
-    for name in sorted(subset & _SELECTIVE_EXTENSION_TOOLS):
-        if name not in selected_names and name in TOOL_BY_NAME:
-            selected.append(TOOL_BY_NAME[name])
-    if len(selected) < 3:
-        return tools, "default"
-    return _ensure_friend_context_tool(phase, selected), subflow
+    # With no usable semantic tool hint, let the main multilingual agent
+    # choose from the complete phase surface. Text keywords must not narrow it.
+    return tools, "default"
 
 
 # ─────────────────────────────────────────────────────────
@@ -799,15 +731,6 @@ def _gc_phone_locks(max_entries: int = 10_000) -> None:
     for p in stale[: len(_phone_locks) - max_entries // 2]:
         _phone_locks.pop(p, None)
 
-
-def _active_gift_context_updates_from_text(text: str) -> dict[str, object]:
-    """Cheap progressive context capture for short follow-up turns.
-
-    This intentionally handles only high-signal phrases. The LLM still owns
-    interpretation; this just prevents obvious context like "BGMI" or
-    "headphones" from disappearing between turns.
-    """
-    return active_gift_context_updates_from_text(text)
 
 
 # ─────────────────────────────────────────────────────────
@@ -891,10 +814,26 @@ async def _build_dynamic_tail(
     call. No counts, no instructional notes, no menu — those live in tools or
     the static prompt.
     """
-    today = datetime.now(timezone.utc).strftime("%d %b %Y")
+    from app.utils.timezones import timezone_for_user, today_for_user
+    now = datetime.now(timezone.utc)
+    local_now = now.astimezone(timezone_for_user(user))
+    today = today_for_user(user, now)
+    parts = [f"Today: {today.strftime('%d %b %Y')}",
+             f"Local time: {local_now.isoformat()}", f"Phone: {phone}"]
 
-    parts = [f"Today: {today}", f"Phone: {phone}"]
-
+    parts.append(f"Support email: {settings.order_notification_email_to or 'hello@wishkr.com'}")
+    parts.append(f"New WhatsApp purchases enabled: {not settings.mvp_reminder_only}")
+    parts.append("Media capability: attachment type/caption only; image/video/audio contents are unavailable.")
+    if settings.preference_interceptor_enabled:
+        from app.models.recipient_preference import PreferenceRequest
+        from app.utils.phones import phone_aliases
+        pending = await db.scalar(select(PreferenceRequest.id).where(
+            PreferenceRequest.recipient_phone.in_(phone_aliases(phone)),
+            PreferenceRequest.status == "pending",
+            PreferenceRequest.created_at >= now - timedelta(days=7),
+        ).limit(1))
+        if pending:
+            parts.append("A gift preference request is pending. If this message answers it, call record_recipient_preferences; unrelated requests stay on their own flow.")
     if user and user.name:
         parts.append(f"User: {user.name} ({user.city_raw or 'Unknown'})")
         parts.append("Registered: yes")
@@ -903,14 +842,14 @@ async def _build_dynamic_tail(
             select(Occasion)
             .where(Occasion.user_id == user.id, Occasion.deleted_at.is_(None))
             .order_by(Occasion.date)
-            .limit(3)
+            .limit(100)
         )
         occasions = result.scalars().all()
 
         if occasions:
             now = datetime.now(timezone.utc)
             upcoming = sorted(
-                [(o, next_occurrence(o, now)) for o in occasions],
+                [(o, next_occurrence(o, now, reference_date=today)) for o in occasions],
                 key=lambda pair: pair[1],
             )
             # Only surface "Next" occasion context when it's genuinely near-term.
@@ -919,12 +858,12 @@ async def _build_dynamic_tail(
             in_30_days = [
                 (o, dt)
                 for o, dt in upcoming
-                if 0 <= (dt.date() - now.date()).days <= _NEXT_OCCASION_WINDOW_DAYS
+                if 0 <= (dt.date() - today).days <= _NEXT_OCCASION_WINDOW_DAYS
             ]
             in_60_days = [
                 (o, dt)
                 for o, dt in upcoming
-                if 0 <= (dt.date() - now.date()).days <= _NEXT_OCCASION_MAX_WINDOW_DAYS
+                if 0 <= (dt.date() - today).days <= _NEXT_OCCASION_MAX_WINDOW_DAYS
             ]
             next_pair = in_30_days[0] if in_30_days else (in_60_days[0] if in_60_days else None)
 
@@ -1006,6 +945,12 @@ async def _build_dynamic_tail(
                     active_gift_context_is_recent,
                     get_active_gift_context,
                 )
+                if isinstance(temp.get("pending_occasion_confirmation"), dict):
+                    parts.append("Pending date confirmation (data): " + json.dumps(temp["pending_occasion_confirmation"], ensure_ascii=False))
+                if temp.get("awaiting"):
+                    parts.append(f"Awaiting: {temp['awaiting']}; interpret the user's response with recent conversation.")
+                if temp.get("preferred_language"):
+                    parts.append(f"Preferred reply language: {temp['preferred_language']}")
                 # Half-finished occasion add: facts the user gave over earlier
                 # turns ("Brother" before the name arrived). Surfacing them
                 # keeps the relation from being lost across the clarifying
@@ -1020,7 +965,7 @@ async def _build_dynamic_tail(
                         "occasions. Pass these values to add_occasion."
                     )
                 gift_ctx = get_active_gift_context(temp)
-                if active_gift_context_is_recent(gift_ctx):
+                if gift_ctx and active_gift_context_is_recent(gift_ctx):
                     recipient = gift_ctx.get("recipient_name") or "the recipient"
                     occasion = gift_ctx.get("occasion_type") or "occasion"
                     date_text = gift_ctx.get("occasion_date")
@@ -1039,9 +984,14 @@ async def _build_dynamic_tail(
                         parts.append(f"- Current gift direction: {gift_ctx['gift_category']}.")
                     if gift_ctx.get("selected_brand"):
                         parts.append(f"- Selected brand: {gift_ctx['selected_brand']}.")
+                    for key in ("desired_categories", "excluded_categories", "constraints", "gift_format"):
+                        if gift_ctx.get(key):
+                            parts.append(f"- {key}: {json.dumps(gift_ctx[key], ensure_ascii=False)}")
                     budget_min = gift_ctx.get("budget_min")
                     budget_max = gift_ctx.get("budget_max")
-                    if budget_min is not None and budget_max is not None:
+                    if gift_ctx.get("budget_unlimited"):
+                        parts.append("- Budget: no limit. Do not ask for a budget again.")
+                    elif budget_min is not None and budget_max is not None:
                         parts.append(f"- Budget: ₹{budget_min}-₹{budget_max}.")
                     elif budget_max is not None:
                         parts.append(f"- Budget: up to ₹{budget_max}.")
@@ -1091,7 +1041,7 @@ def _last_model_question(session: Session) -> str | None:
     return None
 
 
-def _intent_hint(result: IntentResult, session: Session) -> str:
+def _intent_hint(result: IntentResult, session: Session, previous_reply: str | None = None) -> str:
     """Render a short intent hint appended to the user message preface.
 
     For AFFIRMATIVE we only emit a hint if we can quote the actual last
@@ -1099,7 +1049,7 @@ def _intent_hint(result: IntentResult, session: Session) -> str:
     prompting the model to invent a referent.
     """
     if result.intent == "affirmative":
-        last_q = _last_model_question(session)
+        last_q = previous_reply or _last_model_question(session)
         if not last_q:
             # No prior question in session (stale-session reset / trim window)
             # but the user said "yes" to SOMETHING. Greeting them back is
@@ -1112,22 +1062,13 @@ def _intent_hint(result: IntentResult, session: Session) -> str:
                 "do?' — DO NOT greet them as if it's a new conversation."
             )
         snippet = last_q[:240]
-        if "?" not in last_q:
-            # Your last message was a STATEMENT, so "ok" is an acknowledgement,
-            # not an answer. "Proceed on that" makes the model reply with an
-            # empty pleasantry and drop the task. Push it to deliver instead.
-            return (
-                "\nUser intent: ACKNOWLEDGEMENT of your previous message:\n"
-                f"> {snippet}\n"
-                "They are waiting on YOU. If that message promised something, "
-                "deliver it now with a tool call. If you cannot, say so plainly "
-                "and give one concrete next step. Do NOT reply with a bare "
-                "'happy to help — what next?'."
-            )
         return (
             "\nUser intent: AFFIRMATIVE to your previous message:\n"
             f"> {snippet}\n"
-            "Proceed on that. If it's unclear in context, ask ONE short clarifier."
+            "Interpret its meaning and the pending task in context, independent of punctuation or language. "
+            "Proceed on that only if they confirmed an action. If this is an ACKNOWLEDGEMENT "
+            "and they are waiting on YOU after a promised search, deliver it now with a tool. "
+            "Otherwise acknowledge a closure or ask ONE short clarifier; do not restart onboarding."
         )
     if result.intent == "greeting":
         # If there's a recent assistant question, the "greeting" is more
@@ -1192,8 +1133,8 @@ async def _load_user_context(
     functions.py::CART_KEY). We lift it here so `_pick_phase` can see it
     without a second DB round-trip.
     """
-    result = await db.execute(select(User).where(User.phone == phone))
-    user = result.scalar_one_or_none()
+    from app.utils.phones import user_for_phone
+    user = await user_for_phone(db, phone)
 
     celebrant_occasion_id: str | None = None
     cart_count = 0
@@ -1505,6 +1446,22 @@ def _salvage_reply_from_tool(tool_name: str | None, resp: dict | None) -> str | 
     if not tool_name or not isinstance(resp, dict):
         return None
 
+    if tool_name == "suggest_gifts":
+        from app.bot.tools.tool_impl.gifting import _user_visible_suggestions
+        review = resp.get("recommendation_review") or {}
+        options = review.get("catalogue_options") or _user_visible_suggestions(resp)
+        if options:
+            lines = ["Here are some gift ideas:"]
+            for item in options[:5]:
+                name = str(item.get("name") or "").strip()
+                if not name:
+                    continue
+                price = item.get("budget_hint") or item.get("price_range") or ""
+                url = item.get("url") or item.get("product_url") or ""
+                lines.append(f"• {name}" + (f" — {price}" if price else "") + (f"\n{url}" if url else ""))
+            return "\n".join(lines)
+        return resp.get("user_message") or "I couldn't find a suitable match for those requirements. Please describe the style you want or share a product link."
+
     # Server-authored user-facing string — always safe.
     msg = resp.get("message")
     if isinstance(msg, str) and msg.strip():
@@ -1528,78 +1485,6 @@ def _salvage_reply_from_tool(tool_name: str | None, resp: dict | None) -> str | 
     # No safe salvage for list/search tools — the model is meant to render
     # those with context we can't reconstruct here.
     return None
-
-
-async def _handle_preference_reply_if_pending(
-    db: AsyncSession, phone: str, text: str
-) -> str | None:
-    """Intercept incoming messages from recipients who have a pending PreferenceRequest.
-
-    Returns an ack string if the message was handled as a preference response,
-    or None if the message should fall through to the normal agent pipeline.
-
-    Logic:
-    1. Check whether there is a pending PreferenceRequest for this phone.
-    2. If yes, route the message text to save_recipient_preferences().
-    3. Return a thank-you ack so the recipient knows we received their reply.
-    4. The normal AI agent is bypassed for this turn — the recipient's message
-       is a structured preference response, not a gifting conversation.
-
-    Edge cases handled:
-    - No pending request → return None (fall through to normal agent).
-    - Expired requests are skipped (save_recipient_preferences handles all pending
-      rows for the phone, not just the one that was "current").
-    - Crashes in the preference saver are logged and fall through.
-    - If preference_interceptor_enabled is False, return None (fall through to agent).
-    """
-    # Feature flag: preference interceptor
-    if not settings.preference_interceptor_enabled:
-        return None
-
-    from app.models.recipient_preference import PreferenceRequest
-    from app.bot.tools.tool_impl.recipient_preferences import save_recipient_preferences
-
-    pending = await db.scalar(
-        select(PreferenceRequest).where(
-            PreferenceRequest.recipient_phone == phone,
-            PreferenceRequest.status == "pending",
-        )
-    )
-    if pending is None:
-        return None
-
-    logger.info(
-        "[%s] preference reply intercepted — routing to save_recipient_preferences",
-        phone,
-    )
-    try:
-        result = await save_recipient_preferences(
-            db=db,
-            recipient_phone=phone,
-            raw_response=text,
-            request_id=pending.id,
-        )
-        await db.commit()
-        logger.info(
-            "[%s] preference reply saved pref_id=%s notified=%d",
-            phone, result.get("preference_id"), result.get("notified_count", 0),
-        )
-    except Exception:
-        logger.exception("[%s] save_recipient_preferences failed — falling through", phone)
-        return None
-
-    # Friendly ack to the recipient — warm, does not reveal who the gift-giver is.
-    cats = result.get("parsed", {}).get("preferred_categories") or ""
-    if cats:
-        return (
-            f"Thanks for sharing! We've noted that you like: {cats}.\n\n"
-            "Your gift preferences have been saved. The person gifting you will "
-            "be notified with your choices."
-        )
-    return (
-        "Thanks for sharing your preferences! "
-        "The person gifting you will be notified with what you've shared."
-    )
 
 
 async def _log_llm_usage(
@@ -1671,25 +1556,13 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
     - Function call batching
     - Session/history management
     """
+    from app.utils.phones import normalize_phone
+    phone = normalize_phone(phone)
     # Rate limit BEFORE any downstream work — cheapest possible rejection.
     rl = await check_and_bump(phone)
     if not rl.allowed:
         logger.info("[%s] rate-limited, retry_after=%.1fs", phone, rl.retry_after_seconds)
         return "You're going a bit fast 🙏 Give me a few seconds and try again."
-
-    # ── Preference reply interceptor ───────────────────────────────────────────
-    # If this phone has an active pending PreferenceRequest, treat the message
-    # as a preference response instead of routing it through the AI agent.
-    # This must run before the product-URL fast path and the classifier so a
-    # recipient's "I like gadgets" is never misrouted as a wishlist save or
-    # a normal gifting conversation.
-    try:
-        pref_reply = await _handle_preference_reply_if_pending(db, phone, text)
-        if pref_reply is not None:
-            return pref_reply
-    except Exception:
-        logger.exception("[%s] preference reply interceptor crashed — falling through", phone)
-    # ──────────────────────────────────────────────────────────────────────────
 
     # Set request context for tools (context vars are async-safe)
     token_db = token_phone = token_produced = None
@@ -1698,68 +1571,6 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
 
         # Load user context (user row + friend-flow hint + cart size)
         user, celebrant_occasion_id, cart_count = await _load_user_context(db, phone)
-
-        # Limited-launch cap: an unregistered phone is turned away with a fixed
-        # waitlist reply BEFORE any classifier/LLM work, so waitlisted users
-        # cost zero tokens. Existing users (user is not None) always pass; so do
-        # recipients, who were already handled by the preference interceptor
-        # above. The COUNT only runs for unregistered phones — registered users
-        # skip it entirely. cap <= 0 disables the gate.
-        if user is None and settings.launch_user_cap > 0:
-            user_count = await db.scalar(select(func.count()).select_from(User))
-            if (user_count or 0) >= settings.launch_user_cap:
-                logger.info("[%s] launch cap reached (%s) — waitlisted", phone, user_count)
-                return settings.waitlist_message
-
-        # Product URLs first — never block a wishlist save behind intent classify
-        # (which may call Gemini) or the full ADK stack. See `action_router` docstring.
-        # Pass celebrant context so a friend-flow paste is saved as a gift idea
-        # against that occasion instead of polluting the user's personal wishlist.
-        link_reply = await try_handle_product_urls_before_classifier(
-            db, phone, text,
-            celebrant_occasion_id=celebrant_occasion_id,
-        )
-        if link_reply is not None:
-            return link_reply
-
-        # Capture any budget mention before classify so it survives across
-        # turns. Cheap text scan, no LLM. Does nothing when no signal found.
-        from app.bot.state_utils import remember_budget
-        try:
-            await remember_budget(db, phone, text)
-        except Exception:
-            logger.exception("[%s] budget capture crashed — ignoring", phone)
-
-        try:
-            from app.bot.state_utils import get_state, has_active_gift_context, update_active_gift_context
-            state = await get_state(db, phone)
-            if has_active_gift_context(state):
-                gift_updates = _active_gift_context_updates_from_text(text)
-                if gift_updates:
-                    await update_active_gift_context(db, phone, gift_updates)
-        except Exception:
-            logger.exception("[%s] active gift context capture crashed — ignoring", phone)
-
-        # Double-safety: if a product URL slipped past the preflight above
-        # (shouldn't happen), forward it before paying for classify.
-        urls = extract_urls(text)
-        product_urls = [u for u in urls if is_product_link(u)]
-        if product_urls:
-            safety = await try_handle_product_urls_before_classifier(
-                db, phone, text,
-                celebrant_occasion_id=celebrant_occasion_id,
-            )
-            if safety is not None:
-                return safety
-
-        # Exact whole-message lookups ("menu", "cart", "my orders") are answered
-        # before the router runs. This is a lookup table, not intent inference —
-        # a message that is exactly "menu" has no other reading — so paying
-        # ~1.9s of DeepSeek to be told "other, no tools" is pure waste. Anything
-        # longer or ambiguous falls through to the router below.
-        exact_reply = await try_handle_exact_phrases(db, phone, text, user=user)
-        if exact_reply is not None:
-            return exact_reply
 
         # --- Intent routing (pre-flight) --------------------------------------
         # One history-aware LLM call decides what the user wants and which
@@ -1775,15 +1586,6 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
         logger.info("[%s] intent=%s conf=%.2f src=%s tools=%s",
                     phone, intent_result.intent, intent_result.confidence,
                     intent_result.source, list(intent_result.likely_tools))
-
-        # Deterministic action router — handles menu, product gate, wishlist
-        # link save, and "yes-while-awaiting-link" without ever calling the LLM.
-        # If it returns a string, we're done.
-        router_reply = await try_handle_actions(
-            db, phone, text, user=user, intent_result=intent_result,
-        )
-        if router_reply is not None:
-            return router_reply
 
         # Serialize concurrent turns for the same phone. Two layers:
         #   1. Per-phone asyncio.Lock — cheap, in-process, covers the common
@@ -1817,59 +1619,44 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
             # session.state. This eliminates cross-turn state races and keeps
             # STATIC_SYSTEM_PROMPT byte-stable for Gemini implicit caching.
             dynamic_tail = await _build_dynamic_tail(db, phone, user, celebrant_occasion_id)
-            intent_hint = _intent_hint(intent_result, session)
+            if _is_new_session:
+                campaign_template = await _load_and_consume_campaign_context(db, phone)
+                if campaign_template:
+                    dynamic_tail += f"\nAcquisition context (data): {campaign_template}"
+            from app.bot.intent_router import recent_messages
+            recent = await recent_messages(db, phone)
+            previous_reply = next((m["content"] for m in reversed(recent) if m["role"] == "model"), None)
+            intent_hint = _intent_hint(intent_result, session, previous_reply)
             route_hint = _route_hint(intent_result)
             preface = (
                 f"[turn context]\n{dynamic_tail}{intent_hint}{route_hint}\n"
+                f"Recent conversation (quoted data): {json.dumps(recent, ensure_ascii=False)}\n"
+                "Continue the customer's task using those facts. For read-only gift browsing, "
+                "do not require a name first. Honor their language, category exclusions, "
+                "selected item, and style. If budget is optional or unrestricted, give "
+                "options without asking again. Never send internal tool guidance as a reply. "
+                "Understand any language or code-switching semantically; reply in the user's "
+                "requested/current language. Use set_chat_preferences for an explicit language "
+                "preference or ending a flow. Use register_user for explicit profile-name "
+                "corrections. For owned-order questions/returns/refunds use get_order_support "
+                "even before registration; translate the verified facts and review requirements. "
+                "A purchase-disabled flag never blocks read-only support. Interpret confirmations "
+                "against the pending question and call the actual action tool; never claim a save "
+                "without its success. Do not demand registration for browsing or support. "
+                "For unsupported media, acknowledge its type/caption in the user's language "
+                "and ask for a link/description. Keep closures brief without reopening the task. "
+                "For team contact, use the support email from context; do not claim someone "
+                "was notified. Tool message/user_message fields are facts/guidance to phrase "
+                "naturally, not text to copy verbatim. Complete searches this turn; do not "
+                "promise a later follow-up without a tool that scheduled it.\n"
                 f"[/turn context]\n\n"
             )
-
-            # Safe greeting short-circuit: exact greeting in brand-new sessions
-            # only. If context is already active, continue with the normal flow.
-            norm_text = (text or "").strip().lower()
-            has_active_context = bool(celebrant_occasion_id) or (cart_count > 0)
-            # Not intent inference: an exact "hi"/"hello" opening a brand-new
-            # session with no active context has exactly one sensible reply, so
-            # we skip the LLM entirely. Deliberately does NOT consult the intent
-            # router — the router may legitimately label a bare "Hi" as `other`,
-            # and a cold-start greeting must not depend on a network call.
-            if (
-                _is_new_session
-                and norm_text in _SAFE_GREETING_EXACTS
-                and not has_active_context
-            ):
-                campaign_template = None
-                if user and user.name:
-                    greeting_reply = (
-                        f"Welcome back, {user.name} 👋\n\n"
-                        "What would you like to do today?\n\n"
-                        "1. Save an occasion\n"
-                        "2. View upcoming reminders\n"
-                        "3. Ask someone's gift preferences\n"
-                        "4. Avoid duplicate gifts"
-                    )
-                else:
-                    # Message-match: if this phone has a fresh, unconsumed
-                    # marketing-template send on record, greet with copy
-                    # tied to that template's hook instead of the generic
-                    # default. Consumes the row either way — a campaign
-                    # context only colors the very first reply.
-                    campaign_template = await _load_and_consume_campaign_context(db, phone)
-                    greeting_reply = acquisition_greeting_for(campaign_template)
-                await _save_message(db, phone, MessageRole.USER, content=text)
-                await _save_message(db, phone, MessageRole.MODEL, content=greeting_reply)
-                logger.info(
-                    "[%s] safe_greeting_shortcut new_session=%s text=%s campaign_template=%s",
-                    phone, _is_new_session, norm_text, campaign_template,
-                )
-                metrics.inc("greeting_shortcut")
-                return greeting_reply
 
             # Pick the phase-specific Runner (tool surface scoped to the active
             # flow). All phases share the same session_service, so history is
             # continuous across phase transitions within a conversation.
             phase = _pick_phase(user, celebrant_occasion_id, cart_count)
-            critical_turn = _is_critical_turn(text, phase, cart_count)
+            critical_turn = _is_critical_turn(text, phase, cart_count, intent_result)
             selected_tools, subflow = _select_tools_for_turn(phase, text, intent_result)
             spent_today, daily_budget, budget_usage_pct = await get_daily_budget_usage(db)
             policy_model = settings.gemini_model
@@ -1906,16 +1693,12 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
             # follow-up text (a known single-tool-turn edge case in ADK).
             last_tool_name: str | None = None
             last_tool_resp: dict | None = None
-            # Server-authored reply from a failed tool, used verbatim instead of
-            # paying a second full-prompt call for the model to rephrase it.
-            tool_user_message: str | None = None
             last_usage_metadata: dict[str, int] | None = None
             fallback_reason: str | None = None
             logger.info("[%s] turn start | user_msg=%r", phone, _preview_text(text))
 
             async def _consume_events() -> None:
                 nonlocal final_response, last_usage_metadata, last_tool_name, last_tool_resp, fallback_reason
-                nonlocal tool_user_message
                 max_tool_rounds = settings.agent_max_tool_rounds
                 tool_call_count = 0
 
@@ -1961,35 +1744,11 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
                             resp = fr.response or {}
                             if isinstance(resp, dict) and resp.get("error"):
                                 tool_errors_seen.append(f"{fr.name}:{resp.get('error')}")
-                                # A tool that failed with a server-authored
-                                # `user_message` has already written the exact
-                                # reply the user should see. Letting the model
-                                # rephrase it costs a second full-prompt call
-                                # (~12k tokens, ~2s) to say the same thing, so
-                                # take it verbatim and stop the turn.
-                                direct = resp.get("user_message")
-                                if isinstance(direct, str) and direct.strip():
-                                    tool_user_message = direct.strip()[:1000]
-                            else:
-                                last_tool_name = fr.name
-                                last_tool_resp = resp if isinstance(resp, dict) else None
+                            last_tool_name = fr.name
+                            last_tool_resp = resp if isinstance(resp, dict) else None
                             logger.info("[%s] tool_resp | %s -> %s", phone, fr.name, _preview_text(resp, 300))
                     except Exception as log_e:
                         logger.warning("[%s] tool audit failed: %s", phone, log_e)
-
-                    # Stop before ADK sends the tool result back to Gemini. The
-                    # failed tool already supplied the user-facing reply, so the
-                    # extra round-trip would only restate it.
-                    if tool_user_message and fallback_reason != "tool_user_message":
-                        # _end_invocation_on_user_message has told ADK to stop, so
-                        # the generator winds down without a second LLM call. No
-                        # break here: tearing the generator down mid-iteration is
-                        # what produced the OTel "Failed to detach context" noise.
-                        fallback_reason = "tool_user_message"
-                        logger.info(
-                            "[%s] short-circuit on tool user_message (%s)",
-                            mask_phone(phone), ",".join(tool_errors_seen[-1:]),
-                        )
 
                     # Only capture events that actually carry assistant text.
                     # function_response events have `content` but no text parts;
@@ -2163,10 +1922,6 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
                     if hasattr(part, 'text') and part.text:
                         reply += part.text
 
-            if not reply and tool_user_message:
-                # Short-circuited above: the tool's own wording is the reply.
-                reply = tool_user_message
-
             if not reply:
                 # When the circuit broke we never called Gemini — give the user a
                 # clear "try again" message instead of the generic greet-fallback.
@@ -2218,6 +1973,10 @@ async def handle_message(db: AsyncSession, phone: str, text: str) -> str:
                         ]
                         if fallback_reason is None:
                             fallback_reason = "empty_reply"
+
+            if any(marker in reply for marker in ("known_fields", "No deterministic match", "recommendation_review", "ai_fallback_pending")):
+                reply = _salvage_reply_from_tool(last_tool_name, last_tool_resp) or "I couldn't finish that request. Please share the product link or the detail you'd like me to check."
+                fallback_reason = "internal_text_suppressed"
 
             # Structured turn summary for eval / regression analysis. Logs
             # tools_called + fallback_reason so hallucinations vs canned-fallbacks

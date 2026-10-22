@@ -9,7 +9,6 @@ from types import SimpleNamespace
 from typing import Awaitable, Callable, TypeVar
 
 import google.adk.sessions as _adk_sessions
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
@@ -21,10 +20,9 @@ class _StubSessionService:  # noqa: D401 - test stub
 _adk_sessions.DatabaseSessionService = _StubSessionService  # type: ignore[assignment]
 
 
-from app.bot import action_router, agent  # noqa: E402
-from app.bot.canned_responses import WISHLIST_ADDED_RESPONSE, WISHLIST_AFFIRMATIVE_REPROMPT
+from app.bot import agent  # noqa: E402
 from app.bot.intent_classifier import IntentResult
-from app.bot.state_utils import get_state, set_state
+from app.bot.state_utils import get_state
 from app.db.base import Base
 from app.models import (
     CelebrantFriend,
@@ -111,62 +109,8 @@ def test_greeting_mid_conversation_restates_last_question():
     assert "DO NOT cold-start" in hint
 
 
-def test_short_yes_while_awaiting_wishlist_link_reprompts_for_link(monkeypatch):
-    messages: list[str | None] = []
-
-    async def fake_append_message(_db, _phone, _role, content=None):
-        messages.append(content)
-
-    monkeypatch.setattr(action_router, "append_message", fake_append_message)
-
-    async def scenario(db):
-        phone = "919555555555"
-        user = User(id="usr_short_reply", phone=phone, name="Karan")
-        db.add(user)
-        await db.flush()
-        await set_state(db, phone, "awaiting", "wishlist_link")
-
-        reply = await action_router.try_handle_actions(
-            db,
-            phone,
-            "yes",
-            user=user,
-            intent_result=IntentResult("affirmative", 0.95, "rule"),
-        )
-        state = await get_state(db, phone)
-        return reply, state
-
-    reply, state = _run_db(scenario)
-
-    assert reply == WISHLIST_AFFIRMATIVE_REPROMPT
-    assert state["awaiting"] == "wishlist_link"
-    assert messages == ["yes", WISHLIST_AFFIRMATIVE_REPROMPT]
 
 
-def test_short_link_reply_in_friend_context_saves_as_gift_not_self(monkeypatch):
-    async def fake_append_message(*_args, **_kwargs):
-        return None
-
-    monkeypatch.setattr(action_router, "append_message", fake_append_message)
-
-    async def scenario(db):
-        phone = "919666666666"
-        reply = await action_router.try_handle_product_urls_before_classifier(
-            db,
-            phone,
-            "https://www.amazon.in/dp/B0TEST1234",
-            celebrant_occasion_id="cel_birthday",
-        )
-        item = (
-            await db.execute(select(WishlistItem).where(WishlistItem.user_id.is_not(None)))
-        ).scalar_one()
-        return reply, item
-
-    reply, item = _run_db(scenario)
-
-    assert reply == WISHLIST_ADDED_RESPONSE
-    assert item.purpose == "gift"
-    assert item.recipient_occasion_id == "cel_birthday"
 
 
 def test_load_user_context_preserves_short_checkout_and_friend_context():

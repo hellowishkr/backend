@@ -14,7 +14,7 @@ had asked a question.
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from typing import Awaitable, Callable, TypeVar
 
@@ -31,7 +31,7 @@ class _StubSessionService:  # noqa: D401 - test stub
 _adk_sessions.DatabaseSessionService = _StubSessionService  # type: ignore[assignment]
 
 
-from app.bot import action_router, agent  # noqa: E402
+from app.bot import agent  # noqa: E402
 from app.bot.intent_classifier import IntentResult  # noqa: E402
 from app.bot.state_utils import (  # noqa: E402
     AWAITING_OCCASION_SLOTS,
@@ -65,78 +65,12 @@ def _run_db(fn: Callable[[object], Awaitable[T]]) -> T:
 # --- F1/F2: the router must not hijack a reply to its own question ----------
 
 
-def _exact_phrase_scenario(text: str):
-    """Run one message through the zero-LLM exact-phrase table."""
-    async def scenario(db):
-        phone = "919000000001"
-        user = User(id="usr_slotfill", phone=phone, name="Shubhu")
-        db.add(user)
-        await db.flush()
-        return await action_router.try_handle_exact_phrases(
-            db, phone, text, user=user,
-        )
-
-    return _run_db(scenario)
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        # The Shubhu/Nandakishor turns.
-        "Birthday",
-        "Brother",
-        "Nandkishor, birhtday",
-        # The 2026-08 "DJ" transcript — six occasions lost across these.
-        "Myra - birthday - 7th Aug",
-        "Uttu, birthday, 9th Aug",
-        "Angelina- 7th Aug- Anniversary",
-        "Disha, birthday, 8th April",
-        "Rishabh, 15 October",
-        "Friend name - Angel, birthday- 7th Aught",
-    ],
-)
-def test_replies_and_saves_are_never_answered_by_a_canned_list(text: str):
-    """No message carrying occasion DETAILS may hit the canned list reply.
-
-    Each of these is either an answer to a question we just asked or an
-    outright save request. The old keyword path matched on the word "birthday"
-    and answered "I don't have any occasions saved for you yet" — while
-    occasions existed — instead of saving. They must now fall through to the
-    intent router, which reads the conversation.
-    """
-    assert _exact_phrase_scenario(text) is None, (
-        f"{text!r} was answered by the deterministic path; it must reach the agent"
-    )
 
 
-def test_explicit_list_request_still_answers_without_an_llm(monkeypatch):
-    """A genuine, unambiguous list request stays on the zero-LLM path."""
-    async def fake_get_my_occasions(_db, _phone, _args):
-        return {"occasions": []}
-
-    async def fake_append_message(*_a, **_kw):
-        return None
-
-    monkeypatch.setattr(action_router, "get_my_occasions", fake_get_my_occasions)
-    monkeypatch.setattr(action_router, "append_message", fake_append_message)
-
-    reply = _exact_phrase_scenario("show my occasions")
-    assert reply is not None
-    assert "don't have any occasions saved" in reply
 
 
-def test_bare_ambiguous_word_is_not_treated_as_a_list_request(monkeypatch):
-    """"birthday" alone is ambiguous — the agent decides, not a keyword match."""
-    async def fake_get_my_occasions(_db, _phone, _args):
-        return {"occasions": []}
-
-    async def fake_append_message(*_a, **_kw):
-        return None
-
-    monkeypatch.setattr(action_router, "get_my_occasions", fake_get_my_occasions)
-    monkeypatch.setattr(action_router, "append_message", fake_append_message)
-
-    assert _exact_phrase_scenario("birthday") is None
 
 
 # --- F3: partial facts must survive across the clarifying question ----------
@@ -184,15 +118,6 @@ def test_clearing_slots_leaves_an_unrelated_awaiting_marker_alone():
 # --- Typos are NOT handled by phrase lists ----------------------------------
 
 
-def test_misspelled_input_is_left_to_the_agent_not_a_typo_list():
-    """Deliberately no typo normalisation for "birhtday" & co.
-
-    Hardcoding misspellings is unbounded whack-a-mole and English-only. A
-    misspelled message simply isn't an exact-phrase match, so it falls through
-    to the intent router, which reads it in context. This test pins that
-    intent: if someone adds a typo table, it should fail.
-    """
-    assert _exact_phrase_scenario("which birhtdays did i save") is None
 
 
 # --- F7: "ok" after a statement must not dead-end ---------------------------
@@ -214,7 +139,7 @@ def test_ok_after_a_statement_pushes_delivery_not_a_pleasantry():
 
     assert "ACKNOWLEDGEMENT" in hint
     assert "waiting on YOU" in hint
-    assert "Proceed on that" not in hint
+    assert "only if they confirmed an action" in hint
 
 
 def test_yes_after_a_real_question_keeps_the_proceed_hint():
@@ -325,47 +250,7 @@ async def test_birth_year_rolls_to_next_future_occurrence_not_year_plus_one(
 # --- Next-occurrence dates must not read as a wrong save --------------------
 
 
-def test_recurring_next_year_date_is_labelled_not_bare():
-    """Disha's birthday (4 Aug), listed on 6 Aug, correctly resolves to 2027.
-
-    Shown bare, "04 August 2027" reads as though we saved the wrong year — the
-    user gave "4th Aug" (2026-08 production report). The date stays accurate;
-    it just gets named as the upcoming occurrence.
-    """
-    from app.bot.action_router import _format_my_occasions_reply
-
-    reply = _format_my_occasions_reply({"occasions": [
-        {"whose": "Disha", "occasion": "Birthday",
-         "date": "04 August 2027", "recurs_on": "04 August", "recurring": True},
-    ]})
-    assert "04 August 2027" in reply
-    assert "(every 04 August)" in reply
 
 
-def test_recurrence_label_does_not_depend_on_the_current_year():
-    """No "is it this year?" check — that is off by one around new year.
-
-    Stored dates are user-local while `now` is UTC, so a year comparison
-    flips a day early/late for users east of UTC. The label is unconditional
-    for recurring occasions.
-    """
-    from app.bot.action_router import _format_my_occasions_reply
-
-    for year in ("2026", "2027", "2099"):
-        reply = _format_my_occasions_reply({"occasions": [
-            {"whose": "Niharika", "occasion": "Birthday",
-             "date": f"07 August {year}", "recurs_on": "07 August",
-             "recurring": True},
-        ]})
-        assert "(every 07 August)" in reply
 
 
-def test_non_recurring_occasion_is_never_labelled():
-    """A one-off has no "next" occurrence — the label would be nonsense."""
-    from app.bot.action_router import _format_my_occasions_reply
-
-    reply = _format_my_occasions_reply({"occasions": [
-        {"whose": "Ravi", "occasion": "Farewell",
-         "date": "20 September 2027", "recurring": False},
-    ]})
-    assert "every" not in reply

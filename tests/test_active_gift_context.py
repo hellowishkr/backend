@@ -100,73 +100,10 @@ async def test_active_gift_context_created_when_friend_birthday_added(
     assert ctx["current_step"] == "occasion_saved"
 
 
-@pytest.mark.asyncio
-async def test_active_gift_context_adds_interest_bgmi(db: AsyncSession) -> None:
-    phone = "919000000002"
-    await update_active_gift_context(
-        db,
-        phone,
-        {"recipient_name": "Swaraj", "purpose": "gift_for_friend"},
-    )
-
-    await update_active_gift_context(
-        db,
-        phone,
-        agent._active_gift_context_updates_from_text("He likes BGMI and mobile games"),
-    )
-    ctx = get_active_gift_context(await get_state(db, phone))
-
-    assert ctx is not None
-    assert "BGMI" in ctx["interest"]
-    assert "mobile gaming" in ctx["recipient_vibe"]
-    assert ctx["current_step"] == "interest_known"
 
 
-@pytest.mark.asyncio
-async def test_active_gift_context_adds_headphones_category(db: AsyncSession) -> None:
-    phone = "919000000003"
-    await update_active_gift_context(
-        db,
-        phone,
-        {"recipient_name": "Swaraj", "purpose": "gift_for_friend"},
-    )
-
-    await update_active_gift_context(
-        db,
-        phone,
-        agent._active_gift_context_updates_from_text("I'll go for headphones"),
-    )
-    ctx = get_active_gift_context(await get_state(db, phone))
-
-    assert ctx is not None
-    assert ctx["gift_category"] == "headphones"
-    assert ctx["current_step"] == "category_selected"
 
 
-@pytest.mark.asyncio
-async def test_active_gift_context_keeps_clothing_and_art_interests(
-    db: AsyncSession,
-) -> None:
-    phone = "919000000033"
-    await update_active_gift_context(
-        db,
-        phone,
-        {"recipient_name": "Vidushi", "purpose": "gift_for_friend"},
-    )
-
-    await update_active_gift_context(
-        db,
-        phone,
-        agent._active_gift_context_updates_from_text(
-            "Some comfy clothes, art supplies"
-        ),
-    )
-    ctx = get_active_gift_context(await get_state(db, phone))
-
-    assert ctx is not None
-    assert "comfy clothes" in ctx["recipient_vibe"]
-    assert "art supplies" in ctx["recipient_vibe"]
-    assert ctx["current_step"] == "interest_known"
 
 
 @pytest.mark.asyncio
@@ -229,30 +166,3 @@ def test_active_gift_context_expires_or_clears_when_appropriate() -> None:
     assert clear_active_gift_context({"active_gift_context": fresh_ctx}) == {}
 
 
-@pytest.mark.asyncio
-async def test_swaraj_active_gift_context_sequence(
-    db: AsyncSession,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    phone = "919000000005"
-    await _make_user(db, phone)
-    await _add_swaraj_birthday(db, monkeypatch, phone)
-
-    await update_active_gift_context(
-        db,
-        phone,
-        agent._active_gift_context_updates_from_text("He likes BGMI"),
-    )
-    await update_active_gift_context(
-        db,
-        phone,
-        agent._active_gift_context_updates_from_text("I'll go for headphones"),
-    )
-
-    ctx = get_active_gift_context(await get_state(db, phone))
-    assert ctx is not None
-    assert ctx["recipient_name"] == "Swaraj"
-    assert ctx["purpose"] == "gift_for_friend"
-    assert "BGMI" in ctx["interest"]
-    assert "mobile gaming" in ctx["recipient_vibe"]
-    assert ctx["gift_category"] == "headphones"

@@ -30,6 +30,7 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from typing import Any
 
@@ -39,6 +40,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models import ConversationMessage, MessageRole
+from app.utils.phones import phone_aliases
 
 logger = logging.getLogger("wishkr.intent_router")
 
@@ -106,9 +108,10 @@ async def recent_messages(db: AsyncSession, phone: str) -> list[dict[str, str]]:
         await db.execute(
             select(ConversationMessage)
             .where(
-                ConversationMessage.phone == phone,
+                ConversationMessage.phone.in_(phone_aliases(phone)),
                 ConversationMessage.role.in_([MessageRole.USER, MessageRole.MODEL]),
                 ConversationMessage.content.isnot(None),
+                ConversationMessage.created_at >= datetime.now(timezone.utc) - timedelta(days=1),
             )
             .order_by(
                 ConversationMessage.created_at.desc(),
@@ -171,7 +174,7 @@ VALID_INTENTS = frozenset({
 
 _PROMPT = """You route WhatsApp messages for Wishkr, a gifting and reminder assistant.
 
-Read the conversation and decide what the user wants RIGHT NOW, then name the \
+Read the conversation in ANY language or code-switching style and decide what the user wants RIGHT NOW, then name the \
 tools needed to do it.
 
 Available tools:
@@ -201,6 +204,10 @@ That is add_occasion with those slots, NOT a request to list occasions.
 person and date is almost always a save.
 - If the user names several occasions in one message, return add_occasion and put \
 every one of them in slots.occasions.
+- Order/payment/refund/return questions use get_order_support, including guests. Never confuse a return with a new purchase.
+- Explicit language requests and ending a flow use set_chat_preferences. Name corrections use register_user.
+- A multilingual confirmation is an answer to the previous question, not a greeting. Use the actual action tool when appropriate.
+- Do not depend on English words or translate the customer-facing reply here; the main agent writes it.
 - Only name tools that appear in the list above.
 - If the request is unclear, use intent "other" and leave likely_tools empty. \
 Do not guess.

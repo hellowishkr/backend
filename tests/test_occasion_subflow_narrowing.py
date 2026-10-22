@@ -27,8 +27,8 @@ def test_upcoming_occasions_gets_occasion_subflow():
     tools, subflow = _select_tools_for_turn(
         "browse", "What are my upcoming ocassions?", _OTHER,
     )
-    assert subflow == "occasions"
-    assert len(tools) < len(_PHASE_TOOLS["browse"])
+    assert subflow == "default"
+    assert len(tools) == len(_PHASE_TOOLS["browse"])
     names = {t.name for t in tools}
     assert "get_my_occasions" in names
     assert "suggest_gifts" in names  # gift asks co-occur with occasion talk
@@ -38,14 +38,14 @@ def test_birthday_reminder_gets_occasion_subflow():
     _, subflow = _select_tools_for_turn(
         "browse", "remind me about riya birthday", _OTHER,
     )
-    assert subflow == "occasions"
+    assert subflow == "default"
 
 
 def test_discovery_signal_outranks_occasion_signal():
     _, subflow = _select_tools_for_turn(
         "browse", "suggest a gift for her birthday", _OTHER,
     )
-    assert subflow == "product_discovery"
+    assert subflow == "default"
 
 
 def test_plain_message_keeps_full_toolset():

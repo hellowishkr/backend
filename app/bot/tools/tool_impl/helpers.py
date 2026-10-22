@@ -43,8 +43,8 @@ _HINT_CELEBRANT_UNKNOWN = "The celebrant_occasion_id is invalid. Confirm the Fri
 
 async def _get_user(db: AsyncSession, phone: str) -> User | None:
     """Get user by phone number."""
-    result = await db.execute(select(User).where(User.phone == phone))
-    return result.scalar_one_or_none()
+    from app.utils.phones import user_for_phone
+    return await user_for_phone(db, phone)
 
 
 async def _find_or_create_contact(

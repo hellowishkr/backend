@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Product, User, WishlistItem
 from app.utils.id_gen import generate_id
+from app.utils.phones import normalize_phone, user_for_phone
 from app.utils.link_utils import extract_product_id, guess_product_name, normalize_url
 
 logger = logging.getLogger("wishkr.wishlist")
@@ -58,8 +59,8 @@ async def _get_or_create_user(db: AsyncSession, phone: str) -> User:
     onboarding). Mirrors the guest-user pattern used in the friend-purchase
     flow (see `app/bot/tools/functions.py`).
     """
-    result = await db.execute(select(User).where(User.phone == phone))
-    user = result.scalar_one_or_none()
+    phone = normalize_phone(phone)
+    user = await user_for_phone(db, phone)
     if user is not None:
         return user
 

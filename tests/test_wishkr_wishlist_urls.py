@@ -2,13 +2,7 @@ from __future__ import annotations
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot import action_router
-from app.bot.canned_responses import (
-    WISHLIST_ADDED_RESPONSE,
-    WISHLIST_DUPLICATE_RESPONSE,
-)
 from app.models import Product, Vendor, WishlistItem
 from app.utils.link_utils import (
     extract_product_id,
@@ -77,51 +71,17 @@ def test_non_product_wishkr_urls_are_not_classified_as_products(url: str) -> Non
     assert is_product_link(url) is False
 
 
+
+
 @pytest.mark.asyncio
-async def test_wishkr_url_fast_path_resolves_title_and_deduplicates(
-    db: AsyncSession,
-) -> None:
+async def test_wishkr_url_tool_resolves_title_and_deduplicates(db):
+    from app.bot.tools.tool_impl.wishlist import add_to_wishlist
     product_id = "prd_1782475741_94ae03da"
-    db.add(
-        Vendor(
-            id="vnd_wishkr_wishlist",
-            name="Internal Seller",
-            category="gifts",
-            active=True,
-        )
-    )
-    db.add(
-        Product(
-            id=product_id,
-            vendor_id="vnd_wishkr_wishlist",
-            name="Customized Candle Gift Hampers",
-            category="Candles",
-            base_price_paise=159900,
-            active=True,
-            in_stock=True,
-            lifecycle_status="active",
-        )
-    )
+    db.add(Vendor(id="vnd_test", name="Seller", category="gifts", active=True))
+    db.add(Product(id=product_id, vendor_id="vnd_test", name="Candle Hampers", base_price_paise=159900, active=True))
     await db.flush()
-
-    first_reply = await action_router.try_handle_product_urls_before_classifier(
-        db,
-        "919000000777",
-        (
-            "save this "
-            "wishkr.com/shop/customized-candle-gift-hampers-"
-            f"{product_id}"
-        ),
-    )
-    second_reply = await action_router.try_handle_product_urls_before_classifier(
-        db,
-        "919000000777",
-        f"save this https://www.wishkr.com/shop/{product_id}",
-    )
-
+    first = await add_to_wishlist(db, "919000000777", {"url": f"https://wishkr.com/shop/candle-{product_id}"})
+    second = await add_to_wishlist(db, "919000000777", {"url": f"https://www.wishkr.com/shop/{product_id}"})
     item = (await db.execute(select(WishlistItem))).scalar_one()
-    assert first_reply == WISHLIST_ADDED_RESPONSE
-    assert second_reply == WISHLIST_DUPLICATE_RESPONSE
-    assert item.product_id == f"wishkr:{product_id}"
-    assert item.title == "Customized Candle Gift Hampers"
-    assert item.url.startswith("https://wishkr.com/shop/")
+    assert first["success"] and second["duplicate"]
+    assert item.product_id == f"wishkr:{product_id}" and item.title == "Candle Hampers"
